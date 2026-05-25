@@ -2,23 +2,12 @@ import asyncio
 import json
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from ..redis_client import get_redis
+import app.redis_client as redis_mod
 
 router = APIRouter()
 log = logging.getLogger(__name__)
 
 _clients: list[WebSocket] = []
-
-
-async def broadcast(data: str):
-    dead = []
-    for ws in _clients:
-        try:
-            await ws.send_text(data)
-        except Exception:
-            dead.append(ws)
-    for ws in dead:
-        _clients.remove(ws)
 
 
 @router.websocket("/ws")
@@ -27,10 +16,10 @@ async def websocket_endpoint(websocket: WebSocket):
     _clients.append(websocket)
     log.info("WS client connected, total=%d", len(_clients))
 
-    redis = get_redis()
     listen_task = None
 
     try:
+        redis = redis_mod._redis
         if redis:
             pubsub = redis.pubsub()
             await pubsub.subscribe("wyrd.events")
