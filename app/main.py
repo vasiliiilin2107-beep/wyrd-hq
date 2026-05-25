@@ -1,9 +1,12 @@
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI
 from .database import engine, Base
 from .routers import branches, events
 from .redis_client import init_redis, close_redis
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 START_TIME = datetime.utcnow()
 
