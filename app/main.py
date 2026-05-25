@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from .database import engine, Base
 from .routers import branches, events
+from .redis_client import init_redis, close_redis
 
 START_TIME = datetime.utcnow()
 
@@ -11,7 +12,9 @@ START_TIME = datetime.utcnow()
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await init_redis()
     yield
+    await close_redis()
 
 
 app = FastAPI(title="WYRD HQ", version="0.2.0", lifespan=lifespan)

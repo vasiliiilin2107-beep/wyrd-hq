@@ -5,6 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from ..database import get_session
 from ..models import Event, Branch
+from ..redis_client import publish_event
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -28,6 +29,16 @@ async def create_event(
     session.add(event)
     await session.commit()
     await session.refresh(event)
+
+    await publish_event({
+        "id": event.id,
+        "branch": data.branch,
+        "branch_id": branch_id,
+        "type": event.type,
+        "payload": data.payload,
+        "created_at": str(event.created_at),
+    })
+
     return {"id": event.id, "type": event.type, "created_at": event.created_at}
 
 
