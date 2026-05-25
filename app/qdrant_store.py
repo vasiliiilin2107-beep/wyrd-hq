@@ -86,12 +86,12 @@ async def search_memory(query: str, limit: int = 5) -> list[dict]:
         loop = asyncio.get_running_loop()
         vector = await loop.run_in_executor(None, _embed_sync, query, _embedder)
 
-        results = await _client.search(
+        response = await _client.query_points(
             collection_name=COLLECTION,
-            query_vector=vector,
+            query=vector,
             limit=limit,
         )
-        return [{"score": round(r.score, 3), **r.payload} for r in results]
+        return [{"score": round(p.score, 3), **p.payload} for p in response.points]
     except Exception as e:
         log.warning(f"[Qdrant] search error: {e}")
         return []
