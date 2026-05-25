@@ -49,7 +49,7 @@ const PLANETS = [
     id: 'library', name: 'БИБЛИОТЕКА', sub: 'Знания',
     color: '#10b981', size: 11,
     orbit: 320, speed: 60, startAngle: 60,
-    url: null, active: false
+    url: 'http://at23vp1rnqm4koa2ufqvlm0d.147.45.212.155.sslip.io', active: true
   },
   {
     id: 'analytics', name: 'АНАЛИТИКА', sub: 'Данные',
