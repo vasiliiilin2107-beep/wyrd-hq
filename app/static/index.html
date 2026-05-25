@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYRD</title>
+  <link rel="stylesheet" href="/assets/css/wyrd.css">
+  <style>
+    .enter-hint {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      letter-spacing: 0.3em;
+      color: rgba(255,255,255,0.2);
+      animation: fade-hint 3s ease-in-out infinite;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    @keyframes fade-hint {
+      0%,100% { opacity: 0.2; }
+      50%      { opacity: 0.5; }
+    }
+    .solar-scene {
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="solar-wrap">
+    <div class="solar-scene" style="width:720px;height:720px;">
+      <!-- Солнце -->
+      <div class="solar-sun">
+        <div class="wyrd-title">WYRD</div>
+        <div class="wyrd-sub">КОМАНДНЫЙ ЦЕНТР</div>
+      </div>
+      <!-- Планеты строятся через JS -->
+    </div>
+  </div>
+
+  <div class="enter-hint">ВЫБЕРИТЕ НАПРАВЛЕНИЕ</div>
+
+  <script src="/assets/js/solar.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYRD — СТУДИЯ</title>
+  <link rel="stylesheet" href="/assets/css/wyrd.css">
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="placeholder-wrap">
+    <div class="placeholder-icon">🎬</div>
+    <div class="placeholder-title" style="color:var(--purple)">СТУДИЯ</div>
+    <div class="placeholder-sub">Content Studio — отдельный сервис</div>
+    <div style="margin-top:24px;display:flex;gap:12px">
+      <a href="http://wkm5uk0ei1dei6ggm90mqg9s.147.45.212.155.sslip.io" target="_blank">
+        <button class="back-btn" style="border-color:var(--purple);color:var(--purple)">
+          ОТКРЫТЬ СТУДИЮ →
+        </button>
+      </a>
+      <button class="back-btn" onclick="window.location='/'">← НАЗАД В МИР</button>
+    </div>
+  </div>
+
+  <script src="/assets/js/hq.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('starfield');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          for (let i = 0; i < 120; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const r = Math.random() * 1.2 + 0.2;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.5+0.1})`;
+            ctx.fill();
+          }
+        }
+        resize();
+      }
+    });
+  </script>
+</body>
+</html>

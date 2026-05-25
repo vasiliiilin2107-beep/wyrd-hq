@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYRD — ТОМАС</title>
+  <link rel="stylesheet" href="/assets/css/wyrd.css">
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="hq-layout">
+    <header class="topbar">
+      <a href="/" class="topbar-logo">WYRD</a>
+      <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ ТОМАС</span>
+      <div class="topbar-sep"></div>
+      <div class="topbar-status">
+        <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
+        <span style="color:var(--blue)">СТРАЖ АКТИВЕН</span>
+      </div>
+      <div class="topbar-time" id="clock">--:--:-- МСК</div>
+    </header>
+
+    <nav class="sidebar">
+      <button class="nav-btn active" title="Действия">📋</button>
+      <button class="nav-btn" title="Память" onclick="window.location='/hq'">🧠</button>
+      <div style="flex:1"></div>
+      <button class="nav-btn" title="HQ" onclick="window.location='/hq'">🏛️</button>
+      <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
+    </nav>
+
+    <main class="main-area">
+      <div>
+        <div class="section-title">РАБОЧЕЕ МЕСТО ТОМАСА</div>
+        <div class="branches-grid">
+          <div class="branch-card" style="--node-color:#3b82f6">
+            <div class="branch-name">ТОМАС</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></span>
+              онлайн · Telegram + веб-чат
+            </div>
+            <div class="branch-last">Следит за всем миром. Не спит.</div>
+          </div>
+          <div class="branch-card" style="--node-color:#10b981">
+            <div class="branch-name">СЕМАНТ. ПАМЯТЬ</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+              Qdrant · bge-small-en
+            </div>
+            <div class="branch-last">/memory search — поиск по событиям</div>
+          </div>
+          <div class="branch-card" style="--node-color:#f59e0b">
+            <div class="branch-name">REDIS SUB</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></span>
+              wyrd.events подписка
+            </div>
+            <div class="branch-last">Мгновенные алерты в Telegram</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">ЛЕНТА ДЕЙСТВИЙ ТОМАСА</div>
+        <div id="event-feed-thomas" style="display:flex;flex-direction:column;gap:0">
+          <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="feed">
+      <div class="section-title" style="margin-bottom:16px">ВСЕ СОБЫТИЯ HQ</div>
+      <div id="event-feed">
+        <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/assets/js/hq.js"></script>
+  <script>
+    // Фильтр событий от Томаса
+    async function loadThomasActions() {
+      const feed = document.getElementById('event-feed-thomas');
+      try {
+        const res  = await fetch('/events?branch=thomas&limit=20');
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.events || [];
+        feed.innerHTML = '';
+        if (!list.length) {
+          feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Томас ещё не писал событий</div>';
+          return;
+        }
+        list.slice().reverse().forEach(e => {
+          const item = document.createElement('div');
+          item.className = 'feed-item';
+          const time = e.created_at ? new Date(e.created_at).toLocaleTimeString('ru-RU',{hour12:false}) : '';
+          item.innerHTML = `
+            <div class="feed-type type-${(e.type||'info').replace(/\./g,'_')}" style="color:var(--blue)">${(e.type||'info').toUpperCase()}</div>
+            <div class="feed-payload">${e.payload ? JSON.stringify(e.payload).slice(0,200) : ''}</div>
+            <div class="feed-time">${time}</div>
+          `;
+          feed.appendChild(item);
+        });
+      } catch { feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Нет данных</div>'; }
+    }
+    document.addEventListener('DOMContentLoaded', loadThomasActions);
+  </script>
+</body>
+</html>

@@ -1,0 +1,472 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+/* ─── ТОКЕНЫ ─────────────────────────────────────────── */
+:root {
+  --bg:          #05050f;
+  --bg2:         #0a0a1a;
+  --surface:     rgba(255,255,255,0.04);
+  --border:      rgba(255,255,255,0.08);
+  --text:        #e2e8f0;
+  --text-dim:    rgba(226,232,240,0.45);
+
+  --gold:        #f59e0b;
+  --blue:        #3b82f6;
+  --purple:      #8b5cf6;
+  --green:       #10b981;
+  --orange:      #f97316;
+  --red:         #ef4444;
+  --cyan:        #06b6d4;
+  --pink:        #ec4899;
+
+  --hq-color:     var(--gold);
+  --thomas-color: var(--blue);
+  --studio-color: var(--purple);
+  --library-color:var(--green);
+  --analytics-color:var(--orange);
+  --finance-color:var(--red);
+  --scout-color:  var(--cyan);
+  --publisher-color:var(--pink);
+
+  --radius:      12px;
+  --transition:  0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ─── BASE ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ─── STARFIELD CANVAS ───────────────────────────────── */
+#starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── SOLAR SYSTEM ───────────────────────────────────── */
+.solar-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.solar-scene {
+  position: relative;
+  width: 720px;
+  height: 720px;
+}
+
+/* Орбиты */
+.orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(255,255,255,0.1);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Солнце — HQ */
+.solar-sun {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 10;
+  cursor: default;
+  user-select: none;
+}
+
+.wyrd-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b, #ffffff, #f59e0b);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s ease infinite, pulse-sun 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(245,158,11,0.6));
+}
+
+.wyrd-sub {
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  color: var(--text-dim);
+  margin-top: 6px;
+  font-weight: 300;
+}
+
+@keyframes shimmer {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes pulse-sun {
+  0%,100% { filter: drop-shadow(0 0 18px rgba(245,158,11,0.5)); }
+  50%      { filter: drop-shadow(0 0 35px rgba(245,158,11,0.9)); }
+}
+
+/* Планеты */
+.planet {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  z-index: 5;
+}
+
+.planet-body {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.planet-body::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.planet-body:hover {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+
+.planet-body:hover::after {
+  opacity: 1;
+}
+
+.planet-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% - 28px));
+  white-space: nowrap;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  opacity: 0;
+  transition: opacity var(--transition), transform var(--transition);
+  pointer-events: none;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.planet-body:hover ~ .planet-label,
+.planet:hover .planet-label {
+  opacity: 1;
+  transform: translate(-50%, calc(-50% - 34px));
+}
+
+.planet-sub {
+  display: block;
+  font-size: 0.5rem;
+  font-weight: 300;
+  opacity: 0.6;
+  letter-spacing: 0.1em;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.planet--inactive .planet-body {
+  opacity: 0.3;
+  cursor: default;
+  filter: grayscale(0.5);
+}
+.planet--inactive .planet-label {
+  opacity: 0;
+}
+
+/* Клик-вспышка */
+.planet-body.flash {
+  animation: planet-click 0.4s ease forwards;
+}
+@keyframes planet-click {
+  0%   { transform: translate(-50%,-50%) scale(1); }
+  50%  { transform: translate(-50%,-50%) scale(2); opacity: 0.8; }
+  100% { transform: translate(-50%,-50%) scale(4); opacity: 0; }
+}
+
+/* ─── HQ ROOM ────────────────────────────────────────── */
+.hq-layout {
+  display: grid;
+  grid-template-columns: 56px 1fr 300px;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 1;
+}
+
+/* Топбар */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(5,5,15,0.8);
+  backdrop-filter: blur(12px);
+}
+
+.topbar-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(245,158,11,0.5);
+}
+
+.topbar-sep { flex: 1; }
+
+.topbar-time {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* Сайдбар */
+.sidebar {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  background: rgba(5,5,15,0.6);
+  backdrop-filter: blur(8px);
+}
+
+.nav-btn {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: background var(--transition), color var(--transition);
+  border: none;
+  background: none;
+}
+.nav-btn:hover, .nav-btn.active {
+  background: var(--surface);
+  color: var(--text);
+}
+.nav-btn[title]::after { display: none; }
+
+/* Основная область */
+.main-area {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Branch cards */
+.branches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.branch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.branch-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--node-color, #fff);
+}
+.branch-card:hover {
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.07);
+  transform: translateY(-2px);
+}
+
+.branch-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  color: var(--node-color, var(--text));
+}
+.branch-status {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.branch-status .dot { width: 5px; height: 5px; }
+.branch-last {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+/* Event feed */
+.feed {
+  border-left: 1px solid var(--border);
+  padding: 20px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(5,5,15,0.4);
+}
+
+.feed-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  animation: feed-in 0.3s ease;
+}
+@keyframes feed-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.feed-type {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.feed-branch {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.feed-payload {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  opacity: 0.7;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.feed-time {
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  opacity: 0.5;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Типы событий */
+.type-startup  { color: var(--green); }
+.type-error    { color: var(--red); }
+.type-info     { color: var(--blue); }
+.type-video_generated { color: var(--purple); }
+.type-default  { color: var(--text-dim); }
+
+/* ─── PLACEHOLDER ────────────────────────────────────── */
+.placeholder-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+.placeholder-icon { font-size: 3rem; opacity: 0.4; }
+.placeholder-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+}
+.placeholder-sub { font-size: 0.75rem; color: var(--text-dim); opacity: 0.5; }
+.back-btn {
+  margin-top: 24px;
+  padding: 10px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: 'Space Grotesk', sans-serif;
+}
+.back-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WYRD — HQ</title>
+  <link rel="stylesheet" href="/assets/css/wyrd.css">
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="hq-layout">
+    <!-- Топбар -->
+    <header class="topbar">
+      <a href="/" class="topbar-logo">WYRD</a>
+      <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ HQ</span>
+      <div class="topbar-sep"></div>
+      <div class="topbar-status">
+        <span class="dot"></span>
+        <span>СИСТЕМА АКТИВНА</span>
+      </div>
+      <div class="topbar-time" id="clock">--:--:-- МСК</div>
+    </header>
+
+    <!-- Сайдбар -->
+    <nav class="sidebar">
+      <button class="nav-btn active" title="Карта" onclick="setTab('map')">🗺️</button>
+      <button class="nav-btn" title="Заметки" onclick="setTab('notes')">📝</button>
+      <button class="nav-btn" title="Задачи" onclick="setTab('tasks')">✅</button>
+      <button class="nav-btn" title="Стройка" onclick="setTab('build')">🏗️</button>
+      <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
+      <div style="flex:1"></div>
+      <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
+    </nav>
+
+    <!-- Главная область -->
+    <main class="main-area" id="main-area">
+      <!-- Ветки мира -->
+      <div>
+        <div class="section-title">ВЕТКИ МИРА</div>
+        <div class="branches-grid" id="branches-grid">
+          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- Статус систем -->
+      <div>
+        <div class="section-title">ИНФРАСТРУКТУРА</div>
+        <div class="branches-grid">
+          <div class="branch-card" style="--node-color:#10b981">
+            <div class="branch-name">POSTGRESQL</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+              активна
+            </div>
+            <div class="branch-last">Основная БД мира</div>
+          </div>
+          <div class="branch-card" style="--node-color:#ef4444" id="redis-card">
+            <div class="branch-name">REDIS</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+              шина событий
+            </div>
+            <div class="branch-last">Pub/Sub канал wyrd.events</div>
+          </div>
+          <div class="branch-card" style="--node-color:#06b6d4">
+            <div class="branch-name">QDRANT</div>
+            <div class="branch-status">
+              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+              векторная память
+            </div>
+            <div class="branch-last">10.0.1.1:6333 · fastembed</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Лента событий -->
+    <aside class="feed">
+      <div class="section-title" style="margin-bottom:16px">СОБЫТИЯ</div>
+      <div id="event-feed">
+        <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/assets/js/hq.js"></script>
+  <script>
+    function setTab(name) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
