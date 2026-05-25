@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from ..database import get_session
 from ..models import Event, Branch
 from ..redis_client import publish_event
+from ..qdrant_store import embed_and_store
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -38,6 +40,8 @@ async def create_event(
         "payload": data.payload,
         "created_at": str(event.created_at),
     })
+
+    asyncio.create_task(embed_and_store(event.id, data.branch, event.type, data.payload))
 
     return {"id": event.id, "type": event.type, "created_at": event.created_at}
 
