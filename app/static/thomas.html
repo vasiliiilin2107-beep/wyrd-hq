@@ -5,11 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WYRD — ТОМАС</title>
   <link rel="stylesheet" href="/assets/css/wyrd.css">
+  <style>
+    .thomas-layout {
+      display: grid;
+      grid-template-columns: 56px 1fr 420px;
+      grid-template-rows: 52px 1fr;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      z-index: 1;
+    }
+    .chat-panel {
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: rgba(5,5,15,0.4);
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(59,130,246,0.06);
+    }
+    .chat-header-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--blue);
+    }
+    .chat-iframe {
+      flex: 1;
+      border: none;
+      background: transparent;
+      filter: hue-rotate(0deg);
+    }
+  </style>
 </head>
 <body>
   <canvas id="starfield"></canvas>
 
-  <div class="hq-layout">
+  <div class="thomas-layout">
+    <!-- Топбар -->
     <header class="topbar">
       <a href="/" class="topbar-logo">WYRD</a>
       <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ ТОМАС</span>
@@ -21,73 +60,80 @@
       <div class="topbar-time" id="clock">--:--:-- МСК</div>
     </header>
 
+    <!-- Сайдбар -->
     <nav class="sidebar">
-      <button class="nav-btn active" title="Действия">📋</button>
-      <button class="nav-btn" title="Память" onclick="window.location='/hq'">🧠</button>
+      <button class="nav-btn active" title="Обзор">📋</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="HQ" onclick="window.location='/hq'">🏛️</button>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
     </nav>
 
+    <!-- Главная область — статус + события -->
     <main class="main-area">
       <div>
-        <div class="section-title">РАБОЧЕЕ МЕСТО ТОМАСА</div>
+        <div class="section-title">СТАТУС</div>
         <div class="branches-grid">
           <div class="branch-card" style="--node-color:#3b82f6">
             <div class="branch-name">ТОМАС</div>
             <div class="branch-status">
               <span class="dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></span>
-              онлайн · Telegram + веб-чат
+              Telegram + веб-чат
             </div>
             <div class="branch-last">Следит за всем миром. Не спит.</div>
           </div>
           <div class="branch-card" style="--node-color:#10b981">
-            <div class="branch-name">СЕМАНТ. ПАМЯТЬ</div>
+            <div class="branch-name">QDRANT ПАМЯТЬ</div>
             <div class="branch-status">
               <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
-              Qdrant · bge-small-en
+              bge-small-en-v1.5
             </div>
-            <div class="branch-last">/memory search — поиск по событиям</div>
+            <div class="branch-last">/memory — семантический поиск</div>
           </div>
           <div class="branch-card" style="--node-color:#f59e0b">
             <div class="branch-name">REDIS SUB</div>
             <div class="branch-status">
               <span class="dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></span>
-              wyrd.events подписка
+              wyrd.events
             </div>
             <div class="branch-last">Мгновенные алерты в Telegram</div>
           </div>
         </div>
       </div>
 
-      <div>
-        <div class="section-title">ЛЕНТА ДЕЙСТВИЙ ТОМАСА</div>
-        <div id="event-feed-thomas" style="display:flex;flex-direction:column;gap:0">
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <div class="section-title">ЛЕНТА ДЕЙСТВИЙ</div>
+        <div id="event-feed-thomas" style="display:flex;flex-direction:column;gap:0;overflow-y:auto;flex:1">
           <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
         </div>
       </div>
     </main>
 
-    <aside class="feed">
-      <div class="section-title" style="margin-bottom:16px">ВСЕ СОБЫТИЯ HQ</div>
-      <div id="event-feed">
-        <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+    <!-- Чат Томаса — встроен iframe -->
+    <div class="chat-panel">
+      <div class="chat-header">
+        <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
+        <span class="chat-header-title">ЧАТ С ТОМАСОМ</span>
       </div>
-    </aside>
+      <iframe
+        class="chat-iframe"
+        src="http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io"
+        title="Томас веб-чат"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+      ></iframe>
+    </div>
   </div>
 
   <script src="/assets/js/hq.js"></script>
   <script>
-    // Фильтр событий от Томаса
     async function loadThomasActions() {
       const feed = document.getElementById('event-feed-thomas');
       try {
-        const res  = await fetch('/events?branch=thomas&limit=20');
+        const res  = await fetch('/events?limit=30');
         const data = await res.json();
         const list = Array.isArray(data) ? data : data.events || [];
         feed.innerHTML = '';
         if (!list.length) {
-          feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Томас ещё не писал событий</div>';
+          feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Событий пока нет</div>';
           return;
         }
         list.slice().reverse().forEach(e => {
@@ -95,15 +141,19 @@
           item.className = 'feed-item';
           const time = e.created_at ? new Date(e.created_at).toLocaleTimeString('ru-RU',{hour12:false}) : '';
           item.innerHTML = `
-            <div class="feed-type type-${(e.type||'info').replace(/\./g,'_')}" style="color:var(--blue)">${(e.type||'info').toUpperCase()}</div>
-            <div class="feed-payload">${e.payload ? JSON.stringify(e.payload).slice(0,200) : ''}</div>
+            <div class="feed-type type-${(e.type||'info').replace(/[.\-]/g,'_')}" style="color:var(--blue)">${(e.type||'info').toUpperCase()}</div>
+            <div class="feed-branch">${e.branch_name || e.branch || '—'}</div>
+            <div class="feed-payload">${e.payload ? JSON.stringify(e.payload).slice(0,150) : ''}</div>
             <div class="feed-time">${time}</div>
           `;
           feed.appendChild(item);
         });
-      } catch { feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Нет данных</div>'; }
+      } catch {
+        feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Нет данных</div>';
+      }
     }
     document.addEventListener('DOMContentLoaded', loadThomasActions);
+    setInterval(loadThomasActions, 15000);
   </script>
 </body>
 </html>
