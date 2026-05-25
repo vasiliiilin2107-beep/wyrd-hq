@@ -1,10 +1,23 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from datetime import datetime
-import os
-
-app = FastAPI(title="WYRD HQ", version="0.1.0")
+from fastapi import FastAPI
+from .database import engine, Base
+from .routers import branches, events
 
 START_TIME = datetime.utcnow()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+
+app = FastAPI(title="WYRD HQ", version="0.2.0", lifespan=lifespan)
+
+app.include_router(branches.router)
+app.include_router(events.router)
 
 
 @app.get("/health")
@@ -13,7 +26,7 @@ def health():
     return {
         "status": "ok",
         "service": "wyrd-hq",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "uptime_seconds": uptime,
         "timestamp": datetime.utcnow().isoformat(),
     }
