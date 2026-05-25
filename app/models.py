@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any
-from sqlalchemy import String, JSON, ForeignKey, DateTime, func
+from sqlalchemy import String, JSON, ForeignKey, DateTime, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -28,3 +28,20 @@ class Event(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     branch: Mapped["Branch | None"] = relationship(back_populates="events")
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(20), default="todo")  # todo | in_progress | done
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

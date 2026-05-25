@@ -17,62 +17,137 @@
       <div class="topbar-sep"></div>
       <div class="topbar-status">
         <span class="dot"></span>
-        <span>СИСТЕМА АКТИВНА</span>
+        <span id="tab-label">КАРТА МИРА</span>
       </div>
       <div class="topbar-time" id="clock">--:--:-- МСК</div>
     </header>
 
     <!-- Сайдбар -->
     <nav class="sidebar">
-      <button class="nav-btn active" title="Карта" onclick="setTab('map')">🗺️</button>
-      <button class="nav-btn" title="Заметки" onclick="setTab('notes')">📝</button>
-      <button class="nav-btn" title="Задачи" onclick="setTab('tasks')">✅</button>
-      <button class="nav-btn" title="Стройка" onclick="setTab('build')">🏗️</button>
+      <button class="nav-btn active" title="Карта" data-tab="map" onclick="setTab('map',this)">🗺️</button>
+      <button class="nav-btn" title="Заметки" data-tab="notes" onclick="setTab('notes',this)">📝</button>
+      <button class="nav-btn" title="Задачи" data-tab="tasks" onclick="setTab('tasks',this)">✅</button>
+      <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this)">🏗️</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
     </nav>
 
     <!-- Главная область -->
-    <main class="main-area" id="main-area">
-      <!-- Ветки мира -->
-      <div>
-        <div class="section-title">ВЕТКИ МИРА</div>
-        <div class="branches-grid" id="branches-grid">
+    <main class="main-area">
+
+      <!-- ─── TAB: MAP ─────────────────────────────────── -->
+      <div id="tab-map" class="tab-panel">
+        <div>
+          <div class="section-title">ВЕТКИ МИРА</div>
+          <div class="branches-grid" id="branches-grid">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">ИНФРАСТРУКТУРА</div>
+          <div class="branches-grid">
+            <div class="branch-card" style="--node-color:#10b981">
+              <div class="branch-name">POSTGRESQL</div>
+              <div class="branch-status">
+                <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+                активна
+              </div>
+              <div class="branch-last">Основная БД мира</div>
+            </div>
+            <div class="branch-card" style="--node-color:#ef4444">
+              <div class="branch-name">REDIS</div>
+              <div class="branch-status">
+                <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+                шина событий
+              </div>
+              <div class="branch-last">Pub/Sub канал wyrd.events</div>
+            </div>
+            <div class="branch-card" style="--node-color:#06b6d4">
+              <div class="branch-name">QDRANT</div>
+              <div class="branch-status">
+                <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
+                векторная память
+              </div>
+              <div class="branch-last">10.0.1.1:6333 · fastembed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TAB: NOTES ────────────────────────────────── -->
+      <div id="tab-notes" class="tab-panel" style="display:none">
+        <div class="section-title">ЗАМЕТКИ</div>
+        <div class="note-form">
+          <textarea id="note-input" class="note-textarea" placeholder="Новая заметка..."></textarea>
+          <button class="wyrd-btn" onclick="addNote()">+ ДОБАВИТЬ</button>
+        </div>
+        <div id="notes-list" class="notes-list">
           <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
         </div>
       </div>
 
-      <!-- Статус систем -->
-      <div>
-        <div class="section-title">ИНФРАСТРУКТУРА</div>
-        <div class="branches-grid">
-          <div class="branch-card" style="--node-color:#10b981">
-            <div class="branch-name">POSTGRESQL</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
-              активна
+      <!-- ─── TAB: TASKS ────────────────────────────────── -->
+      <div id="tab-tasks" class="tab-panel" style="display:none">
+        <div class="section-title">ДОСКА ЗАДАЧ</div>
+        <div class="kanban-board">
+          <!-- TODO -->
+          <div class="kanban-col" data-status="todo">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title todo-color">TODO</span>
+              <button class="kanban-add-btn" onclick="showTaskInput('todo')" title="Добавить">+</button>
             </div>
-            <div class="branch-last">Основная БД мира</div>
+            <div class="kanban-add-form" id="add-form-todo" style="display:none">
+              <input class="task-input" id="task-input-todo" placeholder="Название задачи..." onkeydown="taskInputKey(event,'todo')">
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('todo')">ОК</button>
+                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('todo')">✕</button>
+              </div>
+            </div>
+            <div class="kanban-cards" id="cards-todo"></div>
           </div>
-          <div class="branch-card" style="--node-color:#ef4444" id="redis-card">
-            <div class="branch-name">REDIS</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
-              шина событий
+          <!-- IN PROGRESS -->
+          <div class="kanban-col" data-status="in_progress">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title inprogress-color">В РАБОТЕ</span>
+              <button class="kanban-add-btn" onclick="showTaskInput('in_progress')" title="Добавить">+</button>
             </div>
-            <div class="branch-last">Pub/Sub канал wyrd.events</div>
+            <div class="kanban-add-form" id="add-form-in_progress" style="display:none">
+              <input class="task-input" id="task-input-in_progress" placeholder="Название задачи..." onkeydown="taskInputKey(event,'in_progress')">
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('in_progress')">ОК</button>
+                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('in_progress')">✕</button>
+              </div>
+            </div>
+            <div class="kanban-cards" id="cards-in_progress"></div>
           </div>
-          <div class="branch-card" style="--node-color:#06b6d4">
-            <div class="branch-name">QDRANT</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
-              векторная память
+          <!-- DONE -->
+          <div class="kanban-col" data-status="done">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title done-color">ГОТОВО</span>
+              <button class="kanban-add-btn" onclick="showTaskInput('done')" title="Добавить">+</button>
             </div>
-            <div class="branch-last">10.0.1.1:6333 · fastembed</div>
+            <div class="kanban-add-form" id="add-form-done" style="display:none">
+              <input class="task-input" id="task-input-done" placeholder="Название задачи..." onkeydown="taskInputKey(event,'done')">
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('done')">ОК</button>
+                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('done')">✕</button>
+              </div>
+            </div>
+            <div class="kanban-cards" id="cards-done"></div>
           </div>
         </div>
       </div>
+
+      <!-- ─── TAB: BUILD ────────────────────────────────── -->
+      <div id="tab-build" class="tab-panel" style="display:none">
+        <div class="section-title">СТРОЙКА</div>
+        <div style="color:var(--text-dim);font-size:.75rem;margin-top:20px;line-height:1.8">
+          Здесь будет роадмап строительства мира.<br>
+          Фазы, сессии, статусы задач из <code>HQ_BUILD_PLAN.md</code>.
+        </div>
+      </div>
+
     </main>
 
     <!-- Лента событий -->
@@ -85,11 +160,5 @@
   </div>
 
   <script src="/assets/js/hq.js"></script>
-  <script>
-    function setTab(name) {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
-    }
-  </script>
 </body>
 </html>

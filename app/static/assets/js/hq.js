@@ -36,6 +36,27 @@ function startClock() {
   setInterval(tick, 1000);
 }
 
+/* ─── TAB SWITCHING ─────────────────────────────────── */
+const TAB_LABELS = {
+  map:         'КАРТА МИРА',
+  notes:       'ЗАМЕТКИ',
+  tasks:       'ДОСКА ЗАДАЧ',
+  build:       'СТРОЙКА',
+};
+
+function setTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.style.display = 'flex';
+  if (btn) btn.classList.add('active');
+  const label = document.getElementById('tab-label');
+  if (label) label.textContent = TAB_LABELS[name] || name.toUpperCase();
+
+  if (name === 'notes') loadNotes();
+  if (name === 'tasks') loadTasks();
+}
+
 /* ─── BRANCH COLORS ─────────────────────────────────── */
 const BRANCH_COLORS = {
   studio:   '#8b5cf6',
@@ -150,6 +171,176 @@ function initWS() {
   ws.onclose = () => setTimeout(initWS, 3000);
 }
 
+/* ─── NOTES ─────────────────────────────────────────── */
+async function loadNotes() {
+  const list = document.getElementById('notes-list');
+  if (!list) return;
+  list.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>';
+  try {
+    const res = await fetch('/notes');
+    const notes = await res.json();
+    renderNotes(notes);
+  } catch {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Ошибка загрузки</div>';
+  }
+}
+
+function renderNotes(notes) {
+  const list = document.getElementById('notes-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!notes.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem;padding:12px 0">Заметок пока нет</div>';
+    return;
+  }
+  notes.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'note-item';
+    item.dataset.id = n.id;
+    const time = n.created_at ? new Date(n.created_at).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    item.innerHTML = `
+      <div class="note-text">${escHtml(n.text)}</div>
+      <div class="note-meta">
+        <span class="note-time">${time}</span>
+        <button class="note-del" onclick="deleteNote(${n.id})" title="Удалить">✕</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+async function addNote() {
+  const input = document.getElementById('note-input');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    const res = await fetch('/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const note = await res.json();
+    input.value = '';
+    await loadNotes();
+  } catch { /* silent */ }
+}
+
+async function deleteNote(id) {
+  try {
+    await fetch(`/notes/${id}`, { method: 'DELETE' });
+    const item = document.querySelector(`.note-item[data-id="${id}"]`);
+    if (item) item.remove();
+    const list = document.getElementById('notes-list');
+    if (list && !list.children.length) {
+      list.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem;padding:12px 0">Заметок пока нет</div>';
+    }
+  } catch { /* silent */ }
+}
+
+/* ─── TASKS ─────────────────────────────────────────── */
+const STATUS_ORDER = ['todo', 'in_progress', 'done'];
+
+async function loadTasks() {
+  ['todo','in_progress','done'].forEach(s => {
+    const el = document.getElementById('cards-' + s);
+    if (el) el.innerHTML = '';
+  });
+  try {
+    const res = await fetch('/tasks');
+    const tasks = await res.json();
+    renderTasks(tasks);
+  } catch { /* silent */ }
+}
+
+function renderTasks(tasks) {
+  ['todo','in_progress','done'].forEach(s => {
+    const el = document.getElementById('cards-' + s);
+    if (el) el.innerHTML = '';
+  });
+  tasks.forEach(t => renderTaskCard(t));
+}
+
+function renderTaskCard(t) {
+  const col = document.getElementById('cards-' + t.status);
+  if (!col) return;
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  card.dataset.id = t.id;
+  card.dataset.status = t.status;
+
+  const idx = STATUS_ORDER.indexOf(t.status);
+  const canLeft  = idx > 0;
+  const canRight = idx < STATUS_ORDER.length - 1;
+
+  card.innerHTML = `
+    <div class="task-title">${escHtml(t.title)}</div>
+    <div class="task-actions">
+      <button class="task-btn" onclick="moveTask(${t.id},'${STATUS_ORDER[idx-1]}')" ${canLeft ? '' : 'disabled'} title="Назад">←</button>
+      <button class="task-btn task-btn-del" onclick="deleteTask(${t.id})" title="Удалить">✕</button>
+      <button class="task-btn" onclick="moveTask(${t.id},'${STATUS_ORDER[idx+1]}')" ${canRight ? '' : 'disabled'} title="Вперёд">→</button>
+    </div>
+  `;
+  col.appendChild(card);
+}
+
+function showTaskInput(status) {
+  const form = document.getElementById('add-form-' + status);
+  if (form) { form.style.display = 'block'; }
+  const input = document.getElementById('task-input-' + status);
+  if (input) { input.focus(); }
+}
+
+function hideTaskInput(status) {
+  const form = document.getElementById('add-form-' + status);
+  if (form) form.style.display = 'none';
+  const input = document.getElementById('task-input-' + status);
+  if (input) input.value = '';
+}
+
+function taskInputKey(e, status) {
+  if (e.key === 'Enter') addTask(status);
+  if (e.key === 'Escape') hideTaskInput(status);
+}
+
+async function addTask(status) {
+  const input = document.getElementById('task-input-' + status);
+  const title = input ? input.value.trim() : '';
+  if (!title) return;
+  try {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, status }),
+    });
+    const task = await res.json();
+    hideTaskInput(status);
+    renderTaskCard(task);
+  } catch { /* silent */ }
+}
+
+async function moveTask(id, newStatus) {
+  if (!newStatus) return;
+  try {
+    const res = await fetch(`/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const task = await res.json();
+    const old = document.querySelector(`.task-card[data-id="${id}"]`);
+    if (old) old.remove();
+    renderTaskCard(task);
+  } catch { /* silent */ }
+}
+
+async function deleteTask(id) {
+  try {
+    await fetch(`/tasks/${id}`, { method: 'DELETE' });
+    const card = document.querySelector(`.task-card[data-id="${id}"]`);
+    if (card) card.remove();
+  } catch { /* silent */ }
+}
+
 /* ─── HELPERS ───────────────────────────────────────── */
 function timeAgo(isoStr) {
   const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
@@ -157,6 +348,15 @@ function timeAgo(isoStr) {
   if (diff < 3600)  return `${Math.floor(diff/60)} мин назад`;
   if (diff < 86400) return `${Math.floor(diff/3600)} ч назад`;
   return `${Math.floor(diff/86400)} д назад`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g,'<br>');
 }
 
 /* ─── INIT ──────────────────────────────────────────── */
@@ -169,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadEvents(true);
   initWS();
 
-  // Поллинг как резерв
   setInterval(() => loadEvents(false), 8000);
   setInterval(() => loadBranches(), 30000);
 });
