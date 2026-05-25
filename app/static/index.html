@@ -1,465 +1,442 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WYRD</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WYRD</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#020209;overflow:hidden;height:100vh;width:100vw;font-family:'Space Grotesk',sans-serif}
 
-    body {
-      background: #03030d;
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-      font-family: 'Space Grotesk', sans-serif;
-    }
+/* ── КАНВАС ── */
+#cv{position:fixed;inset:0;z-index:0;pointer-events:none}
 
-    /* ── СЛОИ ФОНА ── */
-    #starfield {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    }
+/* ── НЕБУЛА ── */
+.neb{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 65% 50% at 12% 38%, rgba(76,29,149,.16) 0,transparent 62%),
+    radial-gradient(ellipse 50% 60% at 88% 62%, rgba(15,50,160,.12) 0,transparent 58%),
+    radial-gradient(ellipse 75% 35% at 50% 92%, rgba(4,55,44,.09) 0,transparent 52%),
+    radial-gradient(ellipse 38% 38% at 72% 18%, rgba(110,18,70,.08) 0,transparent 48%)}
 
-    .nebula {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      background:
-        radial-gradient(ellipse 70% 55% at 15% 35%, rgba(88,28,220,0.13) 0%, transparent 65%),
-        radial-gradient(ellipse 55% 65% at 85% 65%, rgba(15,50,160,0.10) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 40% at 50% 90%, rgba(4,60,48,0.08) 0%, transparent 55%),
-        radial-gradient(ellipse 40% 40% at 70% 20%, rgba(120,20,80,0.07) 0%, transparent 50%);
-    }
+/* ── СЦЕНА ── */
+.scene{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;height:100vh;width:100vw}
+#solar{position:relative;width:800px;height:800px}
 
-    /* ── СЦЕНА ── */
-    .scene {
-      position: relative; z-index: 2;
-      display: flex; align-items: center; justify-content: center;
-      height: 100vh; width: 100vw;
-    }
+/* ── ОВЕРЛЕЙ ПЕРЕХОДА ── */
+#ov{position:fixed;inset:0;z-index:200;opacity:0;pointer-events:none;transition:opacity .55s ease;
+  background:radial-gradient(circle at 50% 50%, #f59e0b 0%, #020209 70%)}
+#ov.on{opacity:1;pointer-events:all}
 
-    .solar {
-      position: relative;
-      width: 760px; height: 760px;
-    }
+/* ── ЦЕНТР — СОЛНЦЕ ── */
+.sun{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;text-align:center;pointer-events:none;user-select:none}
+.flares{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:1px;height:1px;z-index:45;pointer-events:none}
+.flare{position:absolute;transform-origin:0 0;width:1px;border-radius:2px;
+  background:linear-gradient(to top, rgba(245,158,11,.0), rgba(245,158,11,.4));
+  animation:flare-anim 3s ease-in-out infinite}
+@keyframes flare-anim{0%,100%{opacity:.3;height:40px}50%{opacity:.7;height:65px}}
 
-    /* ── ОРБИТЫ ── */
-    .orbit {
-      position: absolute;
-      border-radius: 50%;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      border: 1px solid rgba(255,255,255,0.055);
-      box-shadow: 0 0 12px rgba(255,255,255,0.015) inset;
-    }
+.corona-rings{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:44;pointer-events:none}
+.cr{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid rgba(245,158,11,.12)}
+.cr1{width:110px;height:110px;animation:cr-pulse 2.8s ease-in-out infinite}
+.cr2{width:170px;height:170px;animation:cr-pulse 2.8s ease-in-out infinite .7s}
+.cr3{width:250px;height:250px;animation:cr-pulse 2.8s ease-in-out infinite 1.4s}
+.cr4{width:360px;height:360px;border-color:rgba(245,158,11,.05);animation:cr-pulse 2.8s ease-in-out infinite 2s}
+@keyframes cr-pulse{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}}
 
-    /* ── ЦЕНТР — СОЛНЦЕ ── */
-    .sun {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 20;
-      text-align: center;
-      pointer-events: none;
-      user-select: none;
-    }
+.sun-core{position:relative;z-index:1}
+.sun-glow-bg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:320px;height:320px;border-radius:50%;pointer-events:none;z-index:43;
+  background:radial-gradient(circle, rgba(245,158,11,.2) 0%, rgba(245,158,11,.07) 40%, transparent 70%);
+  animation:sg 3s ease-in-out infinite}
+@keyframes sg{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.12)}}
 
-    /* Короны */
-    .corona {
-      position: absolute;
-      border-radius: 50%;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    }
-    .corona-1 {
-      width: 160px; height: 160px;
-      background: radial-gradient(circle, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.06) 50%, transparent 70%);
-      animation: corona-pulse 3s ease-in-out infinite;
-    }
-    .corona-2 {
-      width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%);
-      animation: corona-pulse 3s ease-in-out infinite 0.8s;
-    }
-    .corona-3 {
-      width: 380px; height: 380px;
-      background: radial-gradient(circle, rgba(245,158,11,0.03) 0%, transparent 60%);
-      animation: corona-pulse 3s ease-in-out infinite 1.6s;
-    }
-    @keyframes corona-pulse {
-      0%,100% { opacity: 0.7; transform: translate(-50%,-50%) scale(1); }
-      50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.08); }
-    }
+.wt{font-family:'Orbitron',monospace;font-size:2.4rem;font-weight:900;letter-spacing:.42em;
+  background:linear-gradient(150deg,#fde68a 0%,#f59e0b 35%,#fcd34d 65%,#fffbeb 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 28px rgba(245,158,11,.75));
+  animation:wt-glow 3.5s ease-in-out infinite}
+@keyframes wt-glow{0%,100%{filter:drop-shadow(0 0 22px rgba(245,158,11,.55))}50%{filter:drop-shadow(0 0 45px rgba(245,158,11,.95)) drop-shadow(0 0 90px rgba(245,158,11,.3))}}
+.ws{font-size:.52rem;letter-spacing:.55em;color:rgba(255,255,255,.2);margin-top:8px;font-weight:300}
 
-    /* Кольцо вокруг солнца */
-    .sun-ring {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 80px; height: 80px;
-      border-radius: 50%;
-      border: 1px solid rgba(245,158,11,0.3);
-      animation: ring-spin 8s linear infinite;
-      pointer-events: none;
-    }
-    .sun-ring::before {
-      content: '';
-      position: absolute;
-      top: -3px; left: 50%;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: rgba(245,158,11,0.9);
-      box-shadow: 0 0 8px rgba(245,158,11,1);
-    }
-    @keyframes ring-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+/* ── ПЛАНЕТЫ ── */
+.pw{position:absolute;top:50%;left:50%;width:0;height:0}
+.pd{position:absolute;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),filter .22s ease;
+  overflow:visible}
+.pd.act:hover{transform:translate(-50%,-50%) scale(1.4)!important}
+.pd.act:hover .pring{opacity:1!important}
+.pd.dead{cursor:default;opacity:.22!important;filter:grayscale(.7)!important}
+.pd.dead:hover{transform:translate(-50%,-50%) scale(1)!important}
 
-    .wyrd-text {
-      font-family: 'Orbitron', monospace;
-      font-size: 2.2rem;
-      font-weight: 900;
-      letter-spacing: 0.4em;
-      background: linear-gradient(160deg, #fde68a 0%, #f59e0b 40%, #fbbf24 70%, #fff8e1 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter: drop-shadow(0 0 24px rgba(245,158,11,0.7));
-      animation: wyrd-glow 4s ease-in-out infinite;
-    }
-    @keyframes wyrd-glow {
-      0%,100% { filter: drop-shadow(0 0 20px rgba(245,158,11,0.5)); }
-      50%      { filter: drop-shadow(0 0 40px rgba(245,158,11,0.9)) drop-shadow(0 0 80px rgba(245,158,11,0.3)); }
-    }
+/* Кольцо-пульс */
+.pring{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;border:1.5px solid var(--pc);opacity:0;
+  animation:pr-pulse 2.2s ease-out infinite}
+@keyframes pr-pulse{0%{opacity:.7;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)}}
 
-    .wyrd-sub {
-      font-size: 0.55rem;
-      letter-spacing: 0.5em;
-      color: rgba(255,255,255,0.25);
-      margin-top: 8px;
-      font-weight: 300;
-    }
+/* Атмосфера */
+.patm{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none}
 
-    /* ── ПЛАНЕТЫ ── */
-    .planet-wrap {
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 0; height: 0;
-      z-index: 10;
-    }
+/* Кольца Сатурна */
+.srings{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0}
+.sring{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
 
-    .planet-dot {
-      position: absolute;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      cursor: pointer;
-      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
-    }
-    .planet-dot:hover { transform: translate(-50%,-50%) scale(1.5); }
-    .planet-dot.inactive {
-      cursor: default;
-      opacity: 0.25;
-      filter: grayscale(0.6);
-    }
-    .planet-dot.inactive:hover { transform: translate(-50%,-50%) scale(1); }
+/* Имя планеты */
+.pname{position:absolute;top:calc(50% + 36px);left:50%;transform:translateX(-50%);
+  white-space:nowrap;font-size:.58rem;font-weight:500;letter-spacing:.18em;
+  color:rgba(255,255,255,.45);pointer-events:none;text-shadow:0 0 12px var(--pc)}
+.pd.dead .pname{color:rgba(255,255,255,.15)}
 
-    /* Внешнее кольцо активной планеты */
-    .planet-ring {
-      position: absolute;
-      border-radius: 50%;
-      transform: translate(-50%,-50%);
-      pointer-events: none;
-      border: 1px solid currentColor;
-      opacity: 0;
-      animation: planet-ring-pulse 2.5s ease-out infinite;
-    }
-    @keyframes planet-ring-pulse {
-      0%   { opacity: 0.6; transform: translate(-50%,-50%) scale(1); }
-      100% { opacity: 0;   transform: translate(-50%,-50%) scale(2.4); }
-    }
+/* Карточка при наведении */
+.pcard{position:absolute;bottom:calc(50% + 42px);left:50%;transform:translateX(-50%) translateY(8px);
+  width:175px;
+  background:rgba(6,6,20,.88);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+  padding:14px 16px;backdrop-filter:blur(20px);
+  pointer-events:none;opacity:0;
+  transition:opacity .2s ease,transform .2s ease;z-index:100}
+.pd.act:hover .pcard{opacity:1;transform:translateX(-50%) translateY(0)}
+.pc-name{font-family:'Orbitron',monospace;font-size:.72rem;font-weight:700;letter-spacing:.18em;margin-bottom:3px}
+.pc-sub{font-size:.58rem;opacity:.45;letter-spacing:.1em;margin-bottom:8px}
+.pc-desc{font-size:.57rem;color:rgba(255,255,255,.3);margin-bottom:10px;line-height:1.5}
+.pc-status{font-size:.58rem;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.pc-dot{width:5px;height:5px;border-radius:50%}
+.pc-enter{font-size:.6rem;letter-spacing:.2em;text-align:right}
+.pc-soon{font-size:.55rem;letter-spacing:.2em;opacity:.3;text-align:center}
 
-    /* ── КАРТОЧКА ПЛАНЕТЫ ── */
-    .planet-card {
-      position: absolute;
-      bottom: calc(100% + 18px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 160px;
-      background: rgba(8,8,24,0.85);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 14px;
-      backdrop-filter: blur(16px);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      transform: translateX(-50%) translateY(6px);
-      white-space: nowrap;
-    }
-    .planet-dot:hover + .planet-ring + .planet-card,
-    .planet-wrap:hover .planet-card {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    .card-name {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      margin-bottom: 4px;
-    }
-    .card-sub {
-      font-size: 0.6rem;
-      opacity: 0.5;
-      letter-spacing: 0.1em;
-      margin-bottom: 10px;
-    }
-    .card-status {
-      font-size: 0.6rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-    .card-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-    }
-    .card-enter {
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
-      opacity: 0.7;
-      text-align: right;
-    }
-    .card-building {
-      font-size: 0.55rem;
-      letter-spacing: 0.2em;
-      opacity: 0.35;
-      text-align: center;
-    }
-
-    /* ── ПОДСКАЗКА ── */
-    .hint {
-      position: fixed;
-      bottom: 36px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.55rem;
-      letter-spacing: 0.45em;
-      color: rgba(255,255,255,0.15);
-      z-index: 30;
-      animation: hint-fade 4s ease-in-out infinite;
-    }
-    @keyframes hint-fade {
-      0%,100% { opacity: 0.4; } 50% { opacity: 1; }
-    }
-
-    /* ── ПЕРЕХОД ── */
-    .transition-overlay {
-      position: fixed; inset: 0;
-      background: radial-gradient(circle at center, #f59e0b 0%, #03030d 80%);
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.5s ease;
-    }
-    .transition-overlay.active { opacity: 1; pointer-events: all; }
-  </style>
+/* ── ПОДСКАЗКА ── */
+.hint{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);z-index:10;
+  font-size:.52rem;letter-spacing:.5em;color:rgba(255,255,255,.12);
+  animation:hi 4s ease-in-out infinite}
+@keyframes hi{0%,100%{opacity:.4}50%{opacity:1}}
+</style>
 </head>
 <body>
-  <canvas id="starfield"></canvas>
-  <div class="nebula"></div>
-  <div class="transition-overlay" id="overlay"></div>
+<canvas id="cv"></canvas>
+<div class="neb"></div>
+<div id="ov"></div>
 
-  <div class="scene">
-    <div class="solar" id="solar">
-      <!-- Короны солнца -->
-      <div class="corona corona-3"></div>
-      <div class="corona corona-2"></div>
-      <div class="corona corona-1"></div>
-      <div class="sun-ring"></div>
-      <!-- Текст центра -->
-      <div class="sun">
-        <div class="wyrd-text">WYRD</div>
-        <div class="wyrd-sub">КОМАНДНЫЙ ЦЕНТР</div>
-      </div>
-    </div>
-  </div>
+<div class="scene">
+<div id="solar">
+  <!-- Фоновое сияние солнца -->
+  <div class="sun-glow-bg"></div>
+  <!-- Короны -->
+  <div class="corona-rings"><div class="cr cr1"></div><div class="cr cr2"></div><div class="cr cr3"></div><div class="cr cr4"></div></div>
+  <!-- Солнечные вспышки -->
+  <div class="flares" id="flares"></div>
+  <!-- Центральный текст -->
+  <div class="sun"><div class="sun-core"><div class="wt">WYRD</div><div class="ws">КОМАНДНЫЙ ЦЕНТР</div></div></div>
+</div>
+</div>
 
-  <div class="hint">ВЫБЕРИТЕ НАПРАВЛЕНИЕ</div>
+<div class="hint">ВЫБЕРИТЕ НАПРАВЛЕНИЕ</div>
 
-  <script>
-  /* ── ЗВЁЗДЫ ── */
-  (function() {
-    const c = document.getElementById('starfield');
-    const ctx = c.getContext('2d');
-    let stars = [];
+<script>
+/* ── ДАННЫЕ ── */
+const OP = [
+  {r:148, sy:.40, rot:-8},
+  {r:238, sy:.32, rot:13},
+  {r:335, sy:.24, rot:-7},
+];
 
-    function resize() {
-      c.width = innerWidth; c.height = innerHeight;
-      stars = [];
-      const n = Math.floor(innerWidth * innerHeight / 2800);
-      for (let i = 0; i < n; i++) {
-        stars.push({
-          x: Math.random() * c.width,
-          y: Math.random() * c.height,
-          r: Math.random() * 1.4 + 0.2,
-          a: Math.random() * 0.8 + 0.1,
-          twinkle: Math.random() > 0.85,
-          phase: Math.random() * Math.PI * 2,
-          speed: Math.random() * 0.5 + 0.3,
-        });
-      }
-    }
+const P = [
+  {
+    id:'hq', name:'HQ', sub:'Штаб управления',
+    desc:'PostgreSQL · Redis · Qdrant · FastAPI',
+    size:58, oi:0, spd:26, a0:40, url:'/hq', act:true,
+    col:'#f59e0b',
+    bg:`radial-gradient(ellipse 24% 16% at 36% 27%, rgba(255,255,255,.48) 0,transparent 100%),
+        repeating-linear-gradient(172deg,transparent 0,transparent 8px,rgba(146,64,14,.28) 8px,rgba(146,64,14,.28) 11px),
+        radial-gradient(ellipse 20% 60% at 65% 40%, rgba(253,186,116,.15) 0,transparent 60%),
+        radial-gradient(ellipse 68% 100% at 88% 50%, rgba(0,0,0,.58) 0,transparent 52%),
+        radial-gradient(circle at 38% 36%, #fde68a 0%,#f59e0b 28%,#b45309 60%,#78350f 100%)`,
+    rings:false,
+  },
+  {
+    id:'thomas', name:'ТОМАС', sub:'Страж мира',
+    desc:'Telegram · Веб-чат · Семант. память',
+    size:46, oi:1, spd:44, a0:112, url:'/thomas', act:true,
+    col:'#3b82f6',
+    bg:`radial-gradient(ellipse 20% 13% at 31% 25%, rgba(255,255,255,.52) 0,transparent 100%),
+        radial-gradient(ellipse 42% 22% at 58% 52%, rgba(255,255,255,.07) 0,transparent 100%),
+        radial-gradient(ellipse 30% 16% at 22% 68%, rgba(255,255,255,.05) 0,transparent 100%),
+        radial-gradient(ellipse 15% 10% at 74% 30%, rgba(255,255,255,.04) 0,transparent 100%),
+        radial-gradient(ellipse 72% 100% at 90% 50%, rgba(0,0,0,.62) 0,transparent 52%),
+        radial-gradient(circle at 33% 33%, #bfdbfe 0%,#3b82f6 32%,#1d4ed8 62%,#172554 100%)`,
+    rings:false,
+  },
+  {
+    id:'studio', name:'СТУДИЯ', sub:'Контент-машина',
+    desc:'Боря · Видео · Пайплайны · kie.ai',
+    size:46, oi:1, spd:44, a0:282, url:'/studio', act:true,
+    col:'#8b5cf6',
+    bg:`radial-gradient(ellipse 22% 14% at 34% 26%, rgba(255,255,255,.44) 0,transparent 100%),
+        radial-gradient(ellipse 60% 60% at 50% 50%, rgba(91,33,182,.2) 0,transparent 70%),
+        radial-gradient(ellipse 68% 100% at 90% 50%, rgba(0,0,0,.6) 0,transparent 52%),
+        radial-gradient(circle at 34% 34%, #ede9fe 0%,#8b5cf6 28%,#5b21b6 58%,#2e1065 100%)`,
+    rings:true,
+  },
+  {
+    id:'library', name:'БИБЛИОТЕКА', sub:'Знания мира',
+    desc:'RAG · Векторная база · Справочник',
+    size:38, oi:2, spd:70, a0:55, url:null, act:false,
+    col:'#10b981',
+    bg:`radial-gradient(ellipse 22% 14% at 33% 27%, rgba(255,255,255,.38) 0,transparent 100%),
+        radial-gradient(ellipse 68% 100% at 88% 50%, rgba(0,0,0,.62) 0,transparent 52%),
+        radial-gradient(circle at 35% 35%, #a7f3d0 0%,#10b981 32%,#047857 62%,#022c22 100%)`,
+    rings:false,
+  },
+  {
+    id:'analytics', name:'АНАЛИТИКА', sub:'Данные и паттерны',
+    desc:'Метрики · Отчёты · Паттерны',
+    size:38, oi:2, spd:70, a0:193, url:null, act:false,
+    col:'#f97316',
+    bg:`radial-gradient(ellipse 22% 14% at 33% 27%, rgba(255,255,255,.35) 0,transparent 100%),
+        radial-gradient(ellipse 68% 100% at 88% 50%, rgba(0,0,0,.62) 0,transparent 52%),
+        radial-gradient(circle at 35% 35%, #fed7aa 0%,#f97316 32%,#c2410c 62%,#431407 100%)`,
+    rings:false,
+  },
+  {
+    id:'finance', name:'БУХГАЛТЕРИЯ', sub:'Финансы',
+    desc:'Расходы · Доходы · Бюджеты',
+    size:38, oi:2, spd:70, a0:327, url:null, act:false,
+    col:'#ef4444',
+    bg:`radial-gradient(ellipse 22% 14% at 33% 27%, rgba(255,255,255,.3) 0,transparent 100%),
+        radial-gradient(ellipse 68% 100% at 88% 50%, rgba(0,0,0,.65) 0,transparent 52%),
+        radial-gradient(circle at 35% 35%, #fca5a5 0%,#ef4444 32%,#991b1b 62%,#3b0000 100%)`,
+    rings:false,
+  },
+];
 
-    function draw(t) {
-      ctx.clearRect(0, 0, c.width, c.height);
-      stars.forEach(s => {
-        const a = s.twinkle
-          ? s.a * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase))
-          : s.a;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${a})`;
-        ctx.fill();
-      });
-      requestAnimationFrame(draw);
-    }
+/* ── CANVAS — ЗВЁЗДЫ + ОРБИТЫ ── */
+const cv = document.getElementById('cv');
+const ctx2 = cv.getContext('2d');
+let stars = [], W, H, CX, CY;
 
-    window.addEventListener('resize', resize);
-    resize();
-    requestAnimationFrame(draw);
-  })();
+function resize() {
+  W = cv.width  = innerWidth;
+  H = cv.height = innerHeight;
+  CX = W/2; CY = H/2;
+  buildStars();
+}
 
-  /* ── ПЛАНЕТЫ ── */
-  const PLANETS = [
-    {
-      id: 'hq', name: 'HQ', sub: 'Штаб управления',
-      desc: 'API · PostgreSQL · Redis · Qdrant',
-      color: '#f59e0b', size: 20, orbit: 128, speed: 24, angle: 40,
-      url: '/hq', active: true,
-    },
-    {
-      id: 'thomas', name: 'ТОМАС', sub: 'Страж мира',
-      desc: 'Telegram · Веб-чат · Память',
-      color: '#3b82f6', size: 15, orbit: 222, speed: 40, angle: 115,
-      url: '/thomas', active: true,
-    },
-    {
-      id: 'studio', name: 'СТУДИЯ', sub: 'Контент',
-      desc: 'Боря · Видео · Пайплайны',
-      color: '#8b5cf6', size: 15, orbit: 222, speed: 40, angle: 285,
-      url: '/studio', active: true,
-    },
-    {
-      id: 'library', name: 'БИБЛИОТЕКА', sub: 'Знания',
-      desc: 'RAG · Векторная база',
-      color: '#10b981', size: 12, orbit: 318, speed: 62, angle: 55,
-      url: null, active: false,
-    },
-    {
-      id: 'analytics', name: 'АНАЛИТИКА', sub: 'Данные',
-      desc: 'Метрики · Отчёты · Паттерны',
-      color: '#f97316', size: 12, orbit: 318, speed: 62, angle: 190,
-      url: null, active: false,
-    },
-    {
-      id: 'finance', name: 'БУХГАЛТЕРИЯ', sub: 'Деньги',
-      desc: 'Расходы · Доходы · Бюджеты',
-      color: '#ef4444', size: 12, orbit: 318, speed: 62, angle: 325,
-      url: null, active: false,
-    },
-  ];
+function buildStars() {
+  stars = [];
+  const n = Math.floor(W * H / 2400);
+  for (let i = 0; i < n; i++) {
+    const bright = Math.random() > 0.93;
+    stars.push({
+      x: Math.random()*W, y: Math.random()*H,
+      r: bright ? Math.random()*.9+.6 : Math.random()*1.1+.15,
+      a: bright ? Math.random()*.6+.3 : Math.random()*.5+.08,
+      twinkle: Math.random() > .78,
+      ph: Math.random()*Math.PI*2,
+      sp: Math.random()*.6+.25,
+    });
+  }
+}
 
-  const ORBITS = [128, 222, 318];
-  const solar = document.getElementById('solar');
-  const overlay = document.getElementById('overlay');
+function drawFrame(t) {
+  ctx2.clearRect(0, 0, W, H);
 
-  function lighten(hex, a) {
-    const n = parseInt(hex.replace('#',''), 16);
-    const r = Math.min(255, (n>>16) + a);
-    const g = Math.min(255, ((n>>8)&0xff) + a);
-    const b = Math.min(255, (n&0xff) + a);
-    return `rgb(${r},${g},${b})`;
+  /* Звёзды */
+  stars.forEach(s => {
+    const a = s.twinkle ? s.a*(0.5+0.5*Math.sin(t*s.sp+s.ph)) : s.a;
+    ctx2.beginPath();
+    ctx2.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx2.fillStyle = `rgba(255,255,255,${a})`;
+    ctx2.fill();
+  });
+
+  /* Орбиты — наклонные эллипсы */
+  const offsetX = (innerWidth - 800) / 2;
+  const offsetY = (innerHeight - 800) / 2;
+  const scx = offsetX + 400;
+  const scy = offsetY + 400;
+
+  OP.forEach(op => {
+    ctx2.save();
+    ctx2.translate(scx, scy);
+    ctx2.rotate(op.rot * Math.PI / 180);
+    ctx2.scale(1, op.sy);
+    ctx2.beginPath();
+    ctx2.arc(0, 0, op.r, 0, Math.PI*2);
+    ctx2.strokeStyle = 'rgba(255,255,255,.065)';
+    ctx2.lineWidth = 1;
+    ctx2.stroke();
+    ctx2.restore();
+  });
+
+  requestAnimationFrame(drawFrame);
+}
+
+window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(drawFrame);
+
+/* ── ВСПЫШКИ СОЛНЦА ── */
+const flc = document.getElementById('flares');
+for (let i = 0; i < 12; i++) {
+  const f = document.createElement('div');
+  f.className = 'flare';
+  const ang = i * 30;
+  const h   = 35 + Math.random()*30;
+  f.style.cssText = `
+    transform: rotate(${ang}deg) translateY(-${h/2}px);
+    height: ${h}px;
+    animation-delay: ${Math.random()*3}s;
+    animation-duration: ${2.5+Math.random()*2}s;
+    opacity: ${.2+Math.random()*.4};
+  `;
+  flc.appendChild(f);
+}
+
+/* ── СТРОИМ ПЛАНЕТЫ ── */
+const solar = document.getElementById('solar');
+const ov    = document.getElementById('ov');
+
+P.forEach(p => {
+  const wrap = document.createElement('div');
+  wrap.className = 'pw';
+  wrap.style.cssText = `--pc:${p.col}`;
+
+  /* Кольца Сатурна (за планетой) */
+  if (p.rings) {
+    const sb = document.createElement('div');
+    sb.className = 'srings';
+    const rs = [
+      {w:200,h:14,op:.18,blur:2},
+      {w:175,h:10,op:.28,blur:1},
+      {w:152,h:7, op:.22,blur:1},
+    ];
+    rs.forEach(r => {
+      const ring = document.createElement('div');
+      ring.className = 'sring';
+      ring.style.cssText = `
+        width:${r.w}%;height:${r.h}px;
+        border:${r.h/2}px solid ${p.col};
+        opacity:${r.op};
+        filter:blur(${r.blur}px);
+        margin-left:-${r.w/2}%;
+      `;
+      sb.appendChild(ring);
+    });
+    wrap.appendChild(sb);
   }
 
-  /* Орбитальные кольца */
-  ORBITS.forEach(r => {
-    const el = document.createElement('div');
-    el.className = 'orbit';
-    el.style.cssText = `width:${r*2}px;height:${r*2}px;`;
-    solar.appendChild(el);
-  });
+  /* Тело планеты */
+  const dot = document.createElement('div');
+  dot.className = 'pd' + (p.act ? ' act' : ' dead');
+  dot.style.cssText = `
+    width:${p.size}px;height:${p.size}px;
+    background:${p.bg};
+    box-shadow:
+      0 0 ${p.size*.6}px ${p.col}88,
+      0 0 ${p.size*1.5}px ${p.col}33,
+      0 0 ${p.size*3}px ${p.col}11;
+  `;
 
-  /* Планеты */
-  PLANETS.forEach(p => {
-    const wrap = document.createElement('div');
-    wrap.className = 'planet-wrap';
+  /* Атмосфера */
+  const atm = document.createElement('div');
+  atm.className = 'patm';
+  atm.style.cssText = `
+    width:${p.size+16}px;height:${p.size+16}px;
+    background:radial-gradient(circle, transparent 45%, ${p.col}22 70%, transparent 85%);
+  `;
+  dot.appendChild(atm);
 
-    /* Тело */
-    const dot = document.createElement('div');
-    dot.className = 'planet-dot' + (p.active ? '' : ' inactive');
-    dot.style.cssText = `
-      width:${p.size}px; height:${p.size}px;
-      background: radial-gradient(circle at 35% 30%, ${lighten(p.color, 70)}, ${p.color} 55%, ${p.color}88 100%);
-      box-shadow: 0 0 ${p.size}px ${p.color}99, 0 0 ${p.size*2.5}px ${p.color}44, inset 0 0 ${p.size/3}px rgba(255,255,255,0.2);
-    `;
+  /* Кольцо-пульс */
+  const pr = document.createElement('div');
+  pr.className = 'pring';
+  pr.style.cssText = `width:${p.size}px;height:${p.size}px;`;
+  dot.appendChild(pr);
 
-    /* Кольцо-пульс (только активные) */
-    const ring = document.createElement('div');
-    ring.className = 'planet-ring';
-    ring.style.cssText = `
-      width:${p.size}px; height:${p.size}px;
-      color:${p.color};
-      ${p.active ? '' : 'display:none'}
-    `;
+  /* Имя */
+  const nm = document.createElement('div');
+  nm.className = 'pname';
+  nm.style.color = p.col + 'aa';
+  nm.textContent = p.name;
+  dot.appendChild(nm);
 
-    /* Карточка */
-    const card = document.createElement('div');
-    card.className = 'planet-card';
-    card.style.borderColor = p.color + '33';
-    card.innerHTML = `
-      <div class="card-name" style="color:${p.color}">${p.name}</div>
-      <div class="card-sub">${p.sub}</div>
-      <div class="card-status">
-        <span class="card-dot" style="background:${p.active ? '#10b981' : '#555'};box-shadow:${p.active ? '0 0 5px #10b981' : 'none'}"></span>
-        <span style="color:${p.active ? '#10b981' : '#555'}">${p.active ? 'АКТИВНА' : 'СТРОИТСЯ'}</span>
-      </div>
-      <div style="font-size:.55rem;color:rgba(255,255,255,0.3);margin-bottom:8px">${p.desc}</div>
-      ${p.active
-        ? `<div class="card-enter" style="color:${p.color}">ВОЙТИ →</div>`
-        : `<div class="card-building">СКОРО</div>`}
-    `;
+  /* Карточка */
+  const card = document.createElement('div');
+  card.className = 'pcard';
+  card.style.borderColor = p.col + '44';
+  card.innerHTML = `
+    <div class="pc-name" style="color:${p.col}">${p.name}</div>
+    <div class="pc-sub">${p.sub}</div>
+    <div class="pc-desc">${p.desc}</div>
+    <div class="pc-status">
+      <span class="pc-dot" style="background:${p.act?'#10b981':'#333'};box-shadow:${p.act?'0 0 5px #10b981':'none'}"></span>
+      <span style="color:${p.act?'#10b981':'#444'}">${p.act?'АКТИВНА':'СТРОИТСЯ'}</span>
+    </div>
+    ${p.act
+      ? `<div class="pc-enter" style="color:${p.col}">ВОЙТИ →</div>`
+      : `<div class="pc-soon">СКОРО</div>`}
+  `;
+  dot.appendChild(card);
 
-    wrap.appendChild(dot);
-    wrap.appendChild(ring);
-    wrap.appendChild(card);
-    solar.appendChild(wrap);
-
-    if (p.active && p.url) {
-      dot.addEventListener('click', () => {
-        overlay.style.background = `radial-gradient(circle at center, ${p.color} 0%, #03030d 75%)`;
-        overlay.classList.add('active');
-        setTimeout(() => { window.location.href = p.url; }, 480);
-      });
-    }
-
-    p.el = wrap;
-  });
-
-  /* Анимация орбит */
-  const t0 = performance.now();
-  (function frame(now) {
-    const elapsed = (now - t0) / 1000;
-    PLANETS.forEach(p => {
-      if (!p.el) return;
-      const rad = (p.angle * Math.PI / 180) + elapsed * (Math.PI * 2 / p.speed);
-      const x = Math.cos(rad) * p.orbit;
-      const y = Math.sin(rad) * p.orbit;
-      p.el.style.transform = `translate(${x}px, ${y}px)`;
+  if (p.act && p.url) {
+    dot.addEventListener('click', () => {
+      ov.style.background = `radial-gradient(circle at 50% 50%, ${p.col} 0%, #020209 70%)`;
+      ov.classList.add('on');
+      setTimeout(() => { location.href = p.url; }, 520);
     });
-    requestAnimationFrame(frame);
-  })(t0);
-  </script>
+  }
+
+  wrap.appendChild(dot);
+  solar.appendChild(wrap);
+  p.el = wrap;
+  p.dot = dot;
+});
+
+/* ── АНИМАЦИЯ ОРБИТ ── */
+const t0 = performance.now();
+const DEG = Math.PI/180;
+
+(function frame(now) {
+  const el = (now - t0) * 0.001;
+
+  /* Смещение сцены относительно окна */
+  const offsetX = (innerWidth  - 800) / 2;
+  const offsetY = (innerHeight - 800) / 2;
+  const CX2 = -offsetX + 400;  /* from solar div's own center */
+  const CY2 = -offsetY + 400;
+  /* Проще: оффсеты уже учтены тем, что solar центрирован в .scene */
+  /* Просто считаем от 0,0 (center = 0,0) */
+
+  P.forEach(p => {
+    if (!p.el) return;
+    const op = OP[p.oi];
+    const theta = p.a0*DEG + el*(Math.PI*2/p.spd);
+    const rotRad = op.rot * DEG;
+
+    /* Позиция на наклонном эллипсе */
+    const ex = op.r * Math.cos(theta);
+    const ey = op.r * op.sy * Math.sin(theta);
+
+    /* Поворот эллипса */
+    const x = ex*Math.cos(rotRad) - ey*Math.sin(rotRad);
+    const y = ex*Math.sin(rotRad) + ey*Math.cos(rotRad);
+
+    /* Глубина: -1 за экватором, +1 спереди */
+    const depth = Math.sin(theta);
+
+    /* Размер и прозрачность по глубине */
+    const sc = 1 + 0.13*depth;
+    const zi = Math.round(50 + 40*depth);
+    const op2 = p.act ? (0.88 + 0.12*depth) : 0.22;
+
+    p.el.style.transform = `translate(${x}px,${y}px)`;
+    p.dot.style.transform = `translate(-50%,-50%) scale(${sc})`;
+    p.el.style.zIndex = zi;
+    p.dot.style.opacity = op2;
+  });
+
+  requestAnimationFrame(frame);
+})(t0);
+</script>
 </body>
 </html>
