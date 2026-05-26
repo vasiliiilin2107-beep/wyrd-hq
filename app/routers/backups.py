@@ -1,11 +1,10 @@
 from datetime import datetime
-from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
+from ..database import get_session
 from ..models import Backup
 
 router = APIRouter(prefix="/backups", tags=["backups"])
@@ -34,7 +33,7 @@ class BackupOut(BaseModel):
 
 
 @router.post("", response_model=BackupOut, status_code=201)
-async def create_backup(data: BackupIn, db: AsyncSession = Depends(get_db)):
+async def create_backup(data: BackupIn, session: AsyncSession = Depends(get_session)):
     b = Backup(
         size_bytes=data.size_bytes,
         status=data.status,
@@ -47,13 +46,13 @@ async def create_backup(data: BackupIn, db: AsyncSession = Depends(get_db)):
             b.created_at = datetime.fromisoformat(data.created_at.replace("_", "T").replace(" ", "T"))
         except ValueError:
             pass
-    db.add(b)
-    await db.commit()
-    await db.refresh(b)
+    session.add(b)
+    await session.commit()
+    await session.refresh(b)
     return b
 
 
 @router.get("", response_model=list[BackupOut])
-async def list_backups(limit: int = 20, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Backup).order_by(desc(Backup.created_at)).limit(limit))
+async def list_backups(limit: int = 20, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Backup).order_by(desc(Backup.created_at)).limit(limit))
     return result.scalars().all()
