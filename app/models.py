@@ -57,3 +57,21 @@ class Backup(Base):
     location: Mapped[str | None] = mapped_column(Text)
     components: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     trigger: Mapped[str] = mapped_column(String(50), default="cron")
+
+
+class Flag(Base):
+    __tablename__ = "flags"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str | None] = mapped_column(Text)
+    # anchor|beacon|dependency|idea|todo|risk|note
+    type: Mapped[str] = mapped_column(String(50), default="note", index=True)
+    # hq|thomas|studio|library|quarantine|global
+    component: Mapped[str] = mapped_column(String(100), default="global", index=True)
+    # путь внутри компонента: "thomas.memory.facts", "hq.events.redis"
+    anchor: Mapped[str | None] = mapped_column(String(500))
+    # active|done|archived
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    author: Mapped[str] = mapped_column(String(100), default="moz")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
