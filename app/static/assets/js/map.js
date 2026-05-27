@@ -2,7 +2,7 @@
 
 const MAP_LAYERS = [
   {id:'cosmos',     name:'ЗАМЫСЕЛ',    icon:'🌌', color:'#a855f7', comp:'global',
-   desc:'Цели · Идеи · Стратегия',      types:['idea','beacon','note']},
+   desc:'Цели · Идеи · Стратегия',       types:['idea','beacon','note']},
   {id:'hq',         name:'ШТАБ',       icon:'🏛️', color:'#f59e0b', comp:'hq',
    desc:'PostgreSQL · Redis · Qdrant · FastAPI'},
   {id:'thomas',     name:'ТОМАС',      icon:'👁️', color:'#3b82f6', comp:'thomas',
@@ -14,16 +14,16 @@ const MAP_LAYERS = [
   {id:'quarantine', name:'КАРАНТИН',   icon:'🛡️', color:'#06b6d4', comp:'quarantine',
    desc:'Изоляция · Маяк · Угрозы · Репутация'},
   {id:'infra',      name:'ИНФРА',      icon:'🌀', color:'#64748b', comp:'global',
-   desc:'VPS · Docker · Coolify · SSH', types:['anchor','dependency']},
+   desc:'VPS · Docker · Coolify · SSH',  types:['anchor','dependency']},
 ];
 
-const FLAG_IC  = {anchor:'⚓', beacon:'📡', dependency:'🔗', idea:'💡', todo:'📋', risk:'⚠️', note:'📝'};
-const FLAG_COL = {anchor:'#f59e0b', beacon:'#3b82f6', dependency:'#64748b',
-                  idea:'#a855f7', todo:'#6366f1', risk:'#ef4444', note:'#94a3b8'};
+const FLAG_IC  = {anchor:'⚓',beacon:'📡',dependency:'🔗',idea:'💡',todo:'📋',risk:'⚠️',note:'📝'};
+const FLAG_COL = {anchor:'#f59e0b',beacon:'#3b82f6',dependency:'#64748b',
+                  idea:'#a855f7',todo:'#6366f1',risk:'#ef4444',note:'#94a3b8'};
 
 const INFRA_NODES = [
   {label:'POSTGRESQL', ic:'🗄️', col:'#10b981'},
-  {label:'REDIS',      ic:'⚡', col:'#ef4444'},
+  {label:'REDIS',      ic:'⚡',  col:'#ef4444'},
   {label:'QDRANT',     ic:'🔮', col:'#06b6d4'},
   {label:'VPS 147.45.212.155', ic:'🖥️', col:'#64748b'},
   {label:'COOLIFY',    ic:'🚀', col:'#f59e0b'},
@@ -31,14 +31,15 @@ const INFRA_NODES = [
 
 let _mapBr   = [];
 let _mapFl   = {};
-let _mapOpen = new Set(['hq']);   // HQ открыт по умолчанию
+let _mapOpen = new Set(['hq']);
 let _mapOK   = false;
 
+/* ─── INIT ────────────────────────────────────────────── */
 async function initMap() {
   const el = document.getElementById('world-map');
   if (!el) return;
   if (!_mapOK) {
-    el.innerHTML = '<div class="map-loading">Загрузка карты...</div>';
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem;padding:20px 0">Загрузка карты...</div>';
     try {
       const [b, f] = await Promise.all([
         fetch('/branches').then(r => r.json()).catch(() => []),
@@ -50,7 +51,7 @@ async function initMap() {
       });
       _mapOK = true;
     } catch {
-      el.innerHTML = '<div class="map-loading">Ошибка загрузки</div>';
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem;padding:20px 0">Ошибка загрузки</div>';
       return;
     }
   }
@@ -62,6 +63,7 @@ async function refreshMap() {
   await initMap();
 }
 
+/* ─── RENDER ──────────────────────────────────────────── */
 function _drawMap(el) {
   const rows = MAP_LAYERS.map((L, i) => {
     let flags = (_mapFl[L.comp] || []).slice();
@@ -78,7 +80,7 @@ function _drawMap(el) {
 
     return `
 <div class="wml" id="wml-${L.id}" style="--lc:${L.color}">
-  <div class="wml-h" onclick="toggleMapLayer('${L.id}')">
+  <div class="wml-h" data-lid="${L.id}">
     <div class="wml-left">
       <span class="wml-ic">${L.icon}</span>
       <div>
@@ -92,18 +94,18 @@ function _drawMap(el) {
       <span class="wml-arr">${open ? '▲' : '▼'}</span>
     </div>
   </div>
-  <div class="wml-body" ${open ? '' : 'style="display:none"'}>
+  <div class="wml-body"${open ? '' : ' style="display:none"'}>
     ${_flagsHtml(flags, L)}
     <div class="wml-addf" id="wml-addf-${L.id}" style="display:none">
       <select class="wml-sel" id="wml-ft-${L.id}">
         ${Object.entries(FLAG_IC).map(([k,v]) => `<option value="${k}">${v} ${k}</option>`).join('')}
       </select>
       <input class="wml-fin" id="wml-fi-${L.id}" placeholder="Название флага..."
-        onkeydown="if(event.key==='Enter')submitMapFlag('${L.id}','${L.comp}');if(event.key==='Escape')cancelMapFlag('${L.id}')">
-      <button class="wml-fbtn" onclick="submitMapFlag('${L.id}','${L.comp}')">+</button>
-      <button class="wml-fbtn wml-fcancel" onclick="cancelMapFlag('${L.id}')">×</button>
+             data-lid="${L.id}" data-comp="${L.comp}">
+      <button class="wml-fbtn wml-fbtn-ok"  data-lid="${L.id}" data-comp="${L.comp}">+</button>
+      <button class="wml-fbtn wml-fbtn-no"  data-lid="${L.id}">×</button>
     </div>
-    <button class="wml-plus" id="wml-plus-${L.id}" onclick="showMapFlagForm('${L.id}')">+ флаг</button>
+    <button class="wml-plus" data-lid="${L.id}">+ флаг</button>
   </div>
 </div>${conn}`;
   }).join('');
@@ -111,16 +113,28 @@ function _drawMap(el) {
   el.innerHTML = `
 <div class="wmap-hdr">
   <span class="wmap-title">КАРТА МИРА · 7 СЛОЁВ</span>
-  <button class="wmap-refresh" onclick="refreshMap()">↻</button>
+  <button id="wmap-refresh-btn" class="wmap-refresh">↻</button>
 </div>
 <div class="wmap">${rows}</div>`;
+
+  /* Enter/Esc на полях ввода */
+  el.querySelectorAll('.wml-fin').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  submitMapFlag(inp.dataset.lid, inp.dataset.comp);
+      if (e.key === 'Escape') cancelMapFlag(inp.dataset.lid);
+    });
+  });
 }
 
 function _flagsHtml(flags, L) {
   let html = '';
   if (L.id === 'infra') {
     html += INFRA_NODES.map(n =>
-      `<div class="wml-flag"><span style="color:${n.col}">${n.ic}</span><span class="wml-ft">${n.label}</span><span style="color:#10b981;font-size:.55rem">●</span></div>`
+      `<div class="wml-flag wml-flag-static">
+        <span style="color:${n.col}">${n.ic}</span>
+        <span class="wml-ft">${n.label}</span>
+        <span style="color:#10b981;font-size:.5rem;margin-left:2px">●</span>
+      </div>`
     ).join('');
   }
   if (!flags.length) {
@@ -128,18 +142,20 @@ function _flagsHtml(flags, L) {
     return html;
   }
   html += flags.map(f => {
-    const ic  = FLAG_IC[f.type]  || '📌';
-    const col = FLAG_COL[f.type] || '#94a3b8';
-    const tip = f.body ? ` title="${f.body.replace(/"/g,"'").slice(0,120)}"` : '';
-    return `<div class="wml-flag"${tip}>
+    const ic   = FLAG_IC[f.type]  || '📌';
+    const col  = FLAG_COL[f.type] || '#94a3b8';
+    const body = f.body ? f.body.replace(/&/g,'&amp;').replace(/"/g,'&quot;') : '';
+    return `<div class="wml-flag" data-id="${f.id}" data-comp="${L.comp}" data-body="${body}">
       <span style="color:${col}">${ic}</span>
       <span class="wml-ft">${escHtml(f.title)}</span>
-      <button class="wml-fdel" onclick="archiveMapFlag(${f.id},'${L.comp}')">×</button>
+      ${f.body ? '<span class="wml-fexp">▸</span>' : ''}
+      <button class="wml-fdel" data-id="${f.id}" data-comp="${L.comp}">×</button>
     </div>`;
   }).join('');
   return html;
 }
 
+/* ─── ACTIONS ─────────────────────────────────────────── */
 function toggleMapLayer(id) {
   if (_mapOpen.has(id)) _mapOpen.delete(id); else _mapOpen.add(id);
   const el = document.getElementById('world-map');
@@ -147,19 +163,19 @@ function toggleMapLayer(id) {
 }
 
 function showMapFlagForm(lid) {
-  const f = document.getElementById(`wml-addf-${lid}`);
-  const p = document.getElementById(`wml-plus-${lid}`);
-  if (f) f.style.display = 'flex';
-  if (p) p.style.display = 'none';
+  const f   = document.getElementById(`wml-addf-${lid}`);
+  const btn = document.querySelector(`.wml-plus[data-lid="${lid}"]`);
+  if (f)   f.style.display = 'flex';
+  if (btn) btn.style.display = 'none';
   const inp = document.getElementById(`wml-fi-${lid}`);
   if (inp) inp.focus();
 }
 
 function cancelMapFlag(lid) {
-  const f = document.getElementById(`wml-addf-${lid}`);
-  const p = document.getElementById(`wml-plus-${lid}`);
-  if (f) f.style.display = 'none';
-  if (p) p.style.display = '';
+  const f   = document.getElementById(`wml-addf-${lid}`);
+  const btn = document.querySelector(`.wml-plus[data-lid="${lid}"]`);
+  if (f)   f.style.display = 'none';
+  if (btn) btn.style.display = '';
 }
 
 async function submitMapFlag(lid, comp) {
@@ -195,3 +211,50 @@ async function archiveMapFlag(id, comp) {
     if (el) _drawMap(el);
   } catch { /* silent */ }
 }
+
+function toggleFlagBody(flagEl) {
+  const body = flagEl.dataset.body;
+  if (!body) return;
+  let bd  = flagEl.querySelector('.wml-flag-bd');
+  const exp = flagEl.querySelector('.wml-fexp');
+  if (!bd) {
+    bd = document.createElement('div');
+    bd.className = 'wml-flag-bd';
+    bd.textContent = body.replace(/&amp;/g,'&').replace(/&quot;/g,'"');
+    flagEl.insertBefore(bd, flagEl.querySelector('.wml-fdel'));
+    if (exp) exp.textContent = '▾';
+  } else {
+    bd.remove();
+    if (exp) exp.textContent = '▸';
+  }
+}
+
+/* ─── EVENT DELEGATION ────────────────────────────────── */
+document.addEventListener('click', function(e) {
+  /* Обновить карту */
+  if (e.target.closest('#wmap-refresh-btn')) { refreshMap(); return; }
+
+  /* Удалить флаг */
+  const del = e.target.closest('.wml-fdel');
+  if (del) { archiveMapFlag(+del.dataset.id, del.dataset.comp); return; }
+
+  /* Подтвердить добавление */
+  const ok = e.target.closest('.wml-fbtn-ok');
+  if (ok) { submitMapFlag(ok.dataset.lid, ok.dataset.comp); return; }
+
+  /* Отменить добавление */
+  const no = e.target.closest('.wml-fbtn-no');
+  if (no) { cancelMapFlag(no.dataset.lid); return; }
+
+  /* Кнопка + флаг */
+  const plus = e.target.closest('.wml-plus');
+  if (plus) { showMapFlagForm(plus.dataset.lid); return; }
+
+  /* Клик по флагу — показать/скрыть тело */
+  const flag = e.target.closest('.wml-flag:not(.wml-flag-static)');
+  if (flag) { toggleFlagBody(flag); return; }
+
+  /* Заголовок слоя — свернуть/развернуть */
+  const head = e.target.closest('.wml-h');
+  if (head && head.dataset.lid) { toggleMapLayer(head.dataset.lid); return; }
+});
