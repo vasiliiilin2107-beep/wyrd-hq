@@ -59,6 +59,21 @@ class Backup(Base):
     trigger: Mapped[str] = mapped_column(String(50), default="cron")
 
 
+class TechTask(Base):
+    __tablename__ = "tech_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(500))
+    description: Mapped[str | None] = mapped_column(Text)
+    # pending | running | waiting_approval | done | failed
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    result: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(100), default="thomas")
+    priority: Mapped[int] = mapped_column(default=5)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Flag(Base):
     __tablename__ = "flags"
 

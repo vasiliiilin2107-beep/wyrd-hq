@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .database import engine, Base
 from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
-from .routers import branches, events, memory, ws, notes, tasks, backups, flags
+from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -40,6 +40,7 @@ app.include_router(notes.router)
 app.include_router(tasks.router)
 app.include_router(backups.router)
 app.include_router(flags.router)
+app.include_router(techtasks.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
