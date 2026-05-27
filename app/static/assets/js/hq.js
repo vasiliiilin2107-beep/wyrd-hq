@@ -53,6 +53,7 @@ function setTab(name, btn) {
   const label = document.getElementById('tab-label');
   if (label) label.textContent = TAB_LABELS[name] || name.toUpperCase();
 
+  if (name === 'map')   initMap();
   if (name === 'notes') loadNotes();
   if (name === 'tasks') loadTasks();
 }
@@ -367,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startClock();
   loadBranches();
   loadEvents(true);
+  initMap();
   initWS();
 
   setInterval(() => loadEvents(false), 8000);
