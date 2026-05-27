@@ -90,3 +90,35 @@ class Flag(Base):
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     author: Mapped[str] = mapped_column(String(100), default="moz")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class IncomeIdea(Base):
+    __tablename__ = "income_ideas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(100), default="thomas")
+    # idea | testing | active | archived
+    status: Mapped[str] = mapped_column(String(30), default="idea", index=True)
+    expected_revenue: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    experiments: Mapped[list["IncomeExperiment"]] = relationship(back_populates="idea")
+
+
+class IncomeExperiment(Base):
+    __tablename__ = "income_experiments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    idea_id: Mapped[int | None] = mapped_column(ForeignKey("income_ideas.id"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    hypothesis: Mapped[str | None] = mapped_column(Text)
+    # running | paused | success | fail
+    status: Mapped[str] = mapped_column(String(30), default="running", index=True)
+    result: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    idea: Mapped["IncomeIdea | None"] = relationship(back_populates="experiments")
