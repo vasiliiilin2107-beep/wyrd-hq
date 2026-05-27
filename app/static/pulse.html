@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>WYRD · PULSE</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#06061a; font-family:'Courier New',monospace; overflow:hidden; }
+canvas { display:block; }
+#hd {
+  position:fixed; top:14px; left:18px;
+  font-size:12px; letter-spacing:4px; color:#2a3a6a;
+}
+#ws {
+  position:fixed; top:14px; right:18px;
+  font-size:11px; letter-spacing:2px; color:#223355;
+  transition: color .4s;
+}
+#ws.live { color:#40f088; }
+#log {
+  position:fixed; bottom:0; left:0; right:0; height:82px;
+  background:rgba(4,4,20,.88); border-top:1px solid #0e1630;
+  padding:6px 16px; overflow:hidden;
+  display:flex; flex-direction:column-reverse; gap:2px;
+}
+.le { font-size:10.5px; line-height:1.5; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div id="hd">WYRD · PULSE</div>
+<div id="ws">⬤ OFFLINE</div>
+<canvas id="c"></canvas>
+<div id="log"></div>
+<script>
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const LOG = document.getElementById('log');
+const WS_EL = document.getElementById('ws');
+
+const LOG_H = 82;
+function resize() { cv.width = innerWidth; cv.height = innerHeight - LOG_H; }
+resize();
+addEventListener('resize', resize);
+const W = () => cv.width, H = () => cv.height;
+
+// ── Nodes ────────────────────────────────────────────────────────────────
+const N = {
+  chef:    { l:'ШЕФ',        px:.50, py:.07, c:'#f0c040', r:20 },
+  thomas:  { l:'ТОМАС',      px:.74, py:.20, c:'#4488ff', r:22 },
+  hq:      { l:'HQ',         px:.50, py:.40, c:'#c8d8ff', r:28 },
+  lib:     { l:'БИБЛИОТЕКА', px:.22, py:.36, c:'#f0d840', r:20 },
+  studio:  { l:'СТУДИЯ',     px:.78, py:.54, c:'#40f088', r:22 },
+  quaran:  { l:'КАРАНТИН',   px:.24, py:.64, c:'#f04050', r:20 },
+  technik: { l:'ТЕХНИК',     px:.50, py:.72, c:'#b0b8d0', r:18 },
+  huginn:  { l:'ХУГИН',      px:.07, py:.50, c:'#9060f0', r:18 },
+  inet:    { l:'ИНТЕРНЕТ',   px:.07, py:.22, c:'#445566', r:16 },
+};
+
+// ── Threads (from, to, color) ─────────────────────────────────────────────
+const T = [
+  { id:'chef_thomas',   f:'chef',   t:'thomas',  c:'#f0c040' },
+  { id:'thomas_hq',     f:'thomas', t:'hq',      c:'#4488ff' },
+  { id:'hq_lib',        f:'hq',     t:'lib',     c:'#f0d840' },
+  { id:'hq_studio',     f:'hq',     t:'studio',  c:'#40f088' },
+  { id:'hq_technik',    f:'hq',     t:'technik', c:'#b0b8d0' },
+  { id:'hq_quaran',     f:'hq',     t:'quaran',  c:'#f04050' },
+  { id:'thomas_lib',    f:'thomas', t:'lib',     c:'#40c8f0' },
+  { id:'thomas_quaran', f:'thomas', t:'quaran',  c:'#f08070' },
+  { id:'lib_quaran',    f:'lib',    t:'quaran',  c:'#f08040' },
+  { id:'quaran_huginn', f:'quaran', t:'huginn',  c:'#9060f0' },
+  { id:'huginn_inet',   f:'huginn', t:'inet',    c:'#445566' },
+];
+const TH = {};
+T.forEach(th => TH[th.id] = th);
+
+// ── Route events to threads ───────────────────────────────────────────────
+function route(ev) {
+  const b = (ev.branch || '').toLowerCase();
+  const tp = (ev.type || '').toLowerCase();
+  if (b === 'thomas') {
+    if (tp.includes('risk') || tp.includes('threat')) return ['thomas_quaran','hq_quaran'];
+    return ['thomas_hq'];
+  }
+  if (b.includes('studio')) return ['hq_studio'];
+  if (b.includes('library') || b === 'lib') return ['hq_lib'];
+  if (b.includes('quarantine') || b === 'quaran') {
+    if (tp === 'clean') return ['huginn_inet','quaran_huginn','lib_quaran'];
+    if (tp.includes('threat') || tp.includes('jumped')) return ['huginn_inet','quaran_huginn','hq_quaran'];
+    return ['hq_quaran'];
+  }
+  if (b === 'hq' || b.includes('wyrd-hq')) {
+    if (tp.includes('tech')) return ['hq_technik'];
+    return ['thomas_hq'];
+  }
+  return ['thomas_hq'];
+}
+
+// ── Particle ──────────────────────────────────────────────────────────────
+const particles = [];
+class Particle {
+  constructor(tid, delay = 0) {
+    this.th = TH[tid]; if (!this.th) { this.alive = false; return; }
+    this.alive = true; this.t = 0; this.delay = delay;
+    this.speed = 0.010 + Math.random() * 0.007;
+    this.trail = [];
+    this.c = this.th.c;
+  }
+  step() {
+    if (this.delay > 0) { this.delay--; return; }
+    this.t += this.speed;
+    if (this.t >= 1) { this.alive = false; return; }
+    const a = N[this.th.f], b = N[this.th.t];
+    const x = a.px * W() + (b.px - a.px) * W() * this.t;
+    const y = a.py * H() + (b.py - a.py) * H() * this.t;
+    this.trail.push([x, y]);
+    if (this.trail.length > 14) this.trail.shift();
+    this.x = x; this.y = y;
+  }
+  draw() {
+    if (!this.trail.length) return;
+    for (let i = 0; i < this.trail.length; i++) {
+      const a = (i / this.trail.length) * 0.55;
+      const hex = Math.floor(a * 255).toString(16).padStart(2,'0');
+      cx.beginPath();
+      cx.arc(this.trail[i][0], this.trail[i][1], 2, 0, Math.PI*2);
+      cx.fillStyle = this.c + hex;
+      cx.fill();
+    }
+    cx.shadowBlur = 18; cx.shadowColor = this.c;
+    cx.beginPath(); cx.arc(this.x, this.y, 4, 0, Math.PI*2);
+    cx.fillStyle = this.c; cx.fill();
+    cx.shadowBlur = 0;
+  }
+}
+
+function spawn(tids) {
+  tids.forEach((tid, i) => {
+    const p = new Particle(tid, i * 18);
+    if (p.alive) particles.push(p);
+  });
+}
+
+// ── Draw helpers ──────────────────────────────────────────────────────────
+let phase = 0;
+
+function drawGrid() {
+  cx.strokeStyle = '#ffffff05'; cx.lineWidth = 1;
+  for (let x = 0; x < W(); x += 64) { cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,H()); cx.stroke(); }
+  for (let y = 0; y < H(); y += 64) { cx.beginPath(); cx.moveTo(0,y); cx.lineTo(W(),y); cx.stroke(); }
+}
+
+function drawThread(th) {
+  const a = N[th.f], b = N[th.t];
+  cx.beginPath();
+  cx.moveTo(a.px*W(), a.py*H());
+  cx.lineTo(b.px*W(), b.py*H());
+  cx.strokeStyle = th.c + '28';
+  cx.lineWidth = 1.5; cx.stroke();
+}
+
+function drawNode(nd) {
+  const x = nd.px*W(), y = nd.py*H();
+  const pulse = nd.r * (1 + .12 * Math.sin(phase + nd.r));
+  const g = cx.createRadialGradient(x,y,nd.r*.2,x,y,pulse*2.8);
+  g.addColorStop(0, nd.c+'50'); g.addColorStop(1, nd.c+'00');
+  cx.beginPath(); cx.arc(x,y,pulse*2.8,0,Math.PI*2);
+  cx.fillStyle = g; cx.fill();
+  cx.beginPath(); cx.arc(x,y,nd.r,0,Math.PI*2);
+  cx.strokeStyle = nd.c+'bb'; cx.lineWidth = 1.5; cx.stroke();
+  cx.beginPath(); cx.arc(x,y,nd.r*.32,0,Math.PI*2);
+  cx.fillStyle = nd.c+'99'; cx.fill();
+  cx.font = 'bold 10px "Courier New"';
+  cx.textAlign = 'center'; cx.fillStyle = nd.c+'dd';
+  cx.fillText(nd.l, x, y + nd.r + 15);
+}
+
+// ── Frame ─────────────────────────────────────────────────────────────────
+function frame() {
+  cx.clearRect(0, 0, W(), H());
+  drawGrid();
+  T.forEach(drawThread);
+  Object.values(N).forEach(drawNode);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].step();
+    if (!particles[i].alive) { particles.splice(i, 1); continue; }
+    particles[i].draw();
+  }
+  phase += 0.022;
+  requestAnimationFrame(frame);
+}
+frame();
+
+// ── Log ───────────────────────────────────────────────────────────────────
+const COLS = { thomas:'#4488ff', studio:'#40f088', library:'#f0d840', quarantine:'#f04050', hq:'#c8d8ff' };
+function addLog(ev) {
+  const b = (ev.branch||'?').toLowerCase();
+  const c = COLS[b] || '#556688';
+  const t = new Date().toLocaleTimeString('ru',{hour12:false});
+  const d = document.createElement('div');
+  d.className = 'le';
+  d.innerHTML = `<span style="color:#1e2d50">[${t}]</span> <span style="color:${c}">${ev.branch||'?'}</span><span style="color:#223355"> · </span><span style="color:#445566">${ev.type||'?'}</span>`;
+  LOG.prepend(d);
+  while (LOG.children.length > 12) LOG.removeChild(LOG.lastChild);
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────
+let ws;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
+  ws.onopen = () => { WS_EL.textContent = '⬤ LIVE'; WS_EL.className = 'live'; };
+  ws.onclose = () => { WS_EL.textContent = '⬤ OFFLINE'; WS_EL.className = ''; setTimeout(connect, 3000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => {
+    try {
+      const ev = JSON.parse(e.data);
+      if (ev.type === 'ping') return;
+      addLog(ev);
+      spawn(route(ev));
+    } catch {}
+  };
+}
+connect();
+
+// Демо-частицы при загрузке — карта сразу живёт
+const demo = ['chef_thomas','thomas_hq','hq_lib','hq_studio','hq_technik','huginn_inet','quaran_huginn','thomas_hq'];
+demo.forEach((tid, i) => setTimeout(() => spawn([tid]), 400 + i * 500));
+</script>
+</body>
+</html>

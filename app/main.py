@@ -73,6 +73,11 @@ def studio_page():
     return _html("studio.html")
 
 
+@app.get("/pulse", include_in_schema=False)
+def pulse_page():
+    return _html("pulse.html")
+
+
 @app.get("/health")
 def health():
     uptime = (datetime.utcnow() - START_TIME).seconds
