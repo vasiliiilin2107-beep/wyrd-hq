@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any
-from sqlalchemy import String, JSON, ForeignKey, DateTime, func, Text, BigInteger, ARRAY
+from sqlalchemy import String, JSON, ForeignKey, DateTime, func, Text, BigInteger, ARRAY, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -122,3 +122,29 @@ class IncomeExperiment(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     idea: Mapped["IncomeIdea | None"] = relationship(back_populates="experiments")
+
+
+class UserToken(Base):
+    __tablename__ = "user_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(200))
+    balance: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    transactions: Mapped[list["TokenTransaction"]] = relationship(back_populates="user")
+
+
+class TokenTransaction(Base):
+    __tablename__ = "token_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user_tokens.chat_id"), index=True)
+    amount: Mapped[float] = mapped_column(Float)  # + пополнение, - списание
+    reason: Mapped[str | None] = mapped_column(String(500))
+    service: Mapped[str] = mapped_column(String(100), default="scribe")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+    user: Mapped["UserToken"] = relationship(back_populates="transactions")
