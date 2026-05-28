@@ -124,6 +124,21 @@ class IncomeExperiment(Base):
     idea: Mapped["IncomeIdea | None"] = relationship(back_populates="experiments")
 
 
+class AgentRule(Base):
+    __tablename__ = "agent_rules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rule: Mapped[str] = mapped_column(Text)
+    # thomas | technik | studio | all
+    audience: Mapped[str] = mapped_column(String(50), default="all", index=True)
+    # tech_task_done | tech_task_failed | manual | patrol | ...
+    source: Mapped[str] = mapped_column(String(100), default="manual")
+    source_ref: Mapped[str | None] = mapped_column(String(200))  # task_id, event_id и т.д.
+    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 
