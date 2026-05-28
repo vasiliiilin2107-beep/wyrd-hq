@@ -42,6 +42,7 @@ const TAB_LABELS = {
   notes:       'ЗАМЕТКИ',
   tasks:       'ДОСКА ЗАДАЧ',
   build:       'СТРОЙКА',
+  technik:     'ТЕХНИК',
 };
 
 function setTab(name, btn) {
@@ -53,9 +54,10 @@ function setTab(name, btn) {
   const label = document.getElementById('tab-label');
   if (label) label.textContent = TAB_LABELS[name] || name.toUpperCase();
 
-  if (name === 'map')   initMap();
-  if (name === 'notes') loadNotes();
-  if (name === 'tasks') loadTasks();
+  if (name === 'map')     initMap();
+  if (name === 'notes')   loadNotes();
+  if (name === 'tasks')   loadTasks();
+  if (name === 'technik') loadTechTasks();
 }
 
 /* ─── BRANCH COLORS ─────────────────────────────────── */

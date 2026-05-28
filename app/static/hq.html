@@ -42,6 +42,22 @@
 .wml-flag-bd{width:100%;margin-top:5px;font-size:.62rem;color:var(--text-dim);line-height:1.5;padding-top:5px;border-top:1px solid var(--border);white-space:pre-wrap;word-break:break-word}
 .wml-flag{cursor:pointer;flex-wrap:wrap}
 .wml-flag-static{cursor:default}
+/* ─── TECHNIK ───────────────────────────────────────── */
+.tech-form{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.tech-fin{background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.64rem;padding:5px 9px;border-radius:6px;outline:none;width:100%}
+.tech-fin:focus{border-color:rgba(255,255,255,.25)}
+.tech-fdesc{resize:vertical;min-height:40px}
+.tech-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.tech-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+.tech-row-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tech-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 7px;border:1px solid;border-radius:10px;white-space:nowrap;font-weight:600}
+.tech-pri{font-size:.58rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 6px;min-width:22px;text-align:center}
+.tech-title{font-size:.68rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tech-ago{font-size:.57rem;color:var(--text-dim);white-space:nowrap;margin-left:auto}
+.tech-desc{font-size:.62rem;color:var(--text-dim);line-height:1.5;padding-left:2px}
+.tech-result{font-size:.62rem;color:var(--text-dim);background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;line-height:1.5;max-height:200px;overflow-y:auto;margin-top:2px}
+.tech-toggle{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:2px 0;text-align:left;letter-spacing:.05em}
+.tech-toggle:hover{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -66,6 +82,7 @@
       <button class="nav-btn" title="Заметки" data-tab="notes" onclick="setTab('notes',this)">📝</button>
       <button class="nav-btn" title="Задачи" data-tab="tasks" onclick="setTab('tasks',this)">✅</button>
       <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this)">🏗️</button>
+      <button class="nav-btn" title="Техник" data-tab="technik" onclick="setTab('technik',this)">🔧</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -152,6 +169,35 @@
         </div>
       </div>
 
+      <!-- ─── TAB: TECHNIK ─────────────────────────────── -->
+      <div id="tab-technik" class="tab-panel" style="display:none">
+        <div class="section-title">ТЕХНИК — ОЧЕРЕДЬ ЗАДАЧ</div>
+
+        <!-- Форма создания задачи -->
+        <div class="tech-form">
+          <input id="tech-input-title" class="tech-fin" placeholder="Название задачи..." onkeydown="if(event.key==='Enter')createTechTask()">
+          <textarea id="tech-input-desc" class="tech-fin tech-fdesc" placeholder="Описание (опционально)..." rows="2"></textarea>
+          <div style="display:flex;align-items:center;gap:10px">
+            <label style="font-size:.62rem;color:var(--text-dim)">Приоритет:</label>
+            <input id="tech-input-prio" type="number" min="1" max="10" value="5" class="tech-fin" style="width:60px">
+            <button id="tech-create-btn" class="wyrd-btn wyrd-btn-sm" onclick="createTechTask()">+ ЗАДАЧА</button>
+            <select id="tech-filter" class="tech-fin" style="margin-left:auto;width:140px" onchange="techFilterChange()">
+              <option value="all">Все</option>
+              <option value="pending">Ждёт</option>
+              <option value="running">Работает</option>
+              <option value="waiting_approval">Одобрение</option>
+              <option value="done">Готово</option>
+              <option value="failed">Ошибка</option>
+            </select>
+            <button class="wmap-refresh" onclick="loadTechTasks()">↻</button>
+          </div>
+        </div>
+
+        <div id="tech-list" class="tech-list">
+          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+        </div>
+      </div>
+
     </main>
 
     <!-- Лента событий -->
@@ -165,5 +211,6 @@
 
   <script src="/assets/js/hq.js"></script>
   <script src="/assets/js/map.js"></script>
+  <script src="/assets/js/technik.js"></script>
 </body>
 </html>
