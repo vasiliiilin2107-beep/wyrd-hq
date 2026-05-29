@@ -208,6 +208,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Файлы Томаса" data-tab="files" onclick="setTab('files',this);loadFilesList()">📁</button>
       <button class="nav-btn" title="Библиотека" data-tab="library" onclick="setTab('library',this);loadLibrary()">📚</button>
       <button class="nav-btn" title="Конституция" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
+      <button class="nav-btn" title="Scribe" data-tab="scribe" onclick="setTab('scribe',this);loadScribe()">📺</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -376,6 +377,23 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         <textarea id="const-textarea" class="const-textarea" spellcheck="false" oninput="_constOnEdit()"></textarea>
       </div>
 
+      <!-- ─── TAB: SCRIBE ──────────────────────────────── -->
+      <div id="tab-scribe" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:14px">SCRIBE — ТРАНСКРИПЦИИ</div>
+        <div id="scribe-stats" class="lib-stats">
+          <div class="lib-empty">Загрузка...</div>
+        </div>
+        <div class="lib-section" style="margin-top:18px">
+          <div class="lib-section-title">
+            <span>ИСТОРИЯ ТРАНСКРИПЦИЙ</span>
+            <button class="wmap-refresh" onclick="loadScribe()">↻</button>
+          </div>
+          <div id="scribe-list" class="lib-recent-list">
+            <div class="lib-empty">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
       <div id="tab-library" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
@@ -427,7 +445,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
 
     <!-- Лента событий -->
     <aside class="feed">
-      <div class="section-title" style="margin-bottom:16px">СОБЫТИЯ</div>
+      <div class="section-title" style="margin-bottom:16px">ЛЕНТА</div>
       <div id="event-feed">
         <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
       </div>
@@ -441,5 +459,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
   <script src="/assets/js/files.js"></script>
   <script src="/assets/js/library.js"></script>
   <script src="/assets/js/constitution.js"></script>
+  <script src="/assets/js/scribe.js"></script>
 </body>
 </html>

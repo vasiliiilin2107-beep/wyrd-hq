@@ -62,6 +62,19 @@ async def search_knowledge(q: str, category: Optional[str] = None, limit: int = 
         raise HTTPException(status_code=503, detail="Library недоступна")
 
 
+@router.get("/knowledge/{kid}")
+async def get_knowledge_item(kid: int):
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(f"{LIBRARY_URL}/knowledge/{kid}", headers=_headers())
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail="Library недоступна")
+        return r.json()
+    except httpx.RequestError as e:
+        log.warning("[library_proxy] knowledge/%d error: %s", kid, e)
+        raise HTTPException(status_code=503, detail="Library недоступна")
+
+
 @router.get("/stats")
 async def library_stats():
     try:

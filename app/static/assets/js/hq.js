@@ -38,12 +38,16 @@ function startClock() {
 
 /* ─── TAB SWITCHING ─────────────────────────────────── */
 const TAB_LABELS = {
-  map:         'КАРТА МИРА',
-  notes:       'ЗАМЕТКИ',
-  tasks:       'ДОСКА ЗАДАЧ',
-  build:       'СТРОЙКА',
-  technik:     'ТЕХНИК',
-  ideas:       'ИДЕИ',
+  map:          'КАРТА МИРА',
+  notes:        'ЗАМЕТКИ',
+  tasks:        'ДОСКА ЗАДАЧ',
+  build:        'СТРОЙКА',
+  technik:      'ТЕХНИК',
+  ideas:        'ИДЕИ',
+  files:        'ФАЙЛЫ ТОМАСА',
+  library:      'БИБЛИОТЕКА',
+  constitution: 'КОНСТИТУЦИЯ',
+  scribe:       'SCRIBE',
 };
 
 function setTab(name, btn) {
@@ -114,51 +118,87 @@ async function loadBranches() {
   }
 }
 
-/* ─── EVENTS ────────────────────────────────────────── */
-let lastEventId = null;
+/* ─── ЖИВАЯ ЛЕНТА ────────────────────────────────────── */
+const TECH_FEED_COLORS = { pending:'#f59e0b', running:'#3b82f6', done:'#10b981', failed:'#ef4444', waiting_approval:'#8b5cf6' };
+const TECH_FEED_ICONS  = { pending:'⏳', running:'⚙️', done:'✅', failed:'❌', waiting_approval:'🔔' };
+const IDEA_STATUS_COLORS = { idea:'#f59e0b', testing:'#3b82f6', active:'#10b981', archived:'#6b7280' };
 
-async function loadEvents(initial = false) {
+async function loadEvents() {
   const feed = document.getElementById('event-feed');
   if (!feed) return;
+
+  const items = [];
+
   try {
-    const res  = await fetch('/events?limit=30');
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : data.events || [];
-    if (initial) {
-      feed.innerHTML = '';
-      if (!list.length) {
-        feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem;padding:12px 0">Событий пока нет</div>';
-        return;
-      }
-      list.slice().reverse().forEach(e => appendEvent(feed, e, false));
-      if (list.length) lastEventId = list[0].id;
-    } else {
-      const newEvents = list.filter(e => !lastEventId || e.id > lastEventId);
-      if (newEvents.length) {
-        lastEventId = newEvents[0].id;
-        newEvents.slice().reverse().forEach(e => appendEvent(feed, e, true));
-        while (feed.children.length > 50) feed.removeChild(feed.lastChild);
-      }
+    const r = await fetch('/tech/tasks?limit=10');
+    if (r.ok) {
+      const tasks = await r.json();
+      (Array.isArray(tasks) ? tasks : []).slice(0, 6).forEach(t => {
+        items.push({
+          icon:  TECH_FEED_ICONS[t.status]  || '🔧',
+          color: TECH_FEED_COLORS[t.status] || '#6b7280',
+          label: 'ТЕХНИК',
+          text:  t.title,
+          time:  t.updated_at || t.created_at,
+        });
+      });
     }
-  } catch { /* silent */ }
-}
+  } catch {}
 
-function appendEvent(feed, e, prepend) {
-  const type = e.type || 'info';
-  const branch = e.branch_name || e.branch || '—';
-  const payload = e.payload ? JSON.stringify(e.payload).slice(0, 120) : '';
-  const time = e.created_at ? new Date(e.created_at).toLocaleTimeString('ru-RU', { hour12: false }) : '';
+  try {
+    const r = await fetch('/income/ideas?limit=6');
+    if (r.ok) {
+      const d = await r.json();
+      (d.ideas || []).slice(0, 4).forEach(i => {
+        items.push({
+          icon:  '💡',
+          color: IDEA_STATUS_COLORS[i.status] || '#f59e0b',
+          label: 'ИДЕЯ',
+          text:  i.title,
+          time:  i.updated_at || i.created_at,
+        });
+      });
+    }
+  } catch {}
 
-  const item = document.createElement('div');
-  item.className = 'feed-item';
-  item.innerHTML = `
-    <div class="feed-type type-${type.replace(/\./g,'_').replace(/-/g,'_')}">${type.toUpperCase()}</div>
-    <div class="feed-branch">${branch}</div>
-    ${payload ? `<div class="feed-payload">${payload}</div>` : ''}
-    <div class="feed-time">${time}</div>
-  `;
-  if (prepend) feed.insertBefore(item, feed.firstChild);
-  else feed.appendChild(item);
+  try {
+    const r = await fetch('/library/recent?limit=6');
+    if (r.ok) {
+      const d = await r.json();
+      (d.items || []).slice(0, 4).forEach(k => {
+        items.push({
+          icon:  '📚',
+          color: '#10b981',
+          label: k.category || 'library',
+          text:  k.question,
+          time:  null,
+        });
+      });
+    }
+  } catch {}
+
+  items.sort((a, b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    return new Date(b.time) - new Date(a.time);
+  });
+
+  if (!items.length) {
+    feed.innerHTML = '<div class="feed-branch">Нет активности</div>';
+    return;
+  }
+
+  feed.innerHTML = items.map(it => `
+    <div class="feed-item">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+        <span style="font-size:.75rem">${it.icon}</span>
+        <span class="feed-branch" style="color:${it.color};font-weight:700">${escHtml(it.label)}</span>
+        ${it.time ? `<span class="feed-time" style="margin-left:auto">${timeAgo(it.time)}</span>` : ''}
+      </div>
+      <div class="feed-payload">${escHtml(it.text)}</div>
+    </div>
+  `).join('');
 }
 
 /* ─── WEBSOCKET ─────────────────────────────────────── */
@@ -168,10 +208,8 @@ function initWS() {
   ws.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data);
-      if (data.type === 'ping') return;
-      const feed = document.getElementById('event-feed');
-      if (feed) appendEvent(feed, data, true);
-    } catch { /* ignore */ }
+      if (data.type !== 'ping') loadEvents();
+    } catch {}
   };
   ws.onclose = () => setTimeout(initWS, 3000);
 }
@@ -371,10 +409,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   startClock();
   loadBranches();
-  loadEvents(true);
+  loadEvents();
   initMap();
   initWS();
 
-  setInterval(() => loadEvents(false), 8000);
+  setInterval(() => loadEvents(), 60000);
   setInterval(() => loadBranches(), 30000);
 });

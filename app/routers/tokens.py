@@ -1,7 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
@@ -22,6 +22,41 @@ class ChargeIn(BaseModel):
     amount: float  # положительное число — спишем сами
     reason: str = ""
     service: str = "scribe"
+
+
+# ── GET scribe stats ──────────────────────────────────────────────────────────
+
+@router.get("/scribe/stats")
+async def scribe_stats(session: AsyncSession = Depends(get_session)):
+    total_tx = (await session.execute(
+        select(func.count()).select_from(TokenTransaction).where(TokenTransaction.service == "scribe")
+    )).scalar() or 0
+
+    spent = (await session.execute(
+        select(func.sum(TokenTransaction.amount)).where(
+            TokenTransaction.service == "scribe",
+            TokenTransaction.amount < 0,
+        )
+    )).scalar() or 0
+
+    recent = (await session.execute(
+        select(TokenTransaction)
+        .where(TokenTransaction.service == "scribe")
+        .order_by(TokenTransaction.created_at.desc())
+        .limit(10)
+    )).scalars().all()
+
+    users = (await session.execute(
+        select(func.count(func.distinct(TokenTransaction.chat_id)))
+        .where(TokenTransaction.service == "scribe")
+    )).scalar() or 0
+
+    return {
+        "transcriptions": total_tx,
+        "total_spent_tokens": round(abs(float(spent)), 2),
+        "unique_users": users,
+        "recent": [_fmt_tx(t) for t in recent],
+    }
 
 
 # ── GET balance ───────────────────────────────────────────────────────────────

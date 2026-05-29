@@ -137,8 +137,23 @@ function renderRecent(items) {
   }).join('');
 }
 
-function libToggleItem(idx) {
-  _libExpandedId = (_libExpandedId === idx) ? null : idx;
+async function libToggleItem(idx) {
+  if (_libExpandedId === idx) {
+    _libExpandedId = null;
+    renderRecent(_libRecentItems);
+    return;
+  }
+  _libExpandedId = idx;
+  const item = _libRecentItems[idx];
+  if (item && !item.answer && item.id) {
+    try {
+      const r = await fetch(`/library/knowledge/${item.id}`);
+      if (r.ok) {
+        const d = await r.json();
+        item.answer = d.answer || '(нет текста)';
+      }
+    } catch { item.answer = '(ошибка загрузки)'; }
+  }
   renderRecent(_libRecentItems);
 }
 
@@ -198,8 +213,23 @@ function renderSearchResults(results) {
   }).join('');
 }
 
-function libToggleSearch(idx) {
-  _libExpandedSearchId = (_libExpandedSearchId === idx) ? null : idx;
+async function libToggleSearch(idx) {
+  if (_libExpandedSearchId === idx) {
+    _libExpandedSearchId = null;
+    renderSearchResults(_libSearchItems);
+    return;
+  }
+  _libExpandedSearchId = idx;
+  const item = _libSearchItems[idx];
+  if (item && !item.answer && item.id) {
+    try {
+      const r = await fetch(`/library/knowledge/${item.id}`);
+      if (r.ok) {
+        const d = await r.json();
+        item.answer = d.answer || '(нет текста)';
+      }
+    } catch { item.answer = '(ошибка загрузки)'; }
+  }
   renderSearchResults(_libSearchItems);
 }
 
