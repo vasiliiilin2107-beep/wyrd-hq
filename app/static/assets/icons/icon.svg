@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a5c2a"/>
+      <stop offset="100%" stop-color="#0d2e15"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="90" fill="url(#sky)"/>
+  <polygon points="0,400 110,180 220,400" fill="#0a2e12"/>
+  <polygon points="100,400 255,100 410,400" fill="#145c25"/>
+  <polygon points="280,400 400,190 512,400" fill="#0d3a18"/>
+  <rect y="400" width="512" height="112" fill="#1a6e2a"/>
+  <text x="256" y="360" font-family="Georgia,serif" font-size="210" font-weight="900"
+        text-anchor="middle" fill="url(#glow)">W</text>
+</svg>

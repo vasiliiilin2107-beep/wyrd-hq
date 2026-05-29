@@ -80,6 +80,11 @@ def pulse_page():
     return _html("pulse.html")
 
 
+@app.get("/manifest.json", include_in_schema=False)
+def manifest():
+    return FileResponse(str(STATIC_DIR / "manifest.json"), media_type="application/manifest+json")
+
+
 @app.get("/health")
 def health():
     uptime = (datetime.utcnow() - START_TIME).seconds
