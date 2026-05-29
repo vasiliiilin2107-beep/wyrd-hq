@@ -43,6 +43,7 @@ const TAB_LABELS = {
   tasks:       'ДОСКА ЗАДАЧ',
   build:       'СТРОЙКА',
   technik:     'ТЕХНИК',
+  ideas:       'ИДЕИ',
 };
 
 function setTab(name, btn) {
@@ -58,6 +59,7 @@ function setTab(name, btn) {
   if (name === 'notes')   loadNotes();
   if (name === 'tasks')   loadTasks();
   if (name === 'technik') loadTechTasks();
+  if (name === 'ideas')   loadIdeas();
 }
 
 /* ─── BRANCH COLORS ─────────────────────────────────── */

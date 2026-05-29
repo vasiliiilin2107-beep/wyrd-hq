@@ -58,6 +58,36 @@
 .tech-result{font-size:.62rem;color:var(--text-dim);background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;line-height:1.5;max-height:200px;overflow-y:auto;margin-top:2px}
 .tech-toggle{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:2px 0;text-align:left;letter-spacing:.05em}
 .tech-toggle:hover{color:var(--gold)}
+/* ─── IDEAS ─────────────────────────────────────────── */
+.ideas-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.ideas-filters{display:flex;gap:6px;flex-wrap:wrap}
+.idea-filter{background:none;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:4px 10px;border-radius:20px;letter-spacing:.1em;transition:all .15s}
+.idea-filter.active,.idea-filter:hover{border-color:var(--gold);color:var(--gold)}
+#ideas-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.idea-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:8px;transition:border-color .2s}
+.idea-card:hover{border-color:rgba(255,255,255,.14)}
+.idea-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.idea-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 8px;border:1px solid;border-radius:12px;white-space:nowrap;font-weight:600}
+.idea-source{font-size:.55rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px}
+.idea-time{font-size:.55rem;color:var(--text-dim);margin-left:auto}
+.idea-title{font-size:.75rem;font-weight:600;line-height:1.4}
+.idea-desc{font-size:.63rem;color:var(--text-dim);line-height:1.5}
+.idea-rev{font-size:.63rem;color:var(--green)}
+.idea-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.idea-actions-sm{margin-top:2px}
+.idea-btn{border:none;cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 16px;border-radius:8px;font-weight:600;letter-spacing:.08em;transition:all .15s}
+.idea-btn-yes{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+.idea-btn-yes:hover{background:rgba(16,185,129,.28);border-color:#10b981}
+.idea-btn-no{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.idea-btn-no:hover{background:rgba(239,68,68,.24);border-color:#ef4444}
+.idea-btn-ghost{background:rgba(255,255,255,.05);color:var(--text-dim);border:1px solid var(--border)}
+.idea-btn-ghost:hover{border-color:rgba(255,255,255,.25);color:var(--text)}
+.idea-btn-del{background:none;color:var(--text-dim);border:1px solid var(--border);padding:7px 10px}
+.idea-btn-del:hover{border-color:#ef4444;color:#ef4444}
+@keyframes idea-flash-green{0%{background:rgba(16,185,129,.22)}100%{background:var(--surface)}}
+@keyframes idea-flash-red{0%{background:rgba(239,68,68,.18)}100%{background:var(--surface)}}
+.idea-flash-green{animation:idea-flash-green .42s ease-out forwards}
+.idea-flash-red{animation:idea-flash-red .42s ease-out forwards}
 </style>
 </head>
 <body>
@@ -83,6 +113,7 @@
       <button class="nav-btn" title="Задачи" data-tab="tasks" onclick="setTab('tasks',this)">✅</button>
       <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this)">🏗️</button>
       <button class="nav-btn" title="Техник" data-tab="technik" onclick="setTab('technik',this)">🔧</button>
+      <button class="nav-btn" title="Идеи" data-tab="ideas" onclick="setTab('ideas',this)">💡</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -198,6 +229,21 @@
         </div>
       </div>
 
+      <!-- ─── TAB: IDEAS ─────────────────────────────────── -->
+      <div id="tab-ideas" class="tab-panel" style="display:none">
+        <div class="section-title">ИДЕИ</div>
+        <div class="ideas-toolbar">
+          <div class="ideas-filters">
+            <button class="idea-filter active" onclick="ideasFilterClick(this,'all')">ВСЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'idea')">НОВЫЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'testing')">В РАБОТЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'archived')">АРХИВ</button>
+          </div>
+          <button class="wmap-refresh" onclick="loadIdeas()">↻</button>
+        </div>
+        <div id="ideas-list"></div>
+      </div>
+
     </main>
 
     <!-- Лента событий -->
@@ -212,5 +258,6 @@
   <script src="/assets/js/hq.js"></script>
   <script src="/assets/js/map.js"></script>
   <script src="/assets/js/technik.js"></script>
+  <script src="/assets/js/ideas.js"></script>
 </body>
 </html>
