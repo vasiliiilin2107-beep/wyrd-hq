@@ -112,6 +112,40 @@
 .file-content{font-size:.65rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit}
 .files-empty{font-size:.65rem;color:var(--text-dim);padding:10px 0}
 @media(max-width:700px){.files-layout{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}.files-sidebar{max-height:220px}}
+/* ─── LIBRARY ──────────────────────────────────────── */
+.lib-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.lib-stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;text-align:center;min-width:72px}
+.lib-stat-num{font-size:1.2rem;font-weight:700;color:var(--gold)}
+.lib-stat-label{font-size:.55rem;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-top:2px}
+.lib-section{margin-bottom:20px}
+.lib-section-title{font-size:.6rem;letter-spacing:.2em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.lib-reader-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:5px}
+.lib-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.lib-dot-on{background:#10b981;box-shadow:0 0 5px #10b98188}
+.lib-dot-off{background:#6b7280}
+.lib-reader-info{flex:1;min-width:0}
+.lib-reader-name{font-size:.68rem;font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-reader-topics{font-size:.58rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-reader-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.lib-reader-run{font-size:.55rem;color:var(--text-dim)}
+.lib-badge{font-size:.54rem;letter-spacing:.07em;padding:2px 7px;border:1px solid var(--border);border-radius:10px;white-space:nowrap;background:rgba(255,255,255,.06)}
+.lib-badge-ns{border-color:rgba(99,102,241,.4);color:rgba(99,102,241,.9)}
+.lib-knowledge-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:5px}
+.lib-k-question{font-size:.67rem;font-weight:600;margin-bottom:5px;line-height:1.4}
+.lib-k-answer{font-size:.62rem;color:var(--text-dim);line-height:1.5;margin-bottom:5px}
+.lib-k-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lib-k-src{font-size:.56rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.lib-k-ttl{font-size:.56rem;color:var(--text-dim)}
+.lib-k-hits{font-size:.56rem;color:var(--text-dim)}
+.lib-k-score{font-size:.6rem;color:#f59e0b;font-weight:700}
+.lib-search-row{border-left:3px solid rgba(99,102,241,.5)!important}
+.lib-search-box{display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.lib-search-input{flex:1;background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.65rem;padding:6px 10px;border-radius:8px;outline:none}
+.lib-search-input:focus{border-color:rgba(255,255,255,.25)}
+.lib-empty{font-size:.65rem;color:var(--text-dim);padding:8px 0}
+.lib-readers-list{max-height:280px;overflow-y:auto}
+.lib-recent-list{max-height:360px;overflow-y:auto}
+.lib-search-results{max-height:400px;overflow-y:auto}
 /* ─── 🏔️ АЛЬПИЙСКИЙ ЛУГ v4 ─────────────────────────── */
 :root{--bg:#4a8a3a;--bg2:#3e7a2e;--surface:rgba(255,255,255,.82);--border:rgba(255,255,255,.50);--text:#1a3a15;--text-dim:rgba(30,70,20,.65);--gold:#2e7d32}
 body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9d17dae1258011f0839cb633c76826bc/orig') 50% 60%/cover fixed no-repeat!important}
@@ -127,7 +161,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
 .feed-branch,.feed-payload,.feed-time,.feed .section-title{color:rgba(15,65,8,.65)!important}
 .feed-item{border-bottom-color:rgba(0,0,0,.08)!important}
 .section-title{color:rgba(15,60,8,.68)!important}
-.idea-card,.note-item,.task-card,.tech-row,.kanban-col{background:rgba(255,255,255,.88)!important;border-color:rgba(255,255,255,.85)!important;box-shadow:0 8px 32px rgba(5,40,2,.22),0 2px 8px rgba(5,40,2,.14)!important;backdrop-filter:blur(6px)!important}
+.idea-card,.note-item,.task-card,.tech-row,.kanban-col,.lib-knowledge-row,.lib-reader-row,.lib-stat-box{background:rgba(255,255,255,.88)!important;border-color:rgba(255,255,255,.85)!important;box-shadow:0 8px 32px rgba(5,40,2,.22),0 2px 8px rgba(5,40,2,.14)!important;backdrop-filter:blur(6px)!important}
 .tech-fin,.note-textarea,.task-input,.wml-sel,.wml-fin{background:rgba(255,255,255,.75)!important;color:#1a3a15!important}
 .kanban-add-form{background:rgba(255,255,255,.38)!important}
 .tech-result{background:rgba(235,255,228,.88)!important;color:#2a5a20!important}
@@ -159,6 +193,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Техник" data-tab="technik" onclick="setTab('technik',this)">🔧</button>
       <button class="nav-btn" title="Идеи" data-tab="ideas" onclick="setTab('ideas',this)">💡</button>
       <button class="nav-btn" title="Файлы Томаса" data-tab="files" onclick="setTab('files',this);loadFilesList()">📁</button>
+      <button class="nav-btn" title="Библиотека" data-tab="library" onclick="setTab('library',this);loadLibrary()">📚</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -315,6 +350,53 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         </div>
       </div>
 
+      <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
+      <div id="tab-library" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
+
+        <!-- Статистика -->
+        <div id="lib-stats" class="lib-stats">
+          <div class="lib-empty">Загрузка...</div>
+        </div>
+
+        <!-- Поиск -->
+        <div class="lib-section">
+          <div class="lib-section-title">
+            <span>ПОИСК ПО ЗНАНИЯМ</span>
+          </div>
+          <div class="lib-search-box">
+            <input id="lib-search-input" class="lib-search-input" placeholder="Введите запрос..." oninput="libSearchInput(this.value)">
+            <button class="wmap-refresh" onclick="runLibSearch(document.getElementById('lib-search-input').value)">↵</button>
+          </div>
+          <div id="lib-search-results" class="lib-search-results"></div>
+        </div>
+
+        <!-- Читатели -->
+        <div class="lib-section">
+          <div class="lib-section-title">
+            <span>ЧИТАТЕЛИ <span id="lib-readers-count" style="opacity:.6"></span></span>
+            <div style="display:flex;gap:6px">
+              <input class="lib-search-input" style="width:160px;padding:4px 8px" placeholder="Фильтр..." oninput="libReadersFilter(this.value)">
+              <button class="wmap-refresh" onclick="loadLibReaders()">↻</button>
+            </div>
+          </div>
+          <div id="lib-readers-list" class="lib-readers-list">
+            <div class="lib-empty">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Последние знания -->
+        <div class="lib-section">
+          <div class="lib-section-title">
+            <span>ПОСЛЕДНИЕ ЗНАНИЯ</span>
+            <button class="wmap-refresh" onclick="loadLibRecent()">↻</button>
+          </div>
+          <div id="lib-recent-list" class="lib-recent-list">
+            <div class="lib-empty">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+
     </main>
 
     <!-- Лента событий -->
@@ -331,5 +413,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
   <script src="/assets/js/technik.js"></script>
   <script src="/assets/js/ideas.js"></script>
   <script src="/assets/js/files.js"></script>
+  <script src="/assets/js/library.js"></script>
 </body>
 </html>
