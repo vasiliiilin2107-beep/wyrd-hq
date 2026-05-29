@@ -8,10 +8,11 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .database import engine, Base
+from .database import engine, Base, SessionLocal
 from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
-from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution
+from .routers.civilization import seed_agents
+from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -25,6 +26,8 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     await init_redis()
     await init_qdrant()
+    async with SessionLocal() as session:
+        await seed_agents(session)
     yield
     await close_qdrant()
     await close_redis()
@@ -47,6 +50,7 @@ app.include_router(lessons.router)
 app.include_router(thomas_proxy.router)
 app.include_router(library_proxy.router)
 app.include_router(constitution.router)
+app.include_router(civilization.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")

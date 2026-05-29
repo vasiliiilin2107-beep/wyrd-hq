@@ -147,6 +147,37 @@ class Constitution(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    role: Mapped[str] = mapped_column(String(200))
+    # council | foreman | worker | observer
+    level: Mapped[str] = mapped_column(String(50), default="worker", index=True)
+    # строительство | идеи | наука | контент | global
+    branch: Mapped[str] = mapped_column(String(100), default="global", index=True)
+    # active | idle | offline
+    status: Mapped[str] = mapped_column(String(30), default="active", index=True)
+    current_task: Mapped[str | None] = mapped_column(Text)
+    metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    can_propose: Mapped[bool] = mapped_column(default=True)
+    last_pulse: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Proposal(Base):
+    __tablename__ = "proposals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_agent: Mapped[str] = mapped_column(String(100), index=True)
+    role_needed: Mapped[str] = mapped_column(String(200))
+    reason: Mapped[str | None] = mapped_column(Text)
+    # pending | approved | rejected | building | done
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 

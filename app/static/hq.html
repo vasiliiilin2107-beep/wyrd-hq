@@ -159,6 +159,26 @@
 .const-save-btn{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 20px;border-radius:8px;font-weight:600;letter-spacing:.1em;transition:all .2s}
 .const-save-btn:hover{background:rgba(16,185,129,.28);border-color:#10b981}
 .const-btn-dirty{background:rgba(245,158,11,.15)!important;color:#f59e0b!important;border-color:rgba(245,158,11,.4)!important}
+/* ─── CIVILIZATION ──────────────────────────────────── */
+.civ-section{margin-bottom:20px}
+.civ-section-title{font-size:.6rem;letter-spacing:.2em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.civ-agents-grid{display:flex;flex-direction:column;gap:7px}
+.civ-agent-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px}
+.civ-agent-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.civ-badge{font-size:.54rem;letter-spacing:.09em;padding:2px 8px;border:1px solid;border-radius:12px;white-space:nowrap;font-weight:700}
+.civ-agent-name{font-size:.72rem;font-weight:700;letter-spacing:.06em}
+.civ-agent-status{font-size:.85rem}
+.civ-branch-tag{font-size:.54rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px}
+.civ-pulse-time{font-size:.54rem;color:var(--text-dim);margin-left:auto}
+.civ-agent-role{font-size:.63rem;color:var(--text-dim);line-height:1.4;margin-bottom:3px}
+.civ-agent-task{font-size:.62rem;color:#10b981;line-height:1.4}
+.civ-proposal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;margin-bottom:7px}
+.civ-proposal-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.civ-prop-from{font-size:.58rem;color:var(--text-dim)}
+.civ-prop-time{font-size:.55rem;color:var(--text-dim);margin-left:auto}
+.civ-prop-role{font-size:.7rem;font-weight:600;margin-bottom:4px}
+.civ-prop-reason{font-size:.62rem;color:var(--text-dim);line-height:1.5;margin-bottom:6px}
+.civ-prop-actions{display:flex;gap:8px;margin-top:6px}
 /* ─── 🏔️ АЛЬПИЙСКИЙ ЛУГ v4 ─────────────────────────── */
 :root{--bg:#4a8a3a;--bg2:#3e7a2e;--surface:rgba(255,255,255,.82);--border:rgba(255,255,255,.50);--text:#1a3a15;--text-dim:rgba(30,70,20,.65);--gold:#2e7d32}
 body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9d17dae1258011f0839cb633c76826bc/orig') 50% 60%/cover fixed no-repeat!important}
@@ -209,6 +229,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Библиотека" data-tab="library" onclick="setTab('library',this);loadLibrary()">📚</button>
       <button class="nav-btn" title="Конституция" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
       <button class="nav-btn" title="Scribe" data-tab="scribe" onclick="setTab('scribe',this);loadScribe()">📺</button>
+      <button class="nav-btn" title="Цивилизация" data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -394,6 +415,31 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         </div>
       </div>
 
+      <!-- ─── TAB: CIVILIZATION ──────────────────────────── -->
+      <div id="tab-civilization" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:14px">🏛️ ЦИВИЛИЗАЦИЯ АГЕНТОВ</div>
+
+        <div class="civ-section">
+          <div class="civ-section-title">
+            <span>РЕЕСТР АГЕНТОВ <span id="civ-agents-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadAgents()">↻</button>
+          </div>
+          <div id="civ-agents-list" class="civ-agents-grid">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>ПРЕДЛОЖЕНИЯ <span id="civ-proposals-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadProposals()">↻</button>
+          </div>
+          <div id="civ-proposals-list">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
       <div id="tab-library" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
@@ -460,5 +506,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
   <script src="/assets/js/library.js"></script>
   <script src="/assets/js/constitution.js"></script>
   <script src="/assets/js/scribe.js"></script>
+  <script src="/assets/js/civilization.js"></script>
 </body>
 </html>
