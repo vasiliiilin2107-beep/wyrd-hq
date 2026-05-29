@@ -58,6 +58,14 @@ async def list_ideas(
     return {"ideas": [_fmt_idea(r) for r in rows]}
 
 
+@router.get("/ideas/{iid}")
+async def get_idea(iid: int, session: AsyncSession = Depends(get_session)):
+    idea = await session.get(IncomeIdea, iid)
+    if not idea:
+        raise HTTPException(404, "Idea not found")
+    return _fmt_idea(idea)
+
+
 @router.patch("/ideas/{iid}")
 async def patch_idea(iid: int, body: IdeaPatch, session: AsyncSession = Depends(get_session)):
     idea = await session.get(IncomeIdea, iid)
