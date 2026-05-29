@@ -1,0 +1,58 @@
+/* ─── МОБИЛЬНАЯ АДАПТАЦИЯ HQ ─────────────────────────── */
+@media (max-width: 768px) {
+
+  /* ── LAYOUT: 1 колонка, сайдбар снизу топбара ── */
+  .hq-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 52px 54px 1fr !important;
+  }
+  .topbar  { grid-column: 1 !important; grid-row: 1 !important; padding: 0 14px !important; gap: 10px !important; }
+  .sidebar { grid-column: 1 !important; grid-row: 2 !important; }
+  .main-area { grid-column: 1 !important; grid-row: 3 !important; padding: 12px !important; overflow-y: auto !important; }
+  .feed { display: none !important; }
+
+  /* ── САЙДБАР ГОРИЗОНТАЛЬНЫЙ ── */
+  .sidebar {
+    flex-direction: row !important;
+    align-items: center !important;
+    height: 54px !important;
+    padding: 0 10px !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,.15) !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: rgba(0,0,0,.42) !important;
+  }
+  .sidebar > div[style*="flex:1"] { display: none !important; }
+  .nav-btn { width: 44px !important; height: 44px !important; flex-shrink: 0 !important; font-size: 1.2rem !important; }
+
+  /* ── ЧИТАЕМОСТЬ ТОПБАРА ── */
+  .topbar { background: rgba(0,0,0,.48) !important; }
+  .topbar-logo { color: #b8f090 !important; font-size: 0.95rem !important; text-shadow: none !important; }
+  #tab-label, .topbar-status { color: rgba(230,255,210,.95) !important; font-size: 0.68rem !important; }
+  .topbar-time { color: rgba(200,240,175,.70) !important; font-size: 0.62rem !important; }
+  .nav-btn { color: rgba(210,250,185,.70) !important; }
+  .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.18) !important; color: #ccf09a !important; }
+
+  /* ── ТЕКСТ В КОНТЕНТЕ ── */
+  .section-title { color: #1a3a15 !important; font-size: 0.68rem !important; }
+  .idea-title { font-size: 0.8rem !important; }
+  .idea-desc, .tech-desc, .note-text { font-size: 0.7rem !important; }
+
+  /* ── КНОПКИ КРУПНЕЕ ДЛЯ ПАЛЬЦА ── */
+  .idea-btn { padding: 10px 16px !important; font-size: 0.72rem !important; }
+  .idea-filter { font-size: 0.65rem !important; padding: 6px 12px !important; }
+  .wyrd-btn { padding: 10px 16px !important; }
+
+  /* ── КАНБАН В 1 КОЛОНКУ ── */
+  .kanban-board { grid-template-columns: 1fr !important; }
+
+  /* ── ТЕХНИК ФОРМА ── */
+  .tech-form { gap: 6px !important; }
+  .tech-fin { font-size: 0.72rem !important; padding: 8px 10px !important; }
+
+  /* ── КАРТА/WORLDMAP СКРЫТЬ НА МОБИЛЕ ── */
+  #world-map { font-size: 0.7rem !important; }
+
+}
