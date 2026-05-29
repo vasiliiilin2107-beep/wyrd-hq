@@ -159,6 +159,25 @@
 .const-save-btn{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 20px;border-radius:8px;font-weight:600;letter-spacing:.1em;transition:all .2s}
 .const-save-btn:hover{background:rgba(16,185,129,.28);border-color:#10b981}
 .const-btn-dirty{background:rgba(245,158,11,.15)!important;color:#f59e0b!important;border-color:rgba(245,158,11,.4)!important}
+/* ─── COUNCIL ───────────────────────────────────────── */
+.civ-session-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.civ-session-card:hover{border-color:rgba(255,255,255,.3)}
+.civ-session-card.open{border-color:var(--gold)}
+.civ-session-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.civ-session-idea{font-size:.68rem;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.civ-session-src{font-size:.54rem;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:2px 6px}
+.civ-session-time{font-size:.54rem;color:var(--text-dim);margin-left:auto;white-space:nowrap}
+.civ-dialog{display:none;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.civ-dialog.open{display:flex}
+.civ-msg{border-radius:8px;padding:9px 12px;font-size:.63rem;line-height:1.6}
+.civ-msg-strategist{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
+.civ-msg-architect{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25)}
+.civ-msg-cartographer{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3)}
+.civ-msg-speaker{font-size:.57rem;font-weight:700;letter-spacing:.1em;margin-bottom:4px;opacity:.8}
+.civ-verdict{margin-top:8px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 12px;font-size:.63rem;line-height:1.6;color:var(--text)}
+.civ-verdict-label{font-size:.57rem;font-weight:700;letter-spacing:.1em;color:#10b981;margin-bottom:5px}
+.civ-thought-item{background:var(--surface);border:1px solid var(--border);border-left:3px solid rgba(139,92,246,.5);border-radius:var(--radius);padding:9px 12px;margin-bottom:6px;font-size:.64rem;line-height:1.5}
+.civ-thought-meta{font-size:.54rem;color:var(--text-dim);margin-top:4px}
 /* ─── CIVILIZATION ──────────────────────────────────── */
 .civ-section{margin-bottom:20px}
 .civ-section-title{font-size:.6rem;letter-spacing:.2em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
@@ -435,6 +454,39 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
             <button class="wmap-refresh" onclick="loadProposals()">↻</button>
           </div>
           <div id="civ-proposals-list">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- СОВЕТ -->
+        <div class="civ-section" style="margin-top:26px;border-top:1px solid var(--border);padding-top:18px">
+          <div class="civ-section-title">
+            <span>🧠 СОВЕТ — ОБСУЖДЕНИЯ <span id="civ-sessions-count" style="opacity:.6"></span></span>
+            <div style="display:flex;gap:6px">
+              <button class="wyrd-btn wyrd-btn-sm" onclick="showCouncilForm()">+ ЗАПУСТИТЬ</button>
+              <button class="wmap-refresh" onclick="loadSessions()">↻</button>
+            </div>
+          </div>
+          <!-- Форма запуска -->
+          <div id="council-form" style="display:none;margin-bottom:12px">
+            <textarea id="council-idea-input" class="tech-fin tech-fdesc" placeholder="Идея или вопрос для Совета..." rows="2" style="width:100%;box-sizing:border-box"></textarea>
+            <div style="display:flex;gap:7px;margin-top:6px">
+              <button class="wyrd-btn wyrd-btn-sm" onclick="submitCouncilSession()">ОТПРАВИТЬ</button>
+              <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideCouncilForm()">✕</button>
+            </div>
+          </div>
+          <div id="civ-sessions-list">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- КОПИЛКА МЫСЛЕЙ -->
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>💭 МЫСЛИ НА ПЕРСПЕКТИВУ <span id="civ-thoughts-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadThoughts()">↻</button>
+          </div>
+          <div id="civ-thoughts-list">
             <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
           </div>
         </div>

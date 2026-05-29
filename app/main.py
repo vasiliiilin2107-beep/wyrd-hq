@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -12,7 +13,8 @@ from .database import engine, Base, SessionLocal
 from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
 from .routers.civilization import seed_agents
-from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization
+from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council
+from .council_agent import council_autonomous_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -28,6 +30,7 @@ async def lifespan(app: FastAPI):
     await init_qdrant()
     async with SessionLocal() as session:
         await seed_agents(session)
+    asyncio.create_task(council_autonomous_loop())
     yield
     await close_qdrant()
     await close_redis()
@@ -51,6 +54,7 @@ app.include_router(thomas_proxy.router)
 app.include_router(library_proxy.router)
 app.include_router(constitution.router)
 app.include_router(civilization.router)
+app.include_router(council.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")

@@ -147,6 +147,44 @@ class Constitution(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class CouncilSession(Base):
+    __tablename__ = "council_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    idea_text: Mapped[str] = mapped_column(Text)
+    # pending | thinking | verdict | done
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    verdict_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # manual | autonomous | thomas
+    source: Mapped[str] = mapped_column(String(50), default="manual")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+    messages: Mapped[list["CouncilMessage"]] = relationship(back_populates="session")
+
+
+class CouncilMessage(Base):
+    __tablename__ = "council_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("council_sessions.id"), index=True)
+    # strategist | architect | cartographer
+    speaker: Mapped[str] = mapped_column(String(50))
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    session: Mapped["CouncilSession"] = relationship(back_populates="messages")
+
+
+class CouncilThought(Base):
+    __tablename__ = "council_thoughts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(50), default="council")
+    tags: Mapped[list[str] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
 class Agent(Base):
     __tablename__ = "agents"
 
