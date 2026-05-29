@@ -139,6 +139,14 @@ class AgentRule(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class Constitution(Base):
+    __tablename__ = "constitution"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    text: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 

@@ -146,6 +146,14 @@
 .lib-readers-list{max-height:280px;overflow-y:auto}
 .lib-recent-list{max-height:360px;overflow-y:auto}
 .lib-search-results{max-height:400px;overflow-y:auto}
+/* ─── CONSTITUTION ──────────────────────────────────── */
+.const-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.const-meta{font-size:.6rem;color:var(--text-dim);letter-spacing:.08em}
+.const-textarea{width:100%;box-sizing:border-box;resize:vertical;background:rgba(0,0,0,.45);border:1px solid var(--border);color:var(--text);font-family:'Courier New',monospace;font-size:.68rem;line-height:1.7;padding:14px 16px;border-radius:var(--radius);outline:none;min-height:420px}
+.const-textarea:focus{border-color:rgba(255,255,255,.3)}
+.const-save-btn{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 20px;border-radius:8px;font-weight:600;letter-spacing:.1em;transition:all .2s}
+.const-save-btn:hover{background:rgba(16,185,129,.28);border-color:#10b981}
+.const-btn-dirty{background:rgba(245,158,11,.15)!important;color:#f59e0b!important;border-color:rgba(245,158,11,.4)!important}
 /* ─── 🏔️ АЛЬПИЙСКИЙ ЛУГ v4 ─────────────────────────── */
 :root{--bg:#4a8a3a;--bg2:#3e7a2e;--surface:rgba(255,255,255,.82);--border:rgba(255,255,255,.50);--text:#1a3a15;--text-dim:rgba(30,70,20,.65);--gold:#2e7d32}
 body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9d17dae1258011f0839cb633c76826bc/orig') 50% 60%/cover fixed no-repeat!important}
@@ -194,6 +202,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Идеи" data-tab="ideas" onclick="setTab('ideas',this)">💡</button>
       <button class="nav-btn" title="Файлы Томаса" data-tab="files" onclick="setTab('files',this);loadFilesList()">📁</button>
       <button class="nav-btn" title="Библиотека" data-tab="library" onclick="setTab('library',this);loadLibrary()">📚</button>
+      <button class="nav-btn" title="Конституция" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -350,6 +359,18 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         </div>
       </div>
 
+      <!-- ─── TAB: CONSTITUTION ────────────────────────── -->
+      <div id="tab-constitution" class="tab-panel" style="display:none">
+        <div class="const-toolbar">
+          <div class="section-title" style="margin:0">КОНСТИТУЦИЯ МИРА</div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span id="const-meta" class="const-meta"></span>
+            <button id="const-save-btn" class="const-save-btn" onclick="saveConstitution()">💾 СОХРАНИТЬ</button>
+          </div>
+        </div>
+        <textarea id="const-textarea" class="const-textarea" spellcheck="false" oninput="_constOnEdit()"></textarea>
+      </div>
+
       <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
       <div id="tab-library" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
@@ -414,5 +435,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
   <script src="/assets/js/ideas.js"></script>
   <script src="/assets/js/files.js"></script>
   <script src="/assets/js/library.js"></script>
+  <script src="/assets/js/constitution.js"></script>
 </body>
 </html>
