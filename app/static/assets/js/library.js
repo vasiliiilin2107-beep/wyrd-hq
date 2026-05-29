@@ -2,6 +2,10 @@
 
 let _libReaders = [];
 let _libSearchTimer = null;
+let _libRecentItems = [];
+let _libSearchItems = [];
+let _libExpandedId = null;
+let _libExpandedSearchId = null;
 
 async function loadLibrary() {
   await Promise.all([loadLibStats(), loadLibReaders(), loadLibRecent()]);
@@ -96,7 +100,8 @@ async function loadLibRecent() {
     const r = await fetch('/library/recent?limit=20');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    renderRecent(d.items || []);
+    _libRecentItems = d.items || [];
+    renderRecent(_libRecentItems);
   } catch (e) {
     el.innerHTML = `<div class="lib-empty">Ошибка: ${e.message}</div>`;
   }
@@ -109,10 +114,18 @@ function renderRecent(items) {
     el.innerHTML = '<div class="lib-empty">Знаний пока нет</div>';
     return;
   }
-  el.innerHTML = items.map(item => {
+  el.innerHTML = items.map((item, idx) => {
     const exp = item.expires_at ? `до ${item.expires_at.slice(0, 10)}` : 'static';
-    return `<div class="lib-knowledge-row">
-      <div class="lib-k-question">${escLibHtml(item.question || '')}</div>
+    const isOpen = _libExpandedId === idx;
+    const answerHtml = isOpen && item.answer
+      ? `<div class="lib-k-answer-full">${escLibHtml(item.answer)}</div>` : '';
+    const arrow = isOpen ? '▾' : '▸';
+    return `<div class="lib-knowledge-row lib-k-clickable" onclick="libToggleItem(${idx})">
+      <div class="lib-k-header">
+        <span class="lib-k-arrow">${arrow}</span>
+        <span class="lib-k-question">${escLibHtml(item.question || '')}</span>
+      </div>
+      ${answerHtml}
       <div class="lib-k-meta">
         <span class="lib-badge">${item.category}</span>
         <span class="lib-badge lib-badge-ns">${item.namespace || 'public'}</span>
@@ -122,6 +135,11 @@ function renderRecent(items) {
       </div>
     </div>`;
   }).join('');
+}
+
+function libToggleItem(idx) {
+  _libExpandedId = (_libExpandedId === idx) ? null : idx;
+  renderRecent(_libRecentItems);
 }
 
 // ── Поиск ───────────────────────────────────────────────
@@ -144,7 +162,9 @@ async function runLibSearch(q) {
     const r = await fetch(`/library/search?q=${encodeURIComponent(q)}&limit=10`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    renderSearchResults(d.results || []);
+    _libSearchItems = d.results || [];
+    _libExpandedSearchId = null;
+    renderSearchResults(_libSearchItems);
   } catch (e) {
     el.innerHTML = `<div class="lib-empty">Ошибка: ${e.message}</div>`;
   }
@@ -157,18 +177,30 @@ function renderSearchResults(results) {
     el.innerHTML = '<div class="lib-empty">Ничего не найдено</div>';
     return;
   }
-  el.innerHTML = results.map(item => {
+  el.innerHTML = results.map((item, idx) => {
     const score = item.score ? ` ${(item.score * 100).toFixed(0)}%` : '';
-    return `<div class="lib-knowledge-row lib-search-row">
-      <div class="lib-k-question">${escLibHtml(item.question || item.text || '')}</div>
-      <div class="lib-k-answer">${escLibHtml((item.answer || '').slice(0, 200))}${(item.answer || '').length > 200 ? '…' : ''}</div>
+    const isOpen = _libExpandedSearchId === idx;
+    const arrow = isOpen ? '▾' : '▸';
+    const answerHtml = isOpen && item.answer
+      ? `<div class="lib-k-answer-full">${escLibHtml(item.answer)}</div>` : '';
+    return `<div class="lib-knowledge-row lib-search-row lib-k-clickable" onclick="libToggleSearch(${idx})">
+      <div class="lib-k-header">
+        <span class="lib-k-arrow">${arrow}</span>
+        <span class="lib-k-question">${escLibHtml(item.question || item.text || '')}</span>
+        ${score ? `<span class="lib-k-score">${score}</span>` : ''}
+      </div>
+      ${answerHtml}
       <div class="lib-k-meta">
         <span class="lib-badge">${item.category || ''}</span>
         <span class="lib-k-src">${escLibHtml(item.source || '')}</span>
-        ${score ? `<span class="lib-k-score">${score}</span>` : ''}
       </div>
     </div>`;
   }).join('');
+}
+
+function libToggleSearch(idx) {
+  _libExpandedSearchId = (_libExpandedSearchId === idx) ? null : idx;
+  renderSearchResults(_libSearchItems);
 }
 
 // ── Helpers ─────────────────────────────────────────────
