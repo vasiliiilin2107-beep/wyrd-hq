@@ -249,6 +249,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Конституция" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
       <button class="nav-btn" title="Scribe" data-tab="scribe" onclick="setTab('scribe',this);loadScribe()">📺</button>
       <button class="nav-btn" title="Цивилизация" data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
+      <button class="nav-btn" title="Профобразование" data-tab="education" onclick="setTab('education',this);loadEducation()">👔</button>
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -492,6 +493,43 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         </div>
       </div>
 
+      <!-- ─── TAB: EDUCATION ──────────────────────────── -->
+      <div id="tab-education" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:14px">👔 ПРОФОБРАЗОВАНИЕ СОВЕТА</div>
+
+        <!-- Фабрика промтов -->
+        <div class="civ-section">
+          <div class="civ-section-title">
+            <span>🏭 ФАБРИКА ПРОМТОВ <span id="edu-factory-status" style="opacity:.6;font-size:.6rem"></span></span>
+            <button class="wmap-refresh" onclick="loadEducation()">↻</button>
+          </div>
+          <div id="edu-agents-list" class="civ-agents-grid">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Читатели Совета -->
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>📚 ЧИТАТЕЛИ СОВЕТА <span id="edu-readers-count" style="opacity:.6"></span></span>
+          </div>
+          <div id="edu-readers-list">
+            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Лог фабрики -->
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>📋 ЛОГ ПОСЛЕДНЕГО ЦИКЛА</span>
+            <button class="wyrd-btn wyrd-btn-sm" onclick="applyCouncilPrompts()">⚡ ПРИМЕНИТЬ ПРОМПТЫ</button>
+          </div>
+          <div id="edu-log" class="tech-result" style="max-height:300px;font-size:.6rem;line-height:1.6">
+            <span style="color:var(--text-dim)">Нажмите ↻ для загрузки...</span>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
       <div id="tab-library" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
@@ -559,5 +597,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
   <script src="/assets/js/constitution.js"></script>
   <script src="/assets/js/scribe.js"></script>
   <script src="/assets/js/civilization.js"></script>
+  <script src="/assets/js/education.js"></script>
 </body>
 </html>
