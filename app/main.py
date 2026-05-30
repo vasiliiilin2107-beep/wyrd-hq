@@ -59,6 +59,8 @@ app.include_router(education.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+if (STATIC_DIR / "world").exists():
+    app.mount("/world", StaticFiles(directory=str(STATIC_DIR / "world")), name="world")
 
 
 def _html(name: str) -> FileResponse:

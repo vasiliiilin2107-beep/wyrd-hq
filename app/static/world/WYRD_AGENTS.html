@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WYRD — Паутина агентов</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060a14; overflow: hidden; font-family: 'Courier New', monospace; }
+  #graph { display: block; }
+  .node-emoji { font-size: 15px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .node-name  { font-size: 8px; text-anchor: middle; letter-spacing: 1px; pointer-events: none; fill: inherit; }
+  .link { fill: none; stroke-width: 1; }
+  #title { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    color: #4a9eff; font-size: 10px; letter-spacing: 5px; pointer-events: none; }
+  #legend { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 18px; font-size: 9px; letter-spacing: 1px; }
+  .leg { display: flex; align-items: center; gap: 5px; }
+  .leg-dot { width: 8px; height: 3px; border-radius: 2px; }
+  #tooltip { position: fixed; background: #0d1525ee; border: 1px solid #4a9eff55;
+    color: #e0e8ff; font-size: 10px; padding: 7px 12px; border-radius: 3px;
+    pointer-events: none; display: none; max-width: 220px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="nav" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:20px;font-size:9px;letter-spacing:2px;z-index:10;">
+  <a href="WYRD_MAP.html" style="color:#3a5a7a;text-decoration:none;">▦ ЗДАНИЕ</a>
+  <span style="color:#1a3050">·</span>
+  <a href="WYRD_GRID.html" style="color:#3a5a7a;text-decoration:none;">▣ СЕТКА</a>
+  <span style="color:#1a3050">·</span>
+  <a href="WYRD_AGENTS.html" style="color:#4a9eff;text-decoration:none;">✦ ПАУТИНА</a>
+</div>
+<div id="title" style="position:fixed;top:36px;left:50%;transform:translateX(-50%);">⬡ WYRD — ПАУТИНА АГЕНТОВ · наведи на узел</div>
+<div id="tooltip"></div>
+<svg id="graph"></svg>
+<div id="legend">
+  <div class="leg"><div class="leg-dot" style="background:#4a9eff"></div><span style="color:#4a9eff">команда</span></div>
+  <div class="leg"><div class="leg-dot" style="background:#4aff88"></div><span style="color:#4aff88">знание</span></div>
+  <div class="leg"><div class="leg-dot" style="background:#ffaa00"></div><span style="color:#ffaa00">отчёт</span></div>
+  <div class="leg"><div class="leg-dot" style="background:#44ff44"></div><span style="color:#44ff44">деньги</span></div>
+  <div class="leg"><div class="leg-dot" style="background:#cc44ff"></div><span style="color:#cc44ff">контент</span></div>
+</div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="wyrd_agents.js"></script>
+</body>
+</html>

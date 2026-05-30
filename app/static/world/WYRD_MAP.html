@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WYRD — Карта мира</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e1a; color: #e0e8ff; font-family: 'Courier New', monospace; padding: 24px; min-height: 100vh; }
+  h1 { text-align: center; font-size: 13px; letter-spacing: 6px; color: #4a9eff; margin-bottom: 6px; text-transform: uppercase; }
+  .subtitle { text-align: center; font-size: 10px; color: #3a5070; margin-bottom: 28px; letter-spacing: 2px; }
+
+  #map-container { position: relative; }
+  #links-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+  .toggle-btn { display: block; margin: 0 auto 16px; background: #0d1525; border: 1px solid #4a9eff; color: #4a9eff; font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 2px; padding: 5px 16px; cursor: pointer; border-radius: 2px; }
+  .toggle-btn:hover { background: #1a3a6a; }
+
+  .hierarchy { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+  .shef { background: #ffd700; color: #0a0e1a; padding: 10px 28px; border-radius: 4px; font-weight: bold; font-size: 13px; letter-spacing: 2px; box-shadow: 0 0 20px #ffd70066; }
+  .h-line-down { width: 2px; height: 20px; background: #4a9eff; }
+  .h-row { display: flex; align-items: flex-start; gap: 60px; position: relative; }
+  .h-row::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: calc(100% - 80px); height: 2px; background: #4a9eff; }
+  .h-branch { display: flex; flex-direction: column; align-items: center; }
+  .h-branch-line { width: 2px; height: 20px; background: #4a9eff; }
+  .tomas-box { background: #1a3a6a; border: 2px solid #4a9eff; padding: 10px 20px; border-radius: 4px; font-size: 11px; text-align: center; }
+  .tomas-box strong { color: #4a9eff; display: block; font-size: 12px; }
+  .audit-box { background: #3a0a0a; border: 2px solid #ff4444; padding: 10px 20px; border-radius: 4px; font-size: 11px; text-align: center; }
+  .audit-box strong { color: #ff4444; display: block; font-size: 12px; }
+  .audit-tag { background: #ff4444; color: white; font-size: 8px; padding: 1px 6px; border-radius: 2px; margin-top: 4px; letter-spacing: 1px; }
+
+  .building-wrap { display: flex; flex-direction: column; align-items: center; }
+  .building-label { background: #4a9eff; color: #0a0e1a; font-size: 9px; letter-spacing: 3px; padding: 3px 20px; font-weight: bold; }
+  .building { border: 2px solid #4a9eff; border-top: none; width: 100%; max-width: 860px; background: #0d1525; }
+  .floor { display: flex; border-bottom: 1px solid #1e3a5a; min-height: 90px; }
+  .floor:last-child { border-bottom: none; }
+  .floor-label { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); font-size: 8px; color: #3a5070; padding: 8px 4px; border-right: 1px solid #1e3a5a; min-width: 22px; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; }
+  .floor-rooms { display: flex; flex: 1; flex-wrap: wrap; }
+
+  .room { border-right: 1px solid #1e3a5a; padding: 10px 12px; flex: 1; min-width: 140px; }
+  .room:last-child { border-right: none; }
+  .room-title { font-size: 10px; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+  .room-title .icon { font-size: 13px; }
+  .people { display: flex; flex-direction: column; gap: 2px; }
+  .person { font-size: 9px; color: #8aabcc; padding: 2px 6px; border-radius: 2px; background: #0a1220; border-left: 2px solid; }
+
+  .hq { background: #0d1a2e; } .hq .room-title { color: #4a9eff; } .hq .person { border-color: #4a9eff44; }
+  .lib { background: #0d1e15; } .lib .room-title { color: #4aff88; } .lib .person { border-color: #4aff8844; }
+  .lib2 { background: #0d1e15; } .lib2 .room-title { color: #2acc66; } .lib2 .person { border-color: #2acc6644; }
+  .analytics { background: #1a1400; } .analytics .room-title { color: #ffaa00; } .analytics .person { border-color: #ffaa0044; }
+  .media { background: #1a0d2e; } .media .room-title { color: #aa44ff; } .media .person { border-color: #aa44ff44; }
+  .money { background: #0d1a0d; } .money .room-title { color: #44ff44; } .money .person { border-color: #44ff4444; }
+  .promo { background: #1a1400; } .promo .room-title { color: #ffcc00; } .promo .person { border-color: #ffcc0044; }
+  .projects { background: #0d1a1a; } .projects .room-title { color: #44ffee; } .projects .person { border-color: #44ffee44; }
+
+  .technik-bar { max-width: 860px; width: 100%; border: 1px dashed #888; border-top: none; padding: 8px 16px; background: #0f0f0f; display: flex; align-items: center; gap: 12px; }
+  .technik-bar .t-icon { font-size: 18px; }
+  .technik-info { font-size: 10px; color: #888; }
+  .technik-info strong { color: #ccc; }
+  .pager { background: #222; border: 1px solid #555; padding: 2px 8px; border-radius: 10px; font-size: 9px; color: #aaa; margin-left: auto; }
+
+  .connections { max-width: 860px; width: 100%; margin-top: 16px; background: #0d1525; border: 1px solid #1e3a5a; padding: 12px 16px; }
+  .connections h3 { font-size: 9px; letter-spacing: 3px; color: #3a5070; margin-bottom: 8px; }
+  .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
+  .conn { font-size: 9px; color: #4a7a9a; }
+  .conn span { color: #4a9eff; }
+</style>
+</head>
+<body>
+
+<h1>⬡ WYRD WORLD — ШТАБ HQ</h1>
+<p class="subtitle">первое здание · мир начинается здесь · 30.05.2026</p>
+
+<div style="text-align:center;margin-bottom:10px;font-size:9px;letter-spacing:2px;font-family:'Courier New',monospace;">
+  <a href="WYRD_MAP.html" style="color:#4a9eff;text-decoration:none;">▦ ЗДАНИЕ</a>
+  <span style="color:#1a3050;margin:0 12px">·</span>
+  <a href="WYRD_GRID.html" style="color:#3a5a7a;text-decoration:none;">▣ СЕТКА</a>
+  <span style="color:#1a3050;margin:0 12px">·</span>
+  <a href="WYRD_AGENTS.html" style="color:#3a5a7a;text-decoration:none;">✦ ПАУТИНА</a>
+</div>
+<button class="toggle-btn" id="toggle-btn" onclick="toggleLinks()">⬡ НИТИ ВЫКЛ</button>
+
+<div id="map-container">
+<svg id="links-svg"></svg>
+
+<div class="hierarchy">
+  <div class="shef">👑 ШЕФ</div>
+  <div class="h-line-down"></div>
+  <div class="h-row">
+    <div class="h-branch">
+      <div class="h-branch-line"></div>
+      <div class="tomas-box">
+        <strong>🎙 ТОМАС</strong>
+        голос · уши · глаза<br>связь с Шефом
+      </div>
+    </div>
+    <div class="h-branch">
+      <div class="h-branch-line"></div>
+      <div class="audit-box">
+        <strong>⚖ АУДИТ</strong>
+        независимый контроль<br>проверяет всех
+        <div class="audit-tag">ТОЛЬКО ШЕФУ</div>
+      </div>
+    </div>
+  </div>
+  <div class="h-line-down"></div>
+</div>
+
+<div class="building-wrap">
+  <div class="building-label">▼ &nbsp; ШТАБ HQ — ПЕРВОЕ ЗДАНИЕ МИРА WYRD &nbsp; ▼</div>
+  <div class="building">
+
+    <div class="floor">
+      <div class="floor-label">3 ЭТАЖ</div>
+      <div class="floor-rooms">
+        <div class="room hq" id="room-hq" style="flex:2">
+          <div class="room-title"><span class="icon">🏛</span> ШТАБ HQ — КАБИНЕТ УПРАВЛЕНИЯ</div>
+          <div class="people">
+            <div class="person">🎙 Томас — руководитель, связь с Шефом</div>
+            <div class="person">🧠 Стратег — думает как строить мир</div>
+            <div class="person">📐 Архитектор — рисует чертежи, пишет ТЗ</div>
+            <div class="person">🗺 Картограф — следит за ветками мира</div>
+            <div class="person">💰 Казначей — финансы, внутренняя экономика</div>
+          </div>
+        </div>
+        <div class="room projects" id="room-projects">
+          <div class="room-title"><span class="icon">📋</span> ПРОЕКТНЫЙ ОТДЕЛ</div>
+          <div class="people">
+            <div class="person">ТЗ от HQ → задача Мозу</div>
+            <div class="person">следит за движением</div>
+            <div class="person">сдаёт в Аудит</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="floor">
+      <div class="floor-label">2 ЭТАЖ</div>
+      <div class="floor-rooms">
+        <div class="room lib" id="room-library" style="flex:2">
+          <div class="room-title"><span class="icon">📚</span> БИБЛИОТЕКА — ГЛАВНЫЙ ЗАЛ</div>
+          <div class="people">
+            <div class="person">📖 Главный Библиотекарь — точка входа всех запросов</div>
+            <div class="person">🗄 Архивариус — знает весь фонд, управляет читателями</div>
+            <div class="person">✍ Писатель-1 — резюмирует, связывает темы</div>
+            <div class="person">✍ Писатель-2 — резерв</div>
+            <div class="person">🌍 Скрайб — EN → RU перевод</div>
+            <div class="person">🧹 Мусорщик — чистит дубли и устаревшее</div>
+            <div class="person">🦅 Хугины + Почтальон — разведка снаружи</div>
+            <div class="person">😴 Читатели ×19 — спят без задачи</div>
+          </div>
+        </div>
+        <div class="room lib2" id="room-edu">
+          <div class="room-title"><span class="icon">🎓</span> ПРОФОБРАЗОВАНИЕ</div>
+          <div class="people">
+            <div class="person">закуток в Библиотеке</div>
+            <div class="person">пишут промты для ботов</div>
+            <div class="person">на основе реальных людей</div>
+          </div>
+        </div>
+        <div class="room analytics" id="room-analytics">
+          <div class="room-title"><span class="icon">📊</span> АНАЛИТИКА</div>
+          <div class="people">
+            <div class="person">метрики всего мира</div>
+            <div class="person">тренды внешнего рынка</div>
+            <div class="person">отчёты → HQ и Бабло</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="floor">
+      <div class="floor-label">1 ЭТАЖ</div>
+      <div class="floor-rooms">
+        <div class="room media" id="room-media">
+          <div class="room-title"><span class="icon">🎬</span> НЕЙРОЦЕХ</div>
+          <div class="people">
+            <div class="person">🎥 Студия — видео, рилсы</div>
+            <div class="person">📱 Instagram (будущее)</div>
+            <div class="person">медиа-ветки растут</div>
+          </div>
+        </div>
+        <div class="room money" id="room-money">
+          <div class="room-title"><span class="icon">💡</span> ОТДЕЛ БАБЛА</div>
+          <div class="people">
+            <div class="person">🔢 Финансы — просчёт идей</div>
+            <div class="person">💡 Идейный — генерация</div>
+            <div class="person">работают с Казначеем</div>
+          </div>
+        </div>
+        <div class="room promo" id="room-promo">
+          <div class="room-title"><span class="icon">📣</span> РЕКЛАМА</div>
+          <div class="people">
+            <div class="person">упаковка продуктов</div>
+            <div class="person">изучают площадки</div>
+            <div class="person">будущие кампании</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="technik-bar">
+    <div class="t-icon">🔧</div>
+    <div class="technik-info"><strong>ТЕХНИК</strong> — ходит по всем этажам · нет своего офиса · чинит когда сломалось</div>
+    <div class="pager">📟 ПЕЙДЖЕР</div>
+  </div>
+</div>
+
+<div style="max-width:860px; margin: 16px auto 0;">
+<div class="connections">
+  <h3>⬡ КЛЮЧЕВЫЕ СВЯЗИ</h3>
+  <div class="conn-grid">
+    <div class="conn"><span>Шеф</span> → Томас → Штаб HQ</div>
+    <div class="conn"><span>Отдел</span> → заявка → Библиотекарь → Архивариус</div>
+    <div class="conn"><span>HQ</span> → ТЗ → Проектный → Моз → Аудит</div>
+    <div class="conn"><span>Архивариус</span> → задача → Читатели</div>
+    <div class="conn"><span>Хугины</span> → Карантин → Библиотека</div>
+    <div class="conn"><span>Аналитика</span> → данные → HQ + Бабло</div>
+    <div class="conn"><span>Идейный</span> → просчёт → Финансы → Казначей</div>
+    <div class="conn"><span>Аудит</span> → только Шефу (независимый)</div>
+    <div class="conn"><span>Техник</span> → пейджер → любой этаж</div>
+    <div class="conn"><span>Профобразование</span> → промты → Томас</div>
+  </div>
+</div>
+</div>
+
+</div><!-- /map-container -->
+
+<script src="wyrd_connections.js"></script>
+</body>
+</html>
