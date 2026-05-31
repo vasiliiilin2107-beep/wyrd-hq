@@ -40,7 +40,113 @@
       flex: 1;
       border: none;
       background: transparent;
-      filter: hue-rotate(0deg);
+    }
+
+    /* Статус-карточки */
+    .thomas-stat {
+      background: rgba(10,10,30,0.7);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 160px;
+    }
+    .thomas-stat-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .thomas-stat-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .thomas-stat-sub {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+    .pulse-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #555;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .pulse-dot.alive { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+    .pulse-dot.warn  { background: #ffaa00; box-shadow: 0 0 6px #ffaa00; }
+
+    /* Лента мыслей */
+    .thought-item {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .thought-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .thought-type {
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .t-patrol  { background: rgba(59,130,246,0.2);  color: #60a5fa; }
+    .t-idea    { background: rgba(16,185,129,0.2);  color: #34d399; }
+    .t-council { background: rgba(139,92,246,0.2);  color: #a78bfa; }
+    .t-risk    { background: rgba(239,68,68,0.2);   color: #f87171; }
+    .t-ok      { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+    .thought-time {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+    .thought-body {
+      font-size: 0.72rem;
+      color: #c8d0e0;
+      line-height: 1.5;
+    }
+    .thought-body strong { color: #fff; }
+
+    /* Council sessions */
+    .council-item {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .council-topic {
+      font-size: 0.72rem;
+      color: #c8d0e0;
+      margin-bottom: 4px;
+    }
+    .council-verdict {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+    .status-badge {
+      font-size: 0.6rem;
+      padding: 1px 6px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .sb-verdict  { background: rgba(139,92,246,0.2); color: #a78bfa; }
+    .sb-thinking { background: rgba(251,191,36,0.2);  color: #fcd34d; }
+    .sb-error    { background: rgba(239,68,68,0.2);   color: #f87171; }
+
+    .empty-hint {
+      color: var(--text-dim);
+      font-size: 0.65rem;
+      padding: 12px 0;
     }
   </style>
 </head>
@@ -53,9 +159,9 @@
       <a href="/" class="topbar-logo">WYRD</a>
       <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ ТОМАС</span>
       <div class="topbar-sep"></div>
-      <div class="topbar-status">
-        <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
-        <span style="color:var(--blue)">СТРАЖ АКТИВЕН</span>
+      <div class="topbar-status" id="topbar-status">
+        <span class="dot" style="background:#555"></span>
+        <span style="color:var(--text-dim)">ЗАГРУЗКА...</span>
       </div>
       <div class="topbar-time" id="clock">--:--:-- МСК</div>
     </header>
@@ -68,47 +174,58 @@
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
     </nav>
 
-    <!-- Главная область — статус + события -->
-    <main class="main-area">
+    <!-- Главная область -->
+    <main class="main-area" style="overflow-y:auto">
+
+      <!-- Статус строка -->
       <div>
-        <div class="section-title">СТАТУС</div>
-        <div class="branches-grid">
-          <div class="branch-card" style="--node-color:#3b82f6">
-            <div class="branch-name">ТОМАС</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></span>
-              Telegram + веб-чат
+        <div class="section-title">СТАТУС ТОМАСА</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap" id="status-cards">
+          <div class="thomas-stat">
+            <div class="thomas-stat-label">Пульс</div>
+            <div class="thomas-stat-value" id="stat-pulse" style="display:flex;align-items:center">
+              <span class="pulse-dot" id="pulse-dot"></span>
+              <span id="pulse-ago">—</span>
             </div>
-            <div class="branch-last">Следит за всем миром. Не спит.</div>
+            <div class="thomas-stat-sub" id="stat-task">—</div>
           </div>
-          <div class="branch-card" style="--node-color:#10b981">
-            <div class="branch-name">QDRANT ПАМЯТЬ</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></span>
-              bge-small-en-v1.5
-            </div>
-            <div class="branch-last">/memory — семантический поиск</div>
+          <div class="thomas-stat">
+            <div class="thomas-stat-label">Патрули (последний)</div>
+            <div class="thomas-stat-value" id="stat-patrol-time">—</div>
+            <div class="thomas-stat-sub" id="stat-patrol-count">0 за всё время</div>
           </div>
-          <div class="branch-card" style="--node-color:#f59e0b">
-            <div class="branch-name">REDIS SUB</div>
-            <div class="branch-status">
-              <span class="dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></span>
-              wyrd.events
-            </div>
-            <div class="branch-last">Мгновенные алерты в Telegram</div>
+          <div class="thomas-stat">
+            <div class="thomas-stat-label">Сессии Совета</div>
+            <div class="thomas-stat-value" id="stat-council">—</div>
+            <div class="thomas-stat-sub" id="stat-council-sub">всего запущено</div>
+          </div>
+          <div class="thomas-stat">
+            <div class="thomas-stat-label">Идеи сегодня</div>
+            <div class="thomas-stat-value" id="stat-ideas">—</div>
+            <div class="thomas-stat-sub">thomas_think</div>
           </div>
         </div>
       </div>
 
-      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
-        <div class="section-title">ЛЕНТА ДЕЙСТВИЙ</div>
-        <div id="event-feed-thomas" style="display:flex;flex-direction:column;gap:0;overflow-y:auto;flex:1">
-          <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+      <!-- Мысли Томаса -->
+      <div style="margin-top:20px">
+        <div class="section-title">МЫСЛИ И ДЕЙСТВИЯ</div>
+        <div id="thoughts-feed">
+          <div class="empty-hint">Загрузка...</div>
         </div>
       </div>
+
+      <!-- Сессии Совета -->
+      <div style="margin-top:20px">
+        <div class="section-title">ПОСЛЕДНИЕ СЕССИИ СОВЕТА</div>
+        <div id="council-feed">
+          <div class="empty-hint">Загрузка...</div>
+        </div>
+      </div>
+
     </main>
 
-    <!-- Чат Томаса — встроен iframe -->
+    <!-- Чат Томаса -->
     <div class="chat-panel">
       <div class="chat-header">
         <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
@@ -125,35 +242,160 @@
 
   <script src="/assets/js/hq.js"></script>
   <script>
-    async function loadThomasActions() {
-      const feed = document.getElementById('event-feed-thomas');
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    function fmtTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const today = new Date();
+      if (d.toDateString() === today.toDateString()) return 'сегодня ' + fmtTime(iso);
+      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ' ' + fmtTime(iso);
+    }
+
+    // ── Пульс ─────────────────────────────────────────────────────────────────
+
+    async function loadPulse() {
       try {
-        const res  = await fetch('/events?limit=30');
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.events || [];
+        const r = await fetch('/civilization/agents');
+        const data = await r.json();
+        const thomas = (data.agents || []).find(a => a.name === 'thomas');
+        if (!thomas) return;
+
+        const dot = document.getElementById('pulse-dot');
+        const ago = document.getElementById('pulse-ago');
+        const task = document.getElementById('stat-task');
+        const topbar = document.getElementById('topbar-status');
+
+        const pAgo = thomas.pulse_ago;
+        const isAlive = thomas.last_pulse && (Date.now() - new Date(thomas.last_pulse + 'Z').getTime()) < 20 * 60 * 1000;
+
+        dot.className = 'pulse-dot ' + (isAlive ? 'alive' : 'warn');
+        ago.textContent = pAgo || 'нет данных';
+        task.textContent = thomas.current_task || 'задача не указана';
+
+        topbar.innerHTML = isAlive
+          ? '<span class="dot" style="background:#00ff88;box-shadow:0 0 6px #00ff88"></span><span style="color:#00ff88">СТРАЖ АКТИВЕН</span>'
+          : '<span class="dot" style="background:#ffaa00;box-shadow:0 0 6px #ffaa00"></span><span style="color:#ffaa00">СТРАЖ МОЛЧИТ</span>';
+      } catch(e) {}
+    }
+
+    // ── События Томаса ────────────────────────────────────────────────────────
+
+    const TYPE_MAP = {
+      'thomas_patrol': { cls: 't-patrol', label: 'Патруль', key: 'summary' },
+      'thomas_idea':   { cls: 't-idea',   label: 'Идея',    key: 'title'   },
+      'thomas_risk':   { cls: 't-risk',   label: 'Риск',    key: 'title'   },
+      'thomas_ok':     { cls: 't-ok',     label: 'ОК',      key: 'summary' },
+    };
+
+    async function loadThoughts() {
+      const feed = document.getElementById('thoughts-feed');
+      try {
+        const r = await fetch('/events?limit=200');
+        const data = await r.json();
+        const all = Array.isArray(data) ? data : (data.events || []);
+
+        // Фильтр — только события Томаса
+        const thomas_events = all.filter(e => e.type && e.type.startsWith('thomas_'));
+
+        // Статистика патрулей
+        const patrols = thomas_events.filter(e => e.type === 'thomas_patrol');
+        document.getElementById('stat-patrol-count').textContent = patrols.length + ' патрулей';
+        if (patrols.length) {
+          document.getElementById('stat-patrol-time').textContent = fmtDate(patrols[0].created_at);
+        }
+
+        // Идеи
+        const ideas = thomas_events.filter(e => e.type === 'thomas_idea');
+        const today = new Date().toDateString();
+        const ideasToday = ideas.filter(e => new Date(e.created_at).toDateString() === today);
+        document.getElementById('stat-ideas').textContent = ideasToday.length || ideas.length;
+
         feed.innerHTML = '';
-        if (!list.length) {
-          feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Событий пока нет</div>';
+        if (!thomas_events.length) {
+          feed.innerHTML = '<div class="empty-hint">Томас ещё не записал ни одной мысли</div>';
           return;
         }
-        list.slice().reverse().forEach(e => {
+
+        thomas_events.forEach(e => {
+          const meta = TYPE_MAP[e.type] || { cls: 't-patrol', label: e.type, key: 'summary' };
+          const p = e.payload || {};
+          const text = p[meta.key] || p.summary || p.title || p.body || JSON.stringify(p).slice(0, 200);
+
           const item = document.createElement('div');
-          item.className = 'feed-item';
-          const time = e.created_at ? new Date(e.created_at).toLocaleTimeString('ru-RU',{hour12:false}) : '';
+          item.className = 'thought-item';
           item.innerHTML = `
-            <div class="feed-type type-${(e.type||'info').replace(/[.\-]/g,'_')}" style="color:var(--blue)">${(e.type||'info').toUpperCase()}</div>
-            <div class="feed-branch">${e.branch_name || e.branch || '—'}</div>
-            <div class="feed-payload">${e.payload ? JSON.stringify(e.payload).slice(0,150) : ''}</div>
-            <div class="feed-time">${time}</div>
+            <div class="thought-meta">
+              <span class="thought-type ${meta.cls}">${meta.label}</span>
+              <span class="thought-time">${fmtDate(e.created_at)}</span>
+            </div>
+            <div class="thought-body">${text}</div>
           `;
           feed.appendChild(item);
         });
-      } catch {
-        feed.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Нет данных</div>';
+      } catch(e) {
+        feed.innerHTML = '<div class="empty-hint">Нет данных</div>';
       }
     }
-    document.addEventListener('DOMContentLoaded', loadThomasActions);
-    setInterval(loadThomasActions, 15000);
+
+    // ── Сессии Совета ─────────────────────────────────────────────────────────
+
+    async function loadCouncil() {
+      const feed = document.getElementById('council-feed');
+      const stat = document.getElementById('stat-council');
+      try {
+        const r = await fetch('/council/sessions?limit=10');
+        const data = await r.json();
+        const sessions = data.sessions || data || [];
+        stat.textContent = sessions.length;
+
+        feed.innerHTML = '';
+        if (!sessions.length) {
+          feed.innerHTML = '<div class="empty-hint">Совет ещё не собирался</div>';
+          return;
+        }
+
+        sessions.forEach(s => {
+          const statusMap = {
+            verdict: { cls: 'sb-verdict', label: 'Вердикт' },
+            thinking: { cls: 'sb-thinking', label: 'Думает' },
+            error: { cls: 'sb-error', label: 'Ошибка' },
+          };
+          const st = statusMap[s.status] || { cls: 'sb-thinking', label: s.status };
+          const verdict = s.verdict ? (s.verdict.thomas_brief || s.verdict.summary || '') : '';
+          const briefSnippet = verdict.slice(0, 220);
+
+          const item = document.createElement('div');
+          item.className = 'council-item';
+          item.innerHTML = `
+            <div class="thought-meta" style="margin-bottom:6px">
+              <span class="status-badge ${st.cls}">${st.label}</span>
+              <span class="thought-time">${fmtDate(s.created_at)}</span>
+            </div>
+            <div class="council-topic">${(s.idea_text || '').slice(0, 120)}</div>
+            ${briefSnippet ? `<div class="council-verdict">${briefSnippet}${verdict.length > 220 ? '…' : ''}</div>` : ''}
+          `;
+          feed.appendChild(item);
+        });
+      } catch(e) {
+        feed.innerHTML = '<div class="empty-hint">Нет данных</div>';
+      }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    async function refresh() {
+      await Promise.all([loadPulse(), loadThoughts(), loadCouncil()]);
+    }
+
+    document.addEventListener('DOMContentLoaded', refresh);
+    setInterval(refresh, 20000);
   </script>
 </body>
 </html>
