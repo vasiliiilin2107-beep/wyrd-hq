@@ -122,10 +122,10 @@ function _renderMd(text) {
     if (line.startsWith('# '))  { html += `<div style="font-size:.85rem;font-weight:700;margin:12px 0 6px;color:#f8fafc">${esc(line.slice(2))}</div>`; continue; }
     if (line.startsWith('## ')) { html += `<div style="font-size:.75rem;font-weight:700;margin:10px 0 5px;color:#e2e8f0;border-bottom:1px solid var(--border);padding-bottom:3px">${esc(line.slice(3))}</div>`; continue; }
     if (line.startsWith('### ')){ html += `<div style="font-size:.68rem;font-weight:700;margin:8px 0 4px;color:#cbd5e1">${esc(line.slice(4))}</div>`; continue; }
-    if (line.startsWith('> '))  { html += `<div style="border-left:3px solid var(--accent);padding:4px 10px;color:var(--text-dim);font-size:.62rem;margin:4px 0">${_inlineMd(line.slice(2))}</div>`; continue; }
-    if (line.startsWith('- '))  { html += `<div style="font-size:.63rem;padding:1px 0 1px 12px;color:#e2e8f0">• ${_inlineMd(line.slice(2))}</div>`; continue; }
+    if (line.startsWith('> '))  { html += `<div style="border-left:3px solid #4a9eff;padding:4px 10px;color:#94a3b8;font-size:.62rem;margin:4px 0">${_inlineMd(line.slice(2))}</div>`; continue; }
+    if (line.startsWith('- '))  { html += `<div style="font-size:.63rem;padding:1px 0 1px 12px;color:#f1f5f9">• ${_inlineMd(line.slice(2))}</div>`; continue; }
 
-    html += `<div style="font-size:.63rem;line-height:1.6;color:#e2e8f0;margin:2px 0">${_inlineMd(line)}</div>`;
+    html += `<div style="font-size:.63rem;line-height:1.6;color:#f1f5f9;margin:2px 0">${_inlineMd(line)}</div>`;
   }
   if (inCode) html += '</pre>';
   if (inTable) html += '</table>';
