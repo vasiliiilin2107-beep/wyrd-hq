@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 
-router = APIRouter(prefix="/world", tags=["world"])
+router = APIRouter(prefix="/api/world", tags=["world"])
 
 DOCS_ROOT = Path(__file__).parent.parent / "static" / "world" / "docs"
 

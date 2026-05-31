@@ -6,7 +6,7 @@ let _worldActiveAgent = null;
 
 async function loadWorld() {
   try {
-    const r = await fetch('/world/departments');
+    const r = await fetch('/api/world/departments');
     const data = await r.json();
     _worldDepts = data.departments || [];
     _renderWorldDepts();
@@ -60,7 +60,7 @@ async function selectWorldDept(deptId) {
   }
 
   // Загрузить файл отдела
-  await _loadWorldContent(`/world/departments/${encodeURIComponent(deptId)}`);
+  await _loadWorldContent(`/api/world/departments/${encodeURIComponent(deptId)}`);
 }
 
 async function selectWorldAgent(agentId) {
@@ -70,7 +70,7 @@ async function selectWorldAgent(agentId) {
     el.style.background = el.id === `world-agent-btn-${agentId}` ? 'rgba(255,255,255,.1)' : '';
   });
 
-  await _loadWorldContent(`/world/agents/${encodeURIComponent(agentId)}`);
+  await _loadWorldContent(`/api/world/agents/${encodeURIComponent(agentId)}`);
 }
 
 async function _loadWorldContent(url) {
