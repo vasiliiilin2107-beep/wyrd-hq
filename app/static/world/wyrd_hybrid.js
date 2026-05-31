@@ -159,8 +159,15 @@ pg.append('stop').attr('offset','0.4').attr('stop-color','#4a9eff').attr('stop-o
 pg.append('stop').attr('offset','0.6').attr('stop-color','#4a9eff').attr('stop-opacity',0.18);
 pg.append('stop').attr('offset','1').attr('stop-color','#4a9eff').attr('stop-opacity',0);
 
+// ─── ZOOM CONTAINER ───────────────────────────────────────────
+const zoomG = svg.append('g');
+const zoom = d3.zoom().scaleExtent([0.15, 4])
+  .on('zoom', ({transform}) => zoomG.attr('transform', transform));
+svg.call(zoom).on('dblclick.zoom', null);
+if (W < 700) svg.call(zoom.transform, d3.zoomIdentity.scale(Math.max(0.28, W/1100)));
+
 // ─── СЛОЙ 1: КОМНАТЫ ──────────────────────────────────────────
-const roomG = svg.append('g');
+const roomG = zoomG.append('g');
 const roomRects = roomG.selectAll('g').data(ROOMS).join('g').style('cursor','pointer');
 
 roomRects.append('rect')
@@ -174,7 +181,7 @@ roomRects.append('text')
   .text(d=>d.label);
 
 // ─── СЛОЙ 2: ПАУТИНА СВЯЗЕЙ ───────────────────────────────────
-const linkG = svg.append('g');
+const linkG = zoomG.append('g');
 const linkEls = linkG.selectAll('path').data(resolvedLinks).join('path')
   .attr('fill','none').attr('stroke-width',1.2)
   .attr('d',d=>d.path)
@@ -184,7 +191,7 @@ const linkEls = linkG.selectAll('path').data(resolvedLinks).join('path')
   .attr('marker-end',d=>linkGhost(d)?'url(#arr-ghost)':`url(#arr-${d.type})`);
 
 // ─── СЛОЙ 3: АГЕНТЫ ───────────────────────────────────────────
-const agentG = svg.append('g');
+const agentG = zoomG.append('g');
 const agentEls = agentG.selectAll('g').data(AGENTS).join('g')
   .attr('transform',d=>`translate(${d.x},${d.y})`).style('cursor','pointer');
 
@@ -236,7 +243,7 @@ activeLinks.forEach((lnk,i)=>{
   const n=lnk.type==='knowledge'?2:1;
   for(let k=0;k<n;k++) particles.push({li:i,t:Math.random(),spd:.0018+Math.random()*.003});
 });
-const partG = svg.append('g');
+const partG = zoomG.append('g');
 const partEls = partG.selectAll('circle').data(particles).join('circle')
   .attr('r',2.5).attr('filter','url(#glow)').attr('fill',d=>LC[activeLinks[d.li].type]);
 
@@ -334,3 +341,6 @@ d3.timer(el=>{
   partEls.attr('cx',d=>ptOnQuad(activeLinks[d.li],d.t).x)
          .attr('cy',d=>ptOnQuad(activeLinks[d.li],d.t).y);
 });
+
+function zoomBy(k){ svg.transition().duration(260).call(zoom.scaleBy, k); }
+function zoomReset(){ svg.transition().duration(320).call(zoom.transform, d3.zoomIdentity.scale(W<700?Math.max(0.28,W/1100):1)); }

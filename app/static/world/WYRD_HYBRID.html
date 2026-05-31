@@ -6,7 +6,10 @@
 <title>WYRD — Гибрид</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#060a14; overflow:hidden; font-family:'Courier New',monospace; }
+  body { background:#060a14; overflow:hidden; font-family:'Courier New',monospace; touch-action:none; }
+  #zoom-btns { position:fixed; right:14px; bottom:52px; display:flex; flex-direction:column; gap:5px; z-index:30; }
+  .zbtn { background:rgba(10,20,40,.75); border:1px solid #4a9eff44; color:#4a9eff99; font-size:15px; width:32px; height:32px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); transition:all .15s; }
+  .zbtn:hover,.zbtn:active { border-color:#4a9eff; color:#4a9eff; }
   #graph { display:block; }
   #nav { position:fixed; top:12px; left:50%; transform:translateX(-50%);
     display:flex; gap:20px; font-size:9px; letter-spacing:2px; z-index:10; }
@@ -36,6 +39,11 @@
 </div>
 <div id="tooltip"></div>
 <div id="mode-hint">нажми на комнату или агента</div>
+<div id="zoom-btns">
+  <button class="zbtn" onclick="zoomBy(1.35)" title="Увеличить">+</button>
+  <button class="zbtn" onclick="zoomBy(0.74)" title="Уменьшить">−</button>
+  <button class="zbtn" onclick="zoomReset()" title="По центру">⊙</button>
+</div>
 <svg id="graph"></svg>
 <div id="legend">
   <div class="leg"><div class="leg-dot" style="background:#4a9eff"></div><span style="color:#4a9eff">команда</span></div>
