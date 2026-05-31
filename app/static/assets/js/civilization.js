@@ -34,12 +34,12 @@ async function loadCivilization() {
 async function loadAgents() {
   const el = document.getElementById('civ-agents-list');
   if (!el) return;
-  el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>';
+  if (!el.children.length) el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>';
   try {
     const data = await fetch('/civilization/agents').then(r => r.json());
     renderAgents(data.agents || []);
   } catch {
-    el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Ошибка загрузки</div>';
+    if (!el.children.length) el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Ошибка загрузки</div>';
   }
 }
 
@@ -150,6 +150,7 @@ const openSessions = new Set();
 async function loadSessions() {
   const el = document.getElementById('civ-sessions-list');
   if (!el) return;
+  if (openSessions.size > 0) return;
   try {
     const data = await fetch('/council/sessions?limit=10').then(r => r.json());
     renderSessions(data.sessions || []);
