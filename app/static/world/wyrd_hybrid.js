@@ -21,9 +21,9 @@ const AGENTS = [
   {id:'bibliotekar', e:'📖',n:'БИБЛИОТЕКАРЬ',  room:'lib',   s:'ghost',  d:'Единственная точка входа запросов.'},
   {id:'arhivarius',  e:'🗄',n:'АРХИВАРИУС',    room:'lib',   s:'ghost',  d:'Знает весь фонд. Управляет читателями.'},
   {id:'pisatel',     e:'✍', n:'ПИСАТЕЛЬ',      room:'lib',   s:'ghost',  d:'Резюмирует и связывает темы.'},
-  {id:'skrayb',      e:'🌍',n:'СКРАЙБ',        room:'lib',   s:'live',   d:'✅ Работает. Переводит EN→RU.'},
+  {id:'skrayb',      e:'🌍',n:'СКРАЙБ',        room:'lib',   s:'ready',  d:'Переводит EN→RU. Горит когда активен.'},
   {id:'musorschik',  e:'🧹',n:'МУСОРЩИК',      room:'lib',   s:'ghost',  d:'Чистит дубли. Не создан.'},
-  {id:'hugin',       e:'🦅',n:'ХУГИН',         room:'lib',   s:'live',   d:'✅ Работает. Разведчик снаружи.'},
+  {id:'hugin',       e:'🦅',n:'ХУГИН',         room:'lib',   s:'ready',  d:'Разведчик снаружи. Горит когда активен.'},
   {id:'chitatel',    e:'😴',n:'ЧИТАТЕЛИ×19',   room:'lib',   s:'pause',  d:'⛔ Спят. Остановлены с 30.05.'},
   {id:'profobr',     e:'🎓',n:'ПРОФОБР',       room:'lib',   s:'ready',  d:'Промпты Совета 100/100 готовы.'},
   {id:'analitika',   e:'📊',n:'АНАЛИТИКА',     room:'anlt',  s:'ghost',  d:'Метрики и тренды. Не создан.'},
@@ -406,7 +406,7 @@ async function fetchLiveStatus() {
       const newS = isLive ? 'live' : 'pause';
       if (agent.s !== newS) { agent.s = newS; changed = true; }
     });
-    if (changed) refreshAgentVisuals();
+    refreshAgentVisuals();
   } catch {}
 }
 
