@@ -344,3 +344,60 @@ d3.timer(el=>{
 
 function zoomBy(k){ svg.transition().duration(260).call(zoom.scaleBy, k); }
 function zoomReset(){ svg.transition().duration(320).call(zoom.transform, d3.zoomIdentity.scale(W<700?Math.max(0.28,W/1100):1)); }
+
+// ─── LIVE STATUS FROM DB ──────────────────────────────────
+const DB_AGENT_MAP = {
+  thomas:  'tomas',
+  technik: 'tehnik',
+  studio:  'studiya',
+  scribe:  'skrayb',
+};
+
+function refreshAgentVisuals() {
+  normalEls.select('rect:first-child')
+    .attr('stroke-dasharray', d => SS[d.s].dash)
+    .attr('opacity', d => SS[d.s].op)
+    .attr('filter', d => d.s === 'ghost' ? null : 'url(#glow)');
+
+  normalEls.select('rect:nth-child(2)')
+    .attr('opacity', d => d.s === 'ghost' ? .05 : .22);
+
+  normalEls.select('text:first-of-type')
+    .attr('opacity', d => SS[d.s].op);
+
+  normalEls.select('text:nth-of-type(2)')
+    .attr('fill', d => d.s === 'ghost' ? '#444' : roomColor(d))
+    .attr('opacity', d => SS[d.s].op);
+
+  normalEls.select('circle')
+    .attr('fill', d => SS[d.s].dot)
+    .attr('opacity', d => d.s === 'ghost' ? .3 : 1)
+    .attr('filter', d => d.s === 'live' ? 'url(#glow)' : null);
+
+  linkEls
+    .attr('stroke', d => linkGhost(d) ? '#252525' : LC[d.type])
+    .attr('opacity', d => linkGhost(d) ? .09 : linkPending(d) ? .30 : .38)
+    .attr('stroke-dasharray', d => linkGhost(d) ? '4,5' : linkPending(d) ? '7,3' : null)
+    .attr('marker-end', d => linkGhost(d) ? 'url(#arr-ghost)' : `url(#arr-${d.type})`);
+}
+
+async function fetchLiveStatus() {
+  try {
+    const data = await fetch('/civilization/agents').then(r => r.json());
+    let changed = false;
+    (data.agents || []).forEach(a => {
+      const jsId = DB_AGENT_MAP[a.name];
+      if (!jsId) return;
+      const agent = agentMap[jsId];
+      if (!agent || agent.s === 'ghost') return;
+      const isLive = a.status === 'active' && a.last_pulse &&
+        (Date.now() - new Date(a.last_pulse).getTime()) < 300_000;
+      const newS = isLive ? 'live' : 'pause';
+      if (agent.s !== newS) { agent.s = newS; changed = true; }
+    });
+    if (changed) refreshAgentVisuals();
+  } catch {}
+}
+
+fetchLiveStatus();
+setInterval(fetchLiveStatus, 30_000);
