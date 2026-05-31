@@ -218,6 +218,7 @@ const MSG_CLASS = {
   strategist:   'civ-msg-strategist',
   architect:    'civ-msg-architect',
   cartographer: 'civ-msg-cartographer',
+  thomas:       'civ-msg-thomas',
 };
 
 async function loadDialog(sessionId) {
