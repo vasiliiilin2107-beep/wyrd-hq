@@ -213,6 +213,27 @@ async def _llm(system: str, messages: list[dict]) -> str:
         return f"[ошибка LLM: {e}]"
 
 
+async def _library_search(query: str) -> str:
+    library_url = os.environ.get("LIBRARY_URL", "http://at23vp1rnqm4koa2ufqvlm0d.147.45.212.155.sslip.io").rstrip("/")
+    token = os.environ.get("WYRD_INTERNAL_TOKEN", "")
+    headers = {"x-wyrd-token": token} if token else {}
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(f"{library_url}/knowledge/search", params={"q": query, "limit": 5}, headers=headers)
+        items = r.json().get("results", [])
+        if not items:
+            return ""
+        lines = ["=== ЗНАНИЯ ИЗ БИБЛИОТЕКИ (релевантные теме) ==="]
+        for item in items:
+            title = item.get("title") or item.get("source", "—")
+            body = item.get("summary") or item.get("text") or item.get("content", "")
+            lines.append(f"• {title}: {str(body)[:300]}")
+        return "\n".join(lines)
+    except Exception as e:
+        log.warning("Library search failed: %s", e)
+        return ""
+
+
 async def _world_snapshot() -> str:
     async with SessionLocal() as db:
         agents = (await db.execute(select(Agent))).scalars().all()
@@ -257,7 +278,11 @@ async def _save_msg(session_id: int, speaker: str, message: str) -> None:
 async def run_council_dialog(session_id: int, idea: str) -> None:
     try:
         snapshot = await _world_snapshot()
-        ctx = f"Состояние мира:\n{snapshot}\n\nТема обсуждения: {idea}"
+        library_ctx = await _library_search(idea)
+        ctx = f"Состояние мира:\n{snapshot}"
+        if library_ctx:
+            ctx += f"\n\n{library_ctx}"
+        ctx += f"\n\nТема обсуждения: {idea}"
 
         async with SessionLocal() as db:
             s = await db.get(CouncilSession, session_id)
