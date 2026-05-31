@@ -89,6 +89,7 @@ SPEAKER_LABEL = {
     "strategist":   "🎯 Стратег",
     "architect":    "🏗️ Архитектор",
     "cartographer": "🗺️ Картограф",
+    "thomas":       "🎙️ Томас",
 }
 
 
