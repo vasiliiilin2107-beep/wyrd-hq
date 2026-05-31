@@ -6,7 +6,10 @@
 <title>WYRD — Сетка агентов</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #060a14; overflow: hidden; font-family: 'Courier New', monospace; }
+  body { background: #060a14; overflow: hidden; font-family: 'Courier New', monospace; touch-action:none; }
+  #zoom-btns{position:fixed;right:14px;bottom:52px;display:flex;flex-direction:column;gap:5px;z-index:30}
+  .zbtn{background:rgba(10,20,40,.75);border:1px solid #4a9eff44;color:#4a9eff99;font-size:15px;width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:all .15s}
+  .zbtn:hover,.zbtn:active{border-color:#4a9eff;color:#4a9eff}
   #graph { display: block; }
   .node-emoji { font-size: 16px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
   .node-name  { font-size: 7.5px; text-anchor: middle; letter-spacing: 1px; pointer-events: none; }
@@ -25,6 +28,9 @@
   #tooltip { position: fixed; background: #0d1525ee; border: 1px solid #4a9eff55;
     color: #e0e8ff; font-size: 10px; padding: 7px 12px; border-radius: 3px;
     pointer-events: none; display: none; max-width: 220px; line-height: 1.5; }
+  #focus-hint { position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+    color: #ff8800; font-size: 9px; letter-spacing: 2px; opacity: 0;
+    transition: opacity .3s; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -36,6 +42,12 @@
   <a class="nav-a" href="WYRD_AGENTS.html">✦ ПАУТИНА</a>
 </div>
 <div id="tooltip"></div>
+<div id="focus-hint"></div>
+<div id="zoom-btns">
+  <button class="zbtn" onclick="zoomBy(1.35)">+</button>
+  <button class="zbtn" onclick="zoomBy(0.74)">−</button>
+  <button class="zbtn" onclick="zoomReset()">⊙</button>
+</div>
 <svg id="graph"></svg>
 <div id="legend">
   <div class="leg"><div class="leg-dot" style="background:#4a9eff"></div><span style="color:#4a9eff">команда</span></div>
@@ -43,7 +55,9 @@
   <div class="leg"><div class="leg-dot" style="background:#ffaa00"></div><span style="color:#ffaa00">отчёт</span></div>
   <div class="leg"><div class="leg-dot" style="background:#44ff44"></div><span style="color:#44ff44">деньги</span></div>
   <div class="leg"><div class="leg-dot" style="background:#cc44ff"></div><span style="color:#cc44ff">контент</span></div>
+  <div class="leg"><div class="leg-dot" style="background:#ff8800;animation:blink 1s infinite alternate"></div><span style="color:#ff8800">строится</span></div>
 </div>
+<style>@keyframes blink{from{opacity:.2}to{opacity:1}}</style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="wyrd_grid.js"></script>
 </body>
