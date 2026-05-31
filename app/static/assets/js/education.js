@@ -114,8 +114,26 @@ async function showPrompt(agentId) {
     }
   }
   const data = _cachedPrompts[agentId];
-  if (!data) return;
-  showWorldModal(`${data.icon} Промпт: ${data.name}`, data.prompt);
+  if (!data) { alert('Промпт не найден: ' + agentId); return; }
+  _showEduModal(`${data.icon} Промпт: ${data.name}`, data.prompt);
+}
+
+function _showEduModal(title, text) {
+  let m = document.getElementById('edu-prompt-modal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'edu-prompt-modal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+    m.addEventListener('click', function(e){ if(e.target===m) m.remove(); });
+    document.body.appendChild(m);
+  }
+  m.innerHTML = `<div style="background:#1e293b;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:100%;max-width:700px;padding:20px;margin:auto;position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:.8rem;font-weight:700;color:#f8fafc">${title}</div>
+      <button onclick="document.getElementById('edu-prompt-modal').remove()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.3rem;line-height:1">✕</button>
+    </div>
+    <pre style="font-size:.6rem;line-height:1.8;color:#e2e8f0;white-space:pre-wrap;max-height:70vh;overflow-y:auto;font-family:monospace;margin:0">${text.replace(/</g,'&lt;')}</pre>
+  </div>`;
 }
 
 async function applyCouncilPrompts() {
