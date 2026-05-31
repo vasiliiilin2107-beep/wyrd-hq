@@ -338,8 +338,13 @@ d3.timer(el=>{
   const pulse=0.3+0.7*(0.5+0.5*Math.sin(t*2.3));
   pendingEl.select('rect').attr('opacity',pulse).attr('stroke-width',1.2+pulse*2);
   particles.forEach(pt=>{pt.t=(pt.t+pt.spd)%1;});
-  partEls.attr('cx',d=>ptOnQuad(activeLinks[d.li],d.t).x)
-         .attr('cy',d=>ptOnQuad(activeLinks[d.li],d.t).y);
+  partEls
+    .attr('opacity', d => {
+      const l = activeLinks[d.li];
+      return (agentMap[l.s]?.s==='live' || agentMap[l.t]?.s==='live') ? 1 : 0;
+    })
+    .attr('cx',d=>ptOnQuad(activeLinks[d.li],d.t).x)
+    .attr('cy',d=>ptOnQuad(activeLinks[d.li],d.t).y);
 });
 
 function zoomBy(k){ svg.transition().duration(260).call(zoom.scaleBy, k); }
@@ -376,7 +381,13 @@ function refreshAgentVisuals() {
 
   linkEls
     .attr('stroke', d => linkGhost(d) ? '#252525' : LC[d.type])
-    .attr('opacity', d => linkGhost(d) ? .09 : linkPending(d) ? .30 : .38)
+    .attr('opacity', d => {
+      if (linkGhost(d)) return .09;
+      if (linkPending(d)) return .18;
+      const srcLive = agentMap[d.s]?.s === 'live';
+      const tgtLive = agentMap[d.t]?.s === 'live';
+      return (srcLive || tgtLive) ? .55 : .10;
+    })
     .attr('stroke-dasharray', d => linkGhost(d) ? '4,5' : linkPending(d) ? '7,3' : null)
     .attr('marker-end', d => linkGhost(d) ? 'url(#arr-ghost)' : `url(#arr-${d.type})`);
 }
