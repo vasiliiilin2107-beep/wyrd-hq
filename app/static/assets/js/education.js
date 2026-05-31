@@ -58,12 +58,14 @@ function _renderEduAgents() {
           <div style="font-size:.7rem;font-weight:700;letter-spacing:.1em">${a.name}</div>
           <div style="font-size:.55rem;color:var(--text-dim)">цикл ${cycle} | ${ts}</div>
         </div>
-        <div style="margin-left:auto;font-size:.8rem;font-weight:700;color:${barColor}">${scoreLabel} ${score}/100</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <button onclick="showPrompt('${a.id}')" style="font-size:.55rem;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--text-dim)">📋 Промпт</button>
+          <span style="font-size:.8rem;font-weight:700;color:${barColor}">${scoreLabel} ${score}/100</span>
+        </div>
       </div>
       <div style="background:rgba(0,0,0,.3);border-radius:4px;height:5px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .4s"></div>
       </div>
-      ${s.prompt ? `<div style="margin-top:8px;font-size:.58rem;color:var(--text-dim);line-height:1.5;max-height:60px;overflow:hidden;text-overflow:ellipsis">${s.prompt.slice(0, 200)}...</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -98,6 +100,22 @@ function _renderEduReaders() {
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-left:15px">${topics}</div>
     </div>`;
   }).join('');
+}
+
+let _cachedPrompts = null;
+
+async function showPrompt(agentId) {
+  if (!_cachedPrompts) {
+    try {
+      const r = await fetch('/council/prompts');
+      _cachedPrompts = await r.json();
+    } catch(e) {
+      alert('Ошибка загрузки промпта'); return;
+    }
+  }
+  const data = _cachedPrompts[agentId];
+  if (!data) return;
+  showWorldModal(`${data.icon} Промпт: ${data.name}`, data.prompt);
 }
 
 async function applyCouncilPrompts() {

@@ -6,9 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import CouncilMessage, CouncilSession, CouncilThought
-from ..council_agent import run_council_dialog
+from ..council_agent import run_council_dialog, SYS_STRATEGIST, SYS_ARCHITECT, SYS_CARTOGRAPHER
 
 router = APIRouter(prefix="/council", tags=["council"])
+
+
+@router.get("/prompts")
+async def get_council_prompts():
+    return {
+        "strategist": {"name": "Стратег", "icon": "🧭", "prompt": SYS_STRATEGIST},
+        "architect":  {"name": "Архитектор", "icon": "🏗️", "prompt": SYS_ARCHITECT},
+        "cartographer": {"name": "Картограф", "icon": "🗺️", "prompt": SYS_CARTOGRAPHER},
+    }
 
 
 class SessionIn(BaseModel):
