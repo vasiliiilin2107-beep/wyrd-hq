@@ -217,26 +217,89 @@
 .civ-prop-role{font-size:.7rem;font-weight:600;margin-bottom:4px}
 .civ-prop-reason{font-size:.62rem;color:var(--text-dim);line-height:1.5;margin-bottom:6px}
 .civ-prop-actions{display:flex;gap:8px;margin-top:6px}
-/* ─── 🏔️ АЛЬПИЙСКИЙ ЛУГ v4 ─────────────────────────── */
-:root{--bg:#4a8a3a;--bg2:#3e7a2e;--surface:rgba(255,255,255,.82);--border:rgba(255,255,255,.50);--text:#1a3a15;--text-dim:rgba(30,70,20,.65);--gold:#2e7d32}
+/* ─── БЕЛОЕ ЗЕРКАЛО ──────────────────────────────────── */
+:root{--bg:#f0f4f8;--bg2:#e8edf2;--surface:#ffffff;--border:rgba(0,0,0,.10);--text:#1a202c;--text-dim:#4a5568;--gold:#2563eb;--green:#059669;--radius:10px}
 body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9d17dae1258011f0839cb633c76826bc/orig') 50% 60%/cover fixed no-repeat!important}
 #starfield{display:none}
-.topbar{background:rgba(255,255,255,.22)!important;border-bottom-color:rgba(255,255,255,.28)!important;backdrop-filter:blur(22px)!important}
-.topbar-logo{color:#1a5c10!important;text-shadow:none!important}
-#tab-label,.topbar-status{color:rgba(15,65,8,.90)!important}
-.topbar-time{color:rgba(25,75,12,.70)!important}
-.sidebar{background:rgba(255,255,255,.20)!important;border-right-color:rgba(255,255,255,.25)!important;backdrop-filter:blur(18px)!important}
-.nav-btn{color:rgba(15,65,8,.65)!important}
-.nav-btn:hover,.nav-btn.active{background:rgba(255,255,255,.38)!important;color:#1a5c10!important}
-.feed{background:rgba(255,255,255,.20)!important;border-left-color:rgba(255,255,255,.22)!important;backdrop-filter:blur(14px)!important}
-.feed-branch,.feed-payload,.feed-time,.feed .section-title{color:rgba(15,65,8,.65)!important}
-.feed-item{border-bottom-color:rgba(0,0,0,.08)!important}
-.section-title{color:rgba(15,60,8,.68)!important}
-.idea-card,.note-item,.task-card,.tech-row,.kanban-col,.lib-knowledge-row,.lib-reader-row,.lib-stat-box{background:rgba(255,255,255,.88)!important;border-color:rgba(255,255,255,.85)!important;box-shadow:0 8px 32px rgba(5,40,2,.22),0 2px 8px rgba(5,40,2,.14)!important;backdrop-filter:blur(6px)!important}
-.tech-fin,.note-textarea,.task-input,.wml-sel,.wml-fin{background:rgba(255,255,255,.75)!important;color:#1a3a15!important}
-.kanban-add-form{background:rgba(255,255,255,.38)!important}
-.tech-result{background:rgba(235,255,228,.88)!important;color:#2a5a20!important}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18)!important}
+
+/* топбар */
+.topbar{background:rgba(255,255,255,.85)!important;border-bottom:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(20px)!important}
+.topbar-logo{color:#1d4ed8!important;text-shadow:none!important}
+#tab-label,.topbar-status,#clock,.topbar-time{color:#374151!important}
+
+/* сайдбар */
+.sidebar{background:rgba(255,255,255,.80)!important;border-right:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(18px)!important}
+.nav-btn{color:#6b7280!important}
+.nav-btn:hover,.nav-btn.active{background:rgba(37,99,235,.12)!important;color:#1d4ed8!important}
+
+/* лента */
+.feed{background:rgba(255,255,255,.80)!important;border-left:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(14px)!important}
+.feed-branch{font-weight:700!important}
+.feed-payload,.feed-time{color:#374151!important}
+.feed-item{border-bottom:1px solid rgba(0,0,0,.07)!important}
+.section-title{color:#1a202c!important;font-weight:700!important}
+
+/* главная область */
+.main-area{background:rgba(255,255,255,.82)!important;backdrop-filter:blur(10px)!important}
+
+/* карточки */
+.idea-card,.note-item,.task-card,.tech-row,.kanban-col,.lib-knowledge-row,
+.lib-reader-row,.lib-stat-box,.build-card,.civ-agent-card,.civ-proposal-card,
+.civ-session-card,.civ-thought-item,.wml,.files-sidebar,.files-viewer-wrap{
+  background:#ffffff!important;border:1px solid rgba(0,0,0,.10)!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.08)!important;color:#1a202c!important}
+
+/* текст внутри карточек */
+.idea-title,.idea-desc,.idea-rev,.idea-source,.idea-time,
+.civ-agent-name,.civ-agent-role,.civ-agent-task,.civ-prop-role,.civ-prop-reason,
+.civ-prop-from,.civ-session-idea,.civ-thought-item,
+.build-topic,.build-txt,.build-lbl,.build-time,.build-done-ts,
+.tech-title,.tech-desc,.tech-result,.tech-ago,
+.note-content,.task-title,
+.lib-k-question,.lib-k-answer,.lib-reader-name,.lib-reader-topics,
+.lib-stat-num,.lib-stat-label,.lib-empty,
+.file-name,.file-size,.files-viewer-title,.files-empty,
+.wml-name,.wml-sub,.wml-ft,.wml-flag-bd,.const-meta,
+.civ-section-title,.civ-pulse-time,.civ-branch-tag,.civ-agent-status,
+.lib-k-src,.lib-k-ttl,.lib-k-hits{color:#1a202c!important}
+.idea-desc,.civ-agent-role,.tech-desc,.lib-k-answer,.civ-prop-reason,
+.build-txt,.note-sub,.civ-pulse-time,.lib-k-src{color:#4a5568!important}
+
+/* инпуты */
+.tech-fin,.note-textarea,.task-input,.lib-search-input,.wml-sel,.wml-fin,
+.const-textarea,input[type=text],input[type=number],select,textarea{
+  background:#f8fafc!important;color:#1a202c!important;
+  border:1px solid rgba(0,0,0,.15)!important}
+.const-textarea{background:#ffffff!important;color:#1a202c!important}
+.tech-result{background:#f0fdf4!important;color:#166534!important;border:1px solid #bbf7d0!important}
+
+/* вкладка Мир */
+#world-content,#world-dept-list,#world-agents-list{
+  background:rgba(255,255,255,.92)!important;color:#1a202c!important}
+[style*="rgba(0,0,0,.78"],[style*="rgba(5,5,15"]{
+  background:rgba(255,255,255,.92)!important;color:#1a202c!important}
+
+/* kanban */
+.kanban-add-form{background:rgba(0,0,0,.04)!important}
+.kanban-col-title{color:#1a202c!important}
+.kanban-add-btn{color:#6b7280!important}
+
+/* суб-навигация карты */
+#map-subnav{background:rgba(255,255,255,.90)!important;border-bottom:1px solid rgba(0,0,0,.10)!important}
+.map-sv{color:#6b7280!important}
+
+/* совет */
+.civ-msg-strategist{background:#fffbeb!important;border-color:#fde68a!important}
+.civ-msg-architect{background:#eff6ff!important;border-color:#bfdbfe!important}
+.civ-msg-cartographer{background:#f0fdf4!important;border-color:#bbf7d0!important}
+.civ-msg-thomas{background:#fefce8!important;border-color:#fef08a!important}
+.civ-msg-speaker,.civ-dialog *{color:#1a202c!important}
+.civ-verdict{background:#f0fdf4!important;border-color:#bbf7d0!important}
+.civ-verdict-label,.civ-verdict{color:#166534!important}
+
+/* скроллбар */
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.20)!important}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.04)!important}
 </style>
 </head>
 <body>

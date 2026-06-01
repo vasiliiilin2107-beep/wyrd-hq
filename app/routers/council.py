@@ -83,6 +83,23 @@ async def add_thought(body: ThoughtIn, session: AsyncSession = Depends(get_sessi
     return {"ok": True, "id": t.id}
 
 
+@router.delete("/thoughts")
+async def clear_thoughts(session: AsyncSession = Depends(get_session)):
+    from sqlalchemy import delete as sql_delete
+    result = await session.execute(sql_delete(CouncilThought))
+    await session.commit()
+    return {"ok": True, "deleted": result.rowcount}
+
+
+@router.delete("/sessions")
+async def clear_sessions(session: AsyncSession = Depends(get_session)):
+    from sqlalchemy import delete as sql_delete
+    await session.execute(sql_delete(CouncilMessage))
+    result = await session.execute(sql_delete(CouncilSession))
+    await session.commit()
+    return {"ok": True, "deleted": result.rowcount}
+
+
 # ─── helpers ──────────────────────────────────────────────
 
 SPEAKER_LABEL = {
