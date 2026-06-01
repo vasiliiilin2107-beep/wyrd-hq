@@ -151,6 +151,24 @@
 .lib-readers-list{max-height:280px;overflow-y:auto}
 .lib-recent-list{max-height:360px;overflow-y:auto}
 .lib-search-results{max-height:400px;overflow-y:auto}
+/* ─── BUILD ─────────────────────────────────────────── */
+.build-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
+.build-card-done{opacity:.65}
+.build-card-hdr{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;flex-wrap:wrap}
+.build-card-hdr:hover{background:rgba(255,255,255,.04)}
+.build-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 7px;border:1px solid;border-radius:10px;white-space:nowrap;font-weight:700}
+.build-topic{font-size:.68rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.build-time{font-size:.55rem;color:var(--text-dim);white-space:nowrap;margin-left:auto}
+.build-arr{font-size:.55rem;color:var(--text-dim);margin-left:4px;flex-shrink:0}
+.build-body{flex-direction:column;gap:5px;padding:0 14px 14px}
+.build-lbl{font-size:.55rem;letter-spacing:.12em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-top:6px}
+.build-txt{font-size:.63rem;color:var(--text-dim);line-height:1.6;background:rgba(0,0,0,.25);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto}
+.build-done-ts{font-size:.58rem;color:#10b981;margin-top:6px}
+.build-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.build-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.6rem;font-family:inherit;padding:5px 12px;border-radius:8px;letter-spacing:.06em;transition:all .15s}
+.build-btn:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
+.build-btn-ok{background:rgba(16,185,129,.1)!important;color:#10b981!important;border-color:rgba(16,185,129,.3)!important}
+.build-btn-ok:hover{background:rgba(16,185,129,.22)!important;border-color:#10b981!important}
 /* ─── CONSTITUTION ──────────────────────────────────── */
 .const-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 .const-meta{font-size:.6rem;color:var(--text-dim);letter-spacing:.08em}
@@ -242,7 +260,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn active" title="Карта" data-tab="map" onclick="setTab('map',this)">🗺️</button>
       <button class="nav-btn" title="Заметки" data-tab="notes" onclick="setTab('notes',this)">📝</button>
       <button class="nav-btn" title="Задачи" data-tab="tasks" onclick="setTab('tasks',this)">✅</button>
-      <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this)">🏗️</button>
+      <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this);loadBuild()">🏗️</button>
       <button class="nav-btn" title="Техник" data-tab="technik" onclick="setTab('technik',this)">🔧</button>
       <button class="nav-btn" title="Идеи" data-tab="ideas" onclick="setTab('ideas',this)">💡</button>
       <button class="nav-btn" title="Файлы Томаса" data-tab="files" onclick="setTab('files',this);loadFilesList()">📁</button>
@@ -348,10 +366,12 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
 
       <!-- ─── TAB: BUILD ────────────────────────────────── -->
       <div id="tab-build" class="tab-panel" style="display:none">
-        <div class="section-title">СТРОЙКА</div>
-        <div style="color:var(--text-dim);font-size:.75rem;margin-top:20px;line-height:1.8">
-          Здесь будет роадмап строительства мира.<br>
-          Фазы, сессии, статусы задач из <code>HQ_BUILD_PLAN.md</code>.
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="section-title" style="margin:0">🏗️ СТРОЙКА <span id="build-count" style="font-size:.6rem;color:var(--text-dim);font-weight:400"></span></div>
+          <button class="wmap-refresh" onclick="loadBuild()">↻</button>
+        </div>
+        <div id="build-list">
+          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
         </div>
       </div>
 
@@ -615,6 +635,7 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
     </aside>
   </div>
 
+  <script src="/assets/js/build.js"></script>
   <script src="/assets/js/hq.js"></script>
   <script src="/assets/js/map.js"></script>
   <script src="/assets/js/technik.js"></script>

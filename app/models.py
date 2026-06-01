@@ -216,6 +216,20 @@ class Proposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class BuildCard(Base):
+    __tablename__ = "build_cards"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("council_sessions.id"), unique=True, index=True)
+    topic: Mapped[str] = mapped_column(Text)
+    tz_text: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    # waiting | in_progress | done
+    status: Mapped[str] = mapped_column(String(30), default="waiting", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 
