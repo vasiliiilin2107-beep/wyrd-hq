@@ -21,6 +21,8 @@ from .analytics_agent import analytics_loop
 from .idea_agent import idea_loop
 from .project_agent import project_loop
 from .babla_agent import babla_loop
+from .professor_agent import professor_loop
+from .template_agent import template_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -43,6 +45,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(idea_loop())
     asyncio.create_task(project_loop())
     asyncio.create_task(babla_loop())
+    asyncio.create_task(professor_loop())
+    asyncio.create_task(template_loop())
     yield
     await close_qdrant()
     await close_redis()

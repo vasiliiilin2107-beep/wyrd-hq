@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, AgentPassport, Proposal
+from ..models import Agent, AgentPassport, AgentReport, Proposal
 
 router = APIRouter(prefix="/civilization", tags=["civilization"])
 
@@ -121,6 +121,22 @@ async def patch_proposal(prop_id: int, body: ProposalPatch, session: AsyncSessio
     prop.status = body.status
     await session.commit()
     return {"ok": True}
+
+
+# ─── agent reports ────────────────────────────────────────
+
+@router.get("/agent-reports")
+async def list_agent_reports(agent_name: str | None = None, branch: str | None = None,
+                              limit: int = 20, session: AsyncSession = Depends(get_session)):
+    """Отчёты template-агентов рождённых Профессором."""
+    query = select(AgentReport).order_by(AgentReport.checked_at.desc()).limit(limit)
+    if agent_name:
+        query = query.where(AgentReport.agent_name == agent_name)
+    if branch:
+        query = query.where(AgentReport.branch == branch)
+    rows = (await session.execute(query)).scalars().all()
+    return {"reports": [{"id": r.id, "agent_name": r.agent_name, "branch": r.branch,
+                          "report": r.report, "checked_at": r.checked_at.isoformat()} for r in rows]}
 
 
 # ─── passports ────────────────────────────────────────────

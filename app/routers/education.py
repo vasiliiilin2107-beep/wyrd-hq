@@ -86,6 +86,7 @@ async def issue_passport(
     branch: str,
     specialization: str = "",
     connections: dict | None = None,
+    initial_status: str = "queued",
 ) -> None:
     """Выдаёт паспорт обученному агенту и ставит его в очередь на рабочее место.
     Нулёвый → обучен → паспорт выдан (queued) → на рабочем месте (active)."""
@@ -113,7 +114,7 @@ async def issue_passport(
             specialization=specialization,
             knows_json=knows,
             connections_json=connections or {},
-            status="queued",
+            status=initial_status,
         ).on_conflict_do_update(
             index_elements=["agent_name"],
             set_={
@@ -124,7 +125,7 @@ async def issue_passport(
                 "specialization": specialization,
                 "knows_json": knows,
                 "connections_json": connections or {},
-                "status": "queued",
+                "status": initial_status,
                 "trained_at": datetime.utcnow(),
             },
         )

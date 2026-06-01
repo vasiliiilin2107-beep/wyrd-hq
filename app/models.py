@@ -250,6 +250,16 @@ class AnalyticsReport(Base):
     analysis: Mapped[str] = mapped_column(Text)
 
 
+class AgentReport(Base):
+    __tablename__ = "agent_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), index=True)
+    branch: Mapped[str] = mapped_column(String(100), index=True)
+    report: Mapped[str] = mapped_column(Text)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
 class AgentPassport(Base):
     __tablename__ = "agent_passports"
 
