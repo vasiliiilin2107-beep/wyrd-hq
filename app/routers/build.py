@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from pydantic import BaseModel
 from ..database import get_session
-from ..models import BuildCard, CouncilSession
+from ..models import BuildCard, CouncilSession, ForemanReport
 
 router = APIRouter(prefix="/build", tags=["build"])
 
@@ -53,6 +53,23 @@ async def get_build_queue(session: AsyncSession = Depends(get_session)):
         select(BuildCard).order_by(desc(BuildCard.created_at))
     )).scalars().all()
     return {"cards": [_fmt(c) for c in cards]}
+
+
+@router.get("/foreman")
+async def get_foreman_reports(limit: int = 10, session: AsyncSession = Depends(get_session)):
+    reports = (await session.execute(
+        select(ForemanReport).order_by(desc(ForemanReport.checked_at)).limit(limit)
+    )).scalars().all()
+    return {"reports": [
+        {
+            "id": r.id,
+            "checked_at": r.checked_at.isoformat(),
+            "stuck_count": r.stuck_count,
+            "analysis": r.analysis,
+            "task_ids": r.task_ids or [],
+        }
+        for r in reports
+    ]}
 
 
 @router.patch("/queue/{card_id}")

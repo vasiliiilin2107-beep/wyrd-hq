@@ -216,6 +216,16 @@ class Proposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class ForemanReport(Base):
+    __tablename__ = "foreman_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    stuck_count: Mapped[int] = mapped_column(default=0)
+    analysis: Mapped[str] = mapped_column(Text)
+    task_ids: Mapped[list[int] | None] = mapped_column(JSON)
+
+
 class BuildCard(Base):
     __tablename__ = "build_cards"
 

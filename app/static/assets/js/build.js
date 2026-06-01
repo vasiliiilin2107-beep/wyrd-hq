@@ -18,6 +18,62 @@ async function loadBuild() {
   } catch {
     el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Ошибка загрузки</div>';
   }
+  loadForemanReports();
+}
+
+// ─── БРИГАДИР ────────────────────────────────────────────
+
+const foremanExpanded = new Set();
+
+async function loadForemanReports() {
+  const el = document.getElementById('foreman-list');
+  if (!el) return;
+  try {
+    const data = await fetch('/build/foreman').then(r => r.json());
+    renderForemanReports(data.reports || []);
+  } catch { /* silent */ }
+}
+
+function renderForemanReports(reports) {
+  const el = document.getElementById('foreman-list');
+  const hdr = document.getElementById('foreman-hdr-count');
+  if (!el) return;
+  if (hdr) hdr.textContent = reports.length ? `(${reports.length})` : '';
+  if (!reports.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:.7rem">Отчётов пока нет — Бригадир проверяет каждые 30 мин</div>';
+    return;
+  }
+  el.innerHTML = '';
+  reports.forEach(r => el.appendChild(mkForemanCard(r)));
+}
+
+function mkForemanCard(r) {
+  const isOpen = foremanExpanded.has(r.id);
+  const time = new Date(r.checked_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const hasProblems = r.stuck_count > 0;
+  const el = document.createElement('div');
+  el.className = 'build-card';
+  el.innerHTML = `
+    <div class="build-card-hdr" onclick="foremanToggle(${r.id})">
+      <span class="build-badge" style="color:${hasProblems ? '#f59e0b' : '#10b981'};border-color:${hasProblems ? '#f59e0b40' : '#10b98140'}">
+        ${hasProblems ? `⚠️ ${r.stuck_count} застряло` : '✅ Всё чисто'}
+      </span>
+      <span class="build-time">${time}</span>
+      <span style="font-size:.55rem;color:var(--text-dim);margin-left:4px">${r.task_ids?.length ? `задачи: #${r.task_ids.join(' #')}` : ''}</span>
+      <span class="build-arr">${isOpen ? '▲' : '▼'}</span>
+    </div>
+    <div class="build-body" style="display:${isOpen ? 'flex' : 'none'}">
+      <div class="build-lbl">АНАЛИЗ БРИГАДИРА</div>
+      <div class="build-txt">${escHtml(r.analysis)}</div>
+    </div>
+  `;
+  return el;
+}
+
+function foremanToggle(id) {
+  if (foremanExpanded.has(id)) foremanExpanded.delete(id);
+  else foremanExpanded.add(id);
+  loadForemanReports();
 }
 
 function renderBuildQueue(cards) {
