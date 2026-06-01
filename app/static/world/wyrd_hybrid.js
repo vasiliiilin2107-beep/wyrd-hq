@@ -325,6 +325,13 @@ agentEls.on('click',(e,d)=>{
   if(mode==='agent'&&selAgent===d.id){ const r=agentMap[d.id]?.room; if(r){mode='room';selRoom=r;}else{mode='all';} selAgent=null; }
   else { mode='agent'; selAgent=d.id; }
   applyMode();
+  // Отправить данные агента в родительский дашборд
+  try {
+    window.parent.postMessage({
+      type: 'wyrd-agent-click',
+      agent: { id:d.id, name:d.n, emoji:d.e, status:d.s, desc:d.d, room:d.room||null, db:d.db||null }
+    }, '*');
+  } catch(_) {}
 });
 roomRects.on('click',(e,d)=>{
   tip.style('display','none');

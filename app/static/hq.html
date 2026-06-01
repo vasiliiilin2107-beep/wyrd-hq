@@ -5,393 +5,232 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WYRD — HQ</title>
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2e7d32">
+  <meta name="theme-color" content="#f59e0b">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="WYRD HQ">
   <link rel="apple-touch-icon" href="/assets/icons/icon.svg">
   <link rel="stylesheet" href="/assets/css/wyrd.css">
+  <link rel="stylesheet" href="/assets/css/wyrd-components.css">
   <link rel="stylesheet" href="/assets/css/mobile.css">
-<style>
-.map-loading{color:var(--text-dim);font-size:.7rem;padding:20px 0}
-.wmap-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.wmap-title{font-size:.62rem;letter-spacing:.2em;color:var(--text-dim);font-weight:600;text-transform:uppercase}
-.wmap-refresh{background:none;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.8rem;padding:3px 10px;border-radius:6px;transition:all .15s}
-.wmap-refresh:hover{border-color:var(--gold);color:var(--gold)}
-.wmap{display:flex;flex-direction:column}
-.wml{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--lc,#fff);border-radius:var(--radius)}
-.wml-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;transition:background .2s}
-.wml-h:hover{background:rgba(255,255,255,.05)}
-.wml-left{display:flex;align-items:center;gap:12px}
-.wml-ic{font-size:1.15rem;width:24px;text-align:center}
-.wml-name{font-size:.7rem;font-weight:700;letter-spacing:.14em;margin-bottom:2px}
-.wml-sub{font-size:.57rem;color:var(--text-dim)}
-.wml-right{display:flex;align-items:center;gap:8px}
-.wml-tag{font-size:.57rem;letter-spacing:.07em;padding:2px 8px;border:1px solid;border-radius:12px;opacity:.85;white-space:nowrap}
-.wml-arr{color:var(--text-dim);font-size:.58rem;margin-left:2px}
-.wml-body{padding:10px 16px 14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:7px;align-items:center}
-.wml-nf{font-size:.63rem;color:var(--text-dim)}
-.wml-flag{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:.63rem;max-width:280px}
-.wml-ft{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wml-fdel{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.7rem;padding:0 2px;line-height:1;transition:color .15s}
-.wml-fdel:hover{color:#ef4444}
-.wml-addf{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;margin-top:2px}
-.wml-sel,.wml-fin{background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.64rem;padding:4px 8px;border-radius:6px;outline:none}
-.wml-fin{flex:1;min-width:140px}.wml-fin:focus,.wml-sel:focus{border-color:rgba(255,255,255,.25)}
-.wml-fbtn{background:none;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.7rem;padding:3px 10px;border-radius:6px;transition:all .15s}
-.wml-fbtn:hover{border-color:#f59e0b;color:#f59e0b}
-.wml-fcancel:hover{border-color:#ef4444!important;color:#ef4444!important}
-.wml-plus{background:none;border:1px dashed var(--border);color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:3px 12px;border-radius:6px;letter-spacing:.1em;transition:all .15s;white-space:nowrap;margin-top:2px}
-.wml-plus:hover{border-color:var(--gold);color:var(--gold)}
-.wmc{display:flex;justify-content:center;height:16px;align-items:center;padding:0 20px}
-.wmc-l{width:1px;height:100%;border-left:1px dashed;opacity:.6}
-.wml-fexp{color:var(--text-dim);font-size:.55rem;margin:0 2px;cursor:pointer;flex-shrink:0}
-.wml-flag-bd{width:100%;margin-top:5px;font-size:.62rem;color:var(--text-dim);line-height:1.5;padding-top:5px;border-top:1px solid var(--border);white-space:pre-wrap;word-break:break-word}
-.wml-flag{cursor:pointer;flex-wrap:wrap}
-.wml-flag-static{cursor:default}
-/* ─── TECHNIK ───────────────────────────────────────── */
-.tech-form{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
-.tech-fin{background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.64rem;padding:5px 9px;border-radius:6px;outline:none;width:100%}
-.tech-fin:focus{border-color:rgba(255,255,255,.25)}
-.tech-fdesc{resize:vertical;min-height:40px}
-.tech-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto}
-.tech-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;flex-direction:column;gap:5px}
-.tech-row-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tech-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 7px;border:1px solid;border-radius:10px;white-space:nowrap;font-weight:600}
-.tech-pri{font-size:.58rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 6px;min-width:22px;text-align:center}
-.tech-title{font-size:.68rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tech-ago{font-size:.57rem;color:var(--text-dim);white-space:nowrap;margin-left:auto}
-.tech-desc{font-size:.62rem;color:var(--text-dim);line-height:1.5;padding-left:2px}
-.tech-result{font-size:.62rem;color:var(--text-dim);background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;line-height:1.5;max-height:200px;overflow-y:auto;margin-top:2px}
-.tech-toggle{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:2px 0;text-align:left;letter-spacing:.05em}
-.tech-toggle:hover{color:var(--gold)}
-/* ─── IDEAS ─────────────────────────────────────────── */
-.ideas-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.ideas-filters{display:flex;gap:6px;flex-wrap:wrap}
-.idea-filter{background:none;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.6rem;padding:4px 10px;border-radius:20px;letter-spacing:.1em;transition:all .15s}
-.idea-filter.active,.idea-filter:hover{border-color:var(--gold);color:var(--gold)}
-#ideas-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
-.idea-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:8px;transition:border-color .2s}
-.idea-card:hover{border-color:rgba(255,255,255,.14)}
-.idea-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.idea-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 8px;border:1px solid;border-radius:12px;white-space:nowrap;font-weight:600}
-.idea-source{font-size:.55rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px}
-.idea-time{font-size:.55rem;color:var(--text-dim);margin-left:auto}
-.idea-title{font-size:.75rem;font-weight:600;line-height:1.4}
-.idea-desc{font-size:.63rem;color:var(--text-dim);line-height:1.5}
-.idea-rev{font-size:.63rem;color:var(--green)}
-.idea-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.idea-actions-sm{margin-top:2px}
-.idea-btn{border:none;cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 16px;border-radius:8px;font-weight:600;letter-spacing:.08em;transition:all .15s}
-.idea-btn-yes{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)}
-.idea-btn-yes:hover{background:rgba(16,185,129,.28);border-color:#10b981}
-.idea-btn-no{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
-.idea-btn-no:hover{background:rgba(239,68,68,.24);border-color:#ef4444}
-.idea-btn-ghost{background:rgba(255,255,255,.05);color:var(--text-dim);border:1px solid var(--border)}
-.idea-btn-ghost:hover{border-color:rgba(255,255,255,.25);color:var(--text)}
-.idea-btn-del{background:none;color:var(--text-dim);border:1px solid var(--border);padding:7px 10px}
-.idea-btn-del:hover{border-color:#ef4444;color:#ef4444}
-@keyframes idea-flash-green{0%{background:rgba(16,185,129,.22)}100%{background:var(--surface)}}
-@keyframes idea-flash-red{0%{background:rgba(239,68,68,.18)}100%{background:var(--surface)}}
-.idea-flash-green{animation:idea-flash-green .42s ease-out forwards}
-.idea-flash-red{animation:idea-flash-red .42s ease-out forwards}
-/* ─── FILES ─────────────────────────────────────────── */
-.files-layout{display:grid;grid-template-columns:220px 1fr;gap:12px;height:calc(100vh - 120px);overflow:hidden}
-.files-sidebar{display:flex;flex-direction:column;overflow:hidden;background:rgba(5,5,15,0.82);backdrop-filter:blur(6px);border-radius:var(--radius);padding:8px}
-.files-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1}
-.file-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;cursor:pointer;background:var(--surface);border:1px solid var(--border);transition:all .15s;user-select:none}
-.file-item:hover{border-color:rgba(255,255,255,.25)}
-.file-item.active{border-color:var(--gold);background:rgba(255,255,255,.1)}
-.file-icon{font-size:.85rem;flex-shrink:0;width:18px;text-align:center}
-.file-name{font-size:.65rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.file-size{font-size:.55rem;color:var(--text-dim);white-space:nowrap}
-.files-viewer-wrap{display:flex;flex-direction:column;overflow:hidden;background:rgba(5,5,15,0.82);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:var(--radius)}
-.files-viewer-header{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
-.files-viewer-title{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.files-viewer{flex:1;overflow-y:auto;padding:14px}
-.file-content{font-size:.65rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit}
-.files-empty{font-size:.65rem;color:var(--text-dim);padding:10px 0}
-@media(max-width:700px){.files-layout{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}.files-sidebar{max-height:220px}}
-/* ─── LIBRARY ──────────────────────────────────────── */
-.lib-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.lib-stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;text-align:center;min-width:72px}
-.lib-stat-num{font-size:1.2rem;font-weight:700;color:var(--gold)}
-.lib-stat-label{font-size:.55rem;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-top:2px}
-.lib-section{margin-bottom:20px}
-.lib-section-title{font-size:.6rem;letter-spacing:.2em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-.lib-reader-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:5px}
-.lib-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.lib-dot-on{background:#10b981;box-shadow:0 0 5px #10b98188}
-.lib-dot-off{background:#6b7280}
-.lib-reader-info{flex:1;min-width:0}
-.lib-reader-name{font-size:.68rem;font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lib-reader-topics{font-size:.58rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lib-reader-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
-.lib-reader-run{font-size:.55rem;color:var(--text-dim)}
-.lib-badge{font-size:.54rem;letter-spacing:.07em;padding:2px 7px;border:1px solid var(--border);border-radius:10px;white-space:nowrap;background:rgba(255,255,255,.06)}
-.lib-badge-ns{border-color:rgba(99,102,241,.4);color:rgba(99,102,241,.9)}
-.lib-knowledge-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;margin-bottom:5px}
-.lib-k-question{font-size:.67rem;font-weight:600;margin-bottom:5px;line-height:1.4}
-.lib-k-answer{font-size:.62rem;color:var(--text-dim);line-height:1.5;margin-bottom:5px}
-.lib-k-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.lib-k-src{font-size:.56rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
-.lib-k-ttl{font-size:.56rem;color:var(--text-dim)}
-.lib-k-hits{font-size:.56rem;color:var(--text-dim)}
-.lib-k-score{font-size:.6rem;color:#f59e0b;font-weight:700}
-.lib-search-row{border-left:3px solid rgba(99,102,241,.5)!important}
-.lib-k-clickable{cursor:pointer;transition:border-color .15s}
-.lib-k-clickable:hover{border-color:rgba(255,255,255,.3)!important}
-.lib-k-header{display:flex;align-items:flex-start;gap:6px}
-.lib-k-arrow{font-size:.65rem;color:var(--text-dim);flex-shrink:0;margin-top:2px}
-.lib-k-answer-full{font-size:.63rem;color:var(--text-dim);line-height:1.6;margin:8px 0 4px 18px;padding:8px 10px;background:rgba(0,0,0,.06);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto}
-.lib-search-box{display:flex;align-items:center;gap:7px;margin-bottom:12px}
-.lib-search-input{flex:1;background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.65rem;padding:6px 10px;border-radius:8px;outline:none}
-.lib-search-input:focus{border-color:rgba(255,255,255,.25)}
-.lib-empty{font-size:.65rem;color:var(--text-dim);padding:8px 0}
-.lib-readers-list{max-height:280px;overflow-y:auto}
-.lib-recent-list{max-height:360px;overflow-y:auto}
-.lib-search-results{max-height:400px;overflow-y:auto}
-/* ─── BUILD ─────────────────────────────────────────── */
-.build-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
-.build-card-done{opacity:.65}
-.build-card-hdr{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;flex-wrap:wrap}
-.build-card-hdr:hover{background:rgba(255,255,255,.04)}
-.build-badge{font-size:.55rem;letter-spacing:.08em;padding:2px 7px;border:1px solid;border-radius:10px;white-space:nowrap;font-weight:700}
-.build-topic{font-size:.68rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.build-time{font-size:.55rem;color:var(--text-dim);white-space:nowrap;margin-left:auto}
-.build-arr{font-size:.55rem;color:var(--text-dim);margin-left:4px;flex-shrink:0}
-.build-body{flex-direction:column;gap:5px;padding:0 14px 14px}
-.build-lbl{font-size:.55rem;letter-spacing:.12em;color:var(--text-dim);font-weight:700;text-transform:uppercase;margin-top:6px}
-.build-txt{font-size:.63rem;color:var(--text-dim);line-height:1.6;background:rgba(0,0,0,.25);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow-y:auto}
-.build-done-ts{font-size:.58rem;color:#10b981;margin-top:6px}
-.build-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
-.build-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:.6rem;font-family:inherit;padding:5px 12px;border-radius:8px;letter-spacing:.06em;transition:all .15s}
-.build-btn:hover{border-color:rgba(255,255,255,.3);color:var(--text)}
-.build-btn-ok{background:rgba(16,185,129,.1)!important;color:#10b981!important;border-color:rgba(16,185,129,.3)!important}
-.build-btn-ok:hover{background:rgba(16,185,129,.22)!important;border-color:#10b981!important}
-/* ─── CONSTITUTION ──────────────────────────────────── */
-.const-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.const-meta{font-size:.6rem;color:var(--text-dim);letter-spacing:.08em}
-.const-textarea{width:100%;box-sizing:border-box;resize:vertical;background:rgba(255,255,255,.82);border:1px solid var(--border);color:var(--text);font-family:'Courier New',monospace;font-size:.68rem;line-height:1.7;padding:14px 16px;border-radius:var(--radius);outline:none;min-height:420px}
-.const-textarea:focus{border-color:rgba(46,125,50,.4)}
-.const-save-btn{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);cursor:pointer;font-size:.65rem;font-family:inherit;padding:7px 20px;border-radius:8px;font-weight:600;letter-spacing:.1em;transition:all .2s}
-.const-save-btn:hover{background:rgba(16,185,129,.28);border-color:#10b981}
-.const-btn-dirty{background:rgba(245,158,11,.15)!important;color:#f59e0b!important;border-color:rgba(245,158,11,.4)!important}
-/* ─── COUNCIL ───────────────────────────────────────── */
-.civ-session-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
-.civ-session-card:hover{border-color:rgba(255,255,255,.3)}
-.civ-session-card.open{border-color:var(--gold)}
-.civ-session-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.civ-session-idea{font-size:.68rem;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.civ-session-src{font-size:.54rem;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:2px 6px}
-.civ-session-time{font-size:.54rem;color:var(--text-dim);margin-left:auto;white-space:nowrap}
-.civ-dialog{display:none;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.civ-dialog.open{display:flex}
-.civ-msg{border-radius:8px;padding:9px 12px;font-size:.63rem;line-height:1.6}
-.civ-msg-strategist{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
-.civ-msg-architect{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25)}
-.civ-msg-cartographer{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3)}
-.civ-msg-thomas{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.3)}
-.civ-msg-speaker{font-size:.57rem;font-weight:700;letter-spacing:.1em;margin-bottom:4px;opacity:.8}
-.civ-verdict{margin-top:8px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 12px;font-size:.63rem;line-height:1.6;color:var(--text)}
-.civ-verdict-label{font-size:.57rem;font-weight:700;letter-spacing:.1em;color:#10b981;margin-bottom:5px}
-.civ-thought-item{background:var(--surface);border:1px solid var(--border);border-left:3px solid rgba(139,92,246,.5);border-radius:var(--radius);padding:9px 12px;margin-bottom:6px;font-size:.64rem;line-height:1.5}
-.civ-thought-meta{font-size:.54rem;color:var(--text-dim);margin-top:4px}
-/* ─── CIVILIZATION ──────────────────────────────────── */
-.civ-section{margin-bottom:20px}
-.civ-section-title{font-size:.65rem;letter-spacing:.15em;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-.civ-agents-grid{display:flex;flex-direction:column;gap:7px}
-.civ-agent-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px}
-.civ-agent-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
-.civ-badge{font-size:.54rem;letter-spacing:.09em;padding:2px 8px;border:1px solid;border-radius:12px;white-space:nowrap;font-weight:700}
-.civ-agent-name{font-size:.72rem;font-weight:700;letter-spacing:.06em}
-.civ-agent-status{font-size:.85rem}
-.civ-branch-tag{font-size:.54rem;color:var(--text-dim);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px}
-.civ-pulse-time{font-size:.54rem;color:var(--text-dim);margin-left:auto}
-.civ-agent-role{font-size:.63rem;color:var(--text-dim);line-height:1.4;margin-bottom:3px}
-.civ-agent-task{font-size:.62rem;color:#10b981;line-height:1.4}
-.civ-proposal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;margin-bottom:7px}
-.civ-proposal-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
-.civ-prop-from{font-size:.58rem;color:var(--text-dim)}
-.civ-prop-time{font-size:.55rem;color:var(--text-dim);margin-left:auto}
-.civ-prop-role{font-size:.7rem;font-weight:600;margin-bottom:4px}
-.civ-prop-reason{font-size:.62rem;color:var(--text-dim);line-height:1.5;margin-bottom:6px}
-.civ-prop-actions{display:flex;gap:8px;margin-top:6px}
-/* ─── БЕЛОЕ ЗЕРКАЛО ──────────────────────────────────── */
-:root{--bg:#f0f4f8;--bg2:#e8edf2;--surface:#ffffff;--border:rgba(0,0,0,.10);--text:#1a202c;--text-dim:#4a5568;--gold:#2563eb;--green:#059669;--radius:10px}
-body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9d17dae1258011f0839cb633c76826bc/orig') 50% 60%/cover fixed no-repeat!important}
-#starfield{display:none}
-
-/* топбар */
-.topbar{background:rgba(255,255,255,.85)!important;border-bottom:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(20px)!important}
-.topbar-logo{color:#1d4ed8!important;text-shadow:none!important}
-#tab-label,.topbar-status,#clock,.topbar-time{color:#374151!important}
-
-/* сайдбар */
-.sidebar{background:rgba(255,255,255,.80)!important;border-right:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(18px)!important}
-.nav-btn{color:#6b7280!important}
-.nav-btn:hover,.nav-btn.active{background:rgba(37,99,235,.12)!important;color:#1d4ed8!important}
-
-/* лента */
-.feed{background:rgba(255,255,255,.80)!important;border-left:1px solid rgba(0,0,0,.10)!important;backdrop-filter:blur(14px)!important}
-.feed-branch{font-weight:700!important}
-.feed-payload,.feed-time{color:#374151!important}
-.feed-item{border-bottom:1px solid rgba(0,0,0,.07)!important}
-.section-title{color:#1a202c!important;font-weight:700!important}
-
-/* главная область */
-.main-area{background:rgba(255,255,255,.82)!important;backdrop-filter:blur(10px)!important}
-
-/* карточки */
-.idea-card,.note-item,.task-card,.tech-row,.kanban-col,.lib-knowledge-row,
-.lib-reader-row,.lib-stat-box,.build-card,.civ-agent-card,.civ-proposal-card,
-.civ-session-card,.civ-thought-item,.wml,.files-sidebar,.files-viewer-wrap{
-  background:#ffffff!important;border:1px solid rgba(0,0,0,.10)!important;
-  box-shadow:0 2px 8px rgba(0,0,0,.08)!important;color:#1a202c!important}
-
-/* текст внутри карточек */
-.idea-title,.idea-desc,.idea-rev,.idea-source,.idea-time,
-.civ-agent-name,.civ-agent-role,.civ-agent-task,.civ-prop-role,.civ-prop-reason,
-.civ-prop-from,.civ-session-idea,.civ-thought-item,
-.build-topic,.build-txt,.build-lbl,.build-time,.build-done-ts,
-.tech-title,.tech-desc,.tech-result,.tech-ago,
-.note-content,.task-title,
-.lib-k-question,.lib-k-answer,.lib-reader-name,.lib-reader-topics,
-.lib-stat-num,.lib-stat-label,.lib-empty,
-.file-name,.file-size,.files-viewer-title,.files-empty,
-.wml-name,.wml-sub,.wml-ft,.wml-flag-bd,.const-meta,
-.civ-section-title,.civ-pulse-time,.civ-branch-tag,.civ-agent-status,
-.lib-k-src,.lib-k-ttl,.lib-k-hits{color:#1a202c!important}
-.idea-desc,.civ-agent-role,.tech-desc,.lib-k-answer,.civ-prop-reason,
-.build-txt,.note-sub,.civ-pulse-time,.lib-k-src{color:#4a5568!important}
-
-/* инпуты */
-.tech-fin,.note-textarea,.task-input,.lib-search-input,.wml-sel,.wml-fin,
-.const-textarea,input[type=text],input[type=number],select,textarea{
-  background:#f8fafc!important;color:#1a202c!important;
-  border:1px solid rgba(0,0,0,.15)!important}
-.const-textarea{background:#ffffff!important;color:#1a202c!important}
-.tech-result{background:#f0fdf4!important;color:#166534!important;border:1px solid #bbf7d0!important}
-
-/* вкладка Мир */
-#world-content,#world-dept-list,#world-agents-list{
-  background:rgba(255,255,255,.92)!important;color:#1a202c!important}
-[style*="rgba(0,0,0,.78"],[style*="rgba(5,5,15"]{
-  background:rgba(255,255,255,.92)!important;color:#1a202c!important}
-
-/* kanban */
-.kanban-add-form{background:rgba(0,0,0,.04)!important}
-.kanban-col-title{color:#1a202c!important}
-.kanban-add-btn{color:#6b7280!important}
-
-/* суб-навигация карты */
-#map-subnav{background:rgba(255,255,255,.90)!important;border-bottom:1px solid rgba(0,0,0,.10)!important}
-.map-sv{color:#6b7280!important}
-
-/* совет */
-.civ-msg-strategist{background:#fffbeb!important;border-color:#fde68a!important}
-.civ-msg-architect{background:#eff6ff!important;border-color:#bfdbfe!important}
-.civ-msg-cartographer{background:#f0fdf4!important;border-color:#bbf7d0!important}
-.civ-msg-thomas{background:#fefce8!important;border-color:#fef08a!important}
-.civ-msg-speaker,.civ-dialog *{color:#1a202c!important}
-.civ-verdict{background:#f0fdf4!important;border-color:#bbf7d0!important}
-.civ-verdict-label,.civ-verdict{color:#166534!important}
-
-/* скроллбар */
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.20)!important}
-::-webkit-scrollbar-track{background:rgba(0,0,0,.04)!important}
-</style>
 </head>
 <body>
   <canvas id="starfield"></canvas>
 
   <div class="hq-layout">
-    <!-- Топбар -->
+
+    <!-- ─── ТОПБАР ──────────────────────────────────────── -->
     <header class="topbar">
       <a href="/" class="topbar-logo">WYRD</a>
-      <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ HQ</span>
+      <span class="topbar-slash">/ HQ</span>
+
+      <div class="topbar-stats">
+        <span class="topbar-stat">
+          <span style="color:var(--green)">●</span>
+          <span class="stat-val" id="stat-live">—</span>
+          <span>live</span>
+        </span>
+        <span class="topbar-stat">
+          <span>⚡</span>
+          <span class="stat-val" id="stat-tasks">—</span>
+          <span>задач</span>
+        </span>
+        <span class="topbar-stat" id="stat-risks-wrap">
+          <span>🚨</span>
+          <span class="stat-val" id="stat-risks">—</span>
+          <span>рисков</span>
+        </span>
+      </div>
+
       <div class="topbar-sep"></div>
-      <div class="topbar-status">
+
+      <div class="topbar-current">
         <span class="dot"></span>
         <span id="tab-label">КАРТА МИРА</span>
       </div>
       <div class="topbar-time" id="clock">--:--:-- МСК</div>
     </header>
 
-    <!-- Сайдбар -->
+    <!-- ─── САЙДБАР ─────────────────────────────────────── -->
     <nav class="sidebar">
-      <button class="nav-btn active" title="Карта" data-tab="map" onclick="setTab('map',this)">🗺️</button>
-      <button class="nav-btn" title="Заметки" data-tab="notes" onclick="setTab('notes',this)">📝</button>
-      <button class="nav-btn" title="Задачи" data-tab="tasks" onclick="setTab('tasks',this)">✅</button>
-      <button class="nav-btn" title="Стройка" data-tab="build" onclick="setTab('build',this);loadBuild()">🏗️</button>
-      <button class="nav-btn" title="Техник" data-tab="technik" onclick="setTab('technik',this)">🔧</button>
-      <button class="nav-btn" title="Идеи" data-tab="ideas" onclick="setTab('ideas',this)">💡</button>
-      <button class="nav-btn" title="Файлы Томаса" data-tab="files" onclick="setTab('files',this);loadFilesList()">📁</button>
-      <button class="nav-btn" title="Библиотека" data-tab="library" onclick="setTab('library',this);loadLibrary()">📚</button>
-      <button class="nav-btn" title="Конституция" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
-      <button class="nav-btn" title="Scribe" data-tab="scribe" onclick="setTab('scribe',this);loadScribe()">📺</button>
-      <button class="nav-btn" title="Цивилизация" data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
-      <button class="nav-btn" title="Профобразование" data-tab="education" onclick="setTab('education',this);loadEducation()">👔</button>
-      <button class="nav-btn" title="Мир — отделы и паспорта" data-tab="world" onclick="setTab('world',this);loadWorld()">🌍</button>
-      <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
+      <button class="nav-btn active" title="Карта мира"     data-tab="map"          onclick="setTab('map',this)">🗺️</button>
+      <button class="nav-btn"        title="Техник"         data-tab="technik"      onclick="setTab('technik',this)">🔧</button>
+      <button class="nav-btn"        title="Библиотека"     data-tab="library"      onclick="setTab('library',this);loadLibrary()">📚</button>
+      <button class="nav-btn"        title="Идеи"           data-tab="ideas"        onclick="setTab('ideas',this)">💡</button>
+      <button class="nav-btn"        title="Цивилизация"    data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
+      <button class="nav-btn"        title="Стройка"        data-tab="build"        onclick="setTab('build',this);loadBuild()">🏗️</button>
+      <button class="nav-btn"        title="Заметки"        data-tab="notes"        onclick="setTab('notes',this)">📝</button>
+      <button class="nav-btn"        title="Задачи"         data-tab="tasks"        onclick="setTab('tasks',this)">✅</button>
+      <button class="nav-btn"        title="Файлы Томаса"   data-tab="files"        onclick="setTab('files',this);loadFilesList()">📁</button>
+      <button class="nav-btn"        title="Scribe"         data-tab="scribe"       onclick="setTab('scribe',this);loadScribe()">📺</button>
+      <button class="nav-btn"        title="Конституция"    data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
+      <button class="nav-btn"        title="Профобразование" data-tab="education"   onclick="setTab('education',this);loadEducation()">👔</button>
+      <button class="nav-btn"        title="Мир — паспорта" data-tab="world"        onclick="setTab('world',this);loadWorld()">🌍</button>
+      <button class="nav-btn"        title="Томас"          onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
+      <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)">⚡</button>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
-      <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)" style="margin-top:4px">⚡</button>
     </nav>
-    <script>
-    async function triggerAll(btn) {
-      btn.textContent = '⏳'; btn.disabled = true;
-      try {
-        const r = await fetch('/trigger/all', {method:'POST'});
-        const d = await r.json();
-        btn.textContent = '✅';
-        setTimeout(() => { btn.textContent = '⚡'; btn.disabled = false; }, 3000);
-      } catch { btn.textContent = '❌'; btn.disabled = false; }
-    }
-    </script>
 
-    <!-- Главная область -->
+    <!-- ─── ГЛАВНАЯ ОБЛАСТЬ ─────────────────────────────── -->
     <main class="main-area">
 
-      <!-- ─── TAB: MAP ─────────────────────────────────── -->
+      <!-- TAB: MAP -->
       <div id="tab-map" class="tab-panel" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 56px)">
-        <div id="map-subnav" style="display:flex;gap:0;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
-          <button class="map-sv active" onclick="setMapView(this,'/world/WYRD_HYBRID.html')" style="flex:1;background:none;border:none;border-bottom:2px solid #4a9eff;color:#4a9eff;font-family:'Courier New',monospace;font-size:.65rem;letter-spacing:.15em;padding:9px 4px;cursor:pointer">⬡ ГИБРИД</button>
-          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_GRID.html')"   style="flex:1;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:'Courier New',monospace;font-size:.65rem;letter-spacing:.15em;padding:9px 4px;cursor:pointer">▣ СЕТКА</button>
-          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_AGENTS.html')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:'Courier New',monospace;font-size:.65rem;letter-spacing:.15em;padding:9px 4px;cursor:pointer">✦ ПАУТИНА</button>
-          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_MAP.html')"    style="flex:1;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:'Courier New',monospace;font-size:.65rem;letter-spacing:.15em;padding:9px 4px;cursor:pointer">▦ ЗДАНИЕ</button>
+        <div id="map-subnav">
+          <button class="map-sv active" onclick="setMapView(this,'/world/WYRD_HYBRID.html')">⬡ ГИБРИД</button>
+          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_GRID.html')">▣ СЕТКА</button>
+          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_AGENTS.html')">✦ ПАУТИНА</button>
+          <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_MAP.html')">▦ ЗДАНИЕ</button>
         </div>
         <iframe id="map-iframe" src="/world/WYRD_HYBRID.html" style="width:100%;flex:1;border:none;display:block" scrolling="auto"></iframe>
       </div>
-      <script>
-      function setMapView(btn, src) {
-        document.getElementById('map-iframe').src = src;
-        document.querySelectorAll('.map-sv').forEach(b => {
-          b.style.borderBottomColor = 'transparent';
-          b.style.color = 'rgba(255,255,255,.35)';
-        });
-        btn.style.borderBottomColor = '#4a9eff';
-        btn.style.color = '#4a9eff';
-      }
-      </script>
 
-      <!-- ─── TAB: NOTES ────────────────────────────────── -->
+      <!-- TAB: TECHNIK -->
+      <div id="tab-technik" class="tab-panel" style="display:none">
+        <div class="section-title">ТЕХНИК — ОЧЕРЕДЬ ЗАДАЧ</div>
+        <div class="tech-form">
+          <input id="tech-input-title" class="tech-fin" placeholder="Название задачи..." onkeydown="if(event.key==='Enter')createTechTask()">
+          <textarea id="tech-input-desc" class="tech-fin tech-fdesc" placeholder="Описание (опционально)..." rows="2"></textarea>
+          <div style="display:flex;align-items:center;gap:10px">
+            <label style="font-size:.75rem;color:var(--text-dim)">Приоритет:</label>
+            <input id="tech-input-prio" type="number" min="1" max="10" value="5" class="tech-fin" style="width:64px">
+            <button id="tech-create-btn" class="wyrd-btn wyrd-btn-sm" onclick="createTechTask()">+ ЗАДАЧА</button>
+            <select id="tech-filter" class="tech-fin" style="margin-left:auto;width:150px" onchange="techFilterChange()">
+              <option value="all">Все</option>
+              <option value="pending">Ждёт</option>
+              <option value="running">Работает</option>
+              <option value="waiting_approval">Одобрение</option>
+              <option value="done">Готово</option>
+              <option value="failed">Ошибка</option>
+            </select>
+            <button class="wmap-refresh" onclick="loadTechTasks()">↻</button>
+          </div>
+        </div>
+        <div id="tech-list" class="tech-list">
+          <div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- TAB: LIBRARY -->
+      <div id="tab-library" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
+        <div id="lib-stats" class="lib-stats"><div class="lib-empty">Загрузка...</div></div>
+        <div class="lib-section">
+          <div class="lib-section-title"><span>ПОИСК ПО ЗНАНИЯМ</span></div>
+          <div class="lib-search-box">
+            <input id="lib-search-input" class="lib-search-input" placeholder="Введите запрос..." oninput="libSearchInput(this.value)">
+            <button class="wmap-refresh" onclick="runLibSearch(document.getElementById('lib-search-input').value)">↵</button>
+          </div>
+          <div id="lib-search-results" class="lib-search-results"></div>
+        </div>
+        <div class="lib-section">
+          <div class="lib-section-title">
+            <span>ЧИТАТЕЛИ <span id="lib-readers-count" style="opacity:.6"></span></span>
+            <div style="display:flex;gap:6px">
+              <input class="lib-search-input" style="width:160px;padding:5px 9px" placeholder="Фильтр..." oninput="libReadersFilter(this.value)">
+              <button class="wmap-refresh" onclick="loadLibReaders()">↻</button>
+            </div>
+          </div>
+          <div id="lib-readers-list" class="lib-readers-list"><div class="lib-empty">Загрузка...</div></div>
+        </div>
+        <div class="lib-section">
+          <div class="lib-section-title">
+            <span>ПОСЛЕДНИЕ ЗНАНИЯ</span>
+            <button class="wmap-refresh" onclick="loadLibRecent()">↻</button>
+          </div>
+          <div id="lib-recent-list" class="lib-recent-list"><div class="lib-empty">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: IDEAS -->
+      <div id="tab-ideas" class="tab-panel" style="display:none">
+        <div class="section-title">ИДЕИ</div>
+        <div class="ideas-toolbar">
+          <div class="ideas-filters">
+            <button class="idea-filter active" onclick="ideasFilterClick(this,'all')">ВСЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'idea')">НОВЫЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'testing')">В РАБОТЕ</button>
+            <button class="idea-filter" onclick="ideasFilterClick(this,'archived')">АРХИВ</button>
+          </div>
+          <button class="wmap-refresh" onclick="loadIdeas()">↻</button>
+        </div>
+        <div id="ideas-list"></div>
+      </div>
+
+      <!-- TAB: CIVILIZATION -->
+      <div id="tab-civilization" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:14px">🏛️ ЦИВИЛИЗАЦИЯ АГЕНТОВ</div>
+        <div class="civ-section">
+          <div class="civ-section-title">
+            <span>РЕЕСТР АГЕНТОВ <span id="civ-agents-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadAgents()">↻</button>
+          </div>
+          <div id="civ-agents-list" class="civ-agents-grid"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        </div>
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>ПРЕДЛОЖЕНИЯ <span id="civ-proposals-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadProposals()">↻</button>
+          </div>
+          <div id="civ-proposals-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        </div>
+        <div class="civ-section" style="margin-top:26px;border-top:1px solid var(--border);padding-top:18px">
+          <div class="civ-section-title">
+            <span>🧠 СОВЕТ — ОБСУЖДЕНИЯ <span id="civ-sessions-count" style="opacity:.6"></span></span>
+            <div style="display:flex;gap:6px">
+              <button class="wyrd-btn wyrd-btn-sm" onclick="showCouncilForm()">+ ЗАПУСТИТЬ</button>
+              <button class="wmap-refresh" onclick="loadSessions()">↻</button>
+            </div>
+          </div>
+          <div id="council-form" style="display:none;margin-bottom:12px">
+            <textarea id="council-idea-input" class="tech-fin tech-fdesc" placeholder="Идея или вопрос для Совета..." rows="2" style="width:100%;box-sizing:border-box"></textarea>
+            <div style="display:flex;gap:7px;margin-top:6px">
+              <button class="wyrd-btn wyrd-btn-sm" onclick="submitCouncilSession()">ОТПРАВИТЬ</button>
+              <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideCouncilForm()">✕</button>
+            </div>
+          </div>
+          <div id="civ-sessions-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        </div>
+        <div class="civ-section" style="margin-top:22px">
+          <div class="civ-section-title">
+            <span>💭 МЫСЛИ НА ПЕРСПЕКТИВУ <span id="civ-thoughts-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadThoughts()">↻</button>
+          </div>
+          <div id="civ-thoughts-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: BUILD -->
+      <div id="tab-build" class="tab-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="section-title" style="margin:0">🏗️ СТРОЙКА <span id="build-count" style="font-size:.7rem;color:var(--text-dim);font-weight:400"></span></div>
+          <button class="wmap-refresh" onclick="loadBuild()">↻</button>
+        </div>
+        <div id="build-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:.7rem;letter-spacing:.18em;color:var(--text-dim);font-weight:700;text-transform:uppercase">🔧 БРИГАДИР <span id="foreman-hdr-count" style="opacity:.6"></span></span>
+            <button class="wmap-refresh" onclick="loadForemanReports()" style="margin-left:auto">↻</button>
+          </div>
+          <div id="foreman-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: NOTES -->
       <div id="tab-notes" class="tab-panel" style="display:none">
         <div class="section-title">ЗАМЕТКИ</div>
         <div class="note-form">
           <textarea id="note-input" class="note-textarea" placeholder="Новая заметка..."></textarea>
           <button class="wyrd-btn" onclick="addNote()">+ ДОБАВИТЬ</button>
         </div>
-        <div id="notes-list" class="notes-list">
-          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-        </div>
+        <div id="notes-list" class="notes-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
       </div>
 
-      <!-- ─── TAB: TASKS ────────────────────────────────── -->
+      <!-- TAB: TASKS -->
       <div id="tab-tasks" class="tab-panel" style="display:none">
         <div class="section-title">ДОСКА ЗАДАЧ</div>
         <div class="kanban-board">
-          <!-- TODO -->
           <div class="kanban-col" data-status="todo">
             <div class="kanban-col-header">
               <span class="kanban-col-title todo-color">TODO</span>
@@ -406,7 +245,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
             </div>
             <div class="kanban-cards" id="cards-todo"></div>
           </div>
-          <!-- IN PROGRESS -->
           <div class="kanban-col" data-status="in_progress">
             <div class="kanban-col-header">
               <span class="kanban-col-title inprogress-color">В РАБОТЕ</span>
@@ -421,7 +259,6 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
             </div>
             <div class="kanban-cards" id="cards-in_progress"></div>
           </div>
-          <!-- DONE -->
           <div class="kanban-col" data-status="done">
             <div class="kanban-col-header">
               <span class="kanban-col-title done-color">ГОТОВО</span>
@@ -439,98 +276,40 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         </div>
       </div>
 
-      <!-- ─── TAB: BUILD ────────────────────────────────── -->
-      <div id="tab-build" class="tab-panel" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <div class="section-title" style="margin:0">🏗️ СТРОЙКА <span id="build-count" style="font-size:.6rem;color:var(--text-dim);font-weight:400"></span></div>
-          <button class="wmap-refresh" onclick="loadBuild()">↻</button>
-        </div>
-        <div id="build-list">
-          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-        </div>
-
-        <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:.6rem;letter-spacing:.18em;color:var(--text-dim);font-weight:700;text-transform:uppercase">🔧 БРИГАДИР <span id="foreman-hdr-count" style="opacity:.6"></span></span>
-            <button class="wmap-refresh" onclick="loadForemanReports()" style="margin-left:auto">↻</button>
-          </div>
-          <div id="foreman-list">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── TAB: TECHNIK ─────────────────────────────── -->
-      <div id="tab-technik" class="tab-panel" style="display:none">
-        <div class="section-title">ТЕХНИК — ОЧЕРЕДЬ ЗАДАЧ</div>
-
-        <!-- Форма создания задачи -->
-        <div class="tech-form">
-          <input id="tech-input-title" class="tech-fin" placeholder="Название задачи..." onkeydown="if(event.key==='Enter')createTechTask()">
-          <textarea id="tech-input-desc" class="tech-fin tech-fdesc" placeholder="Описание (опционально)..." rows="2"></textarea>
-          <div style="display:flex;align-items:center;gap:10px">
-            <label style="font-size:.62rem;color:var(--text-dim)">Приоритет:</label>
-            <input id="tech-input-prio" type="number" min="1" max="10" value="5" class="tech-fin" style="width:60px">
-            <button id="tech-create-btn" class="wyrd-btn wyrd-btn-sm" onclick="createTechTask()">+ ЗАДАЧА</button>
-            <select id="tech-filter" class="tech-fin" style="margin-left:auto;width:140px" onchange="techFilterChange()">
-              <option value="all">Все</option>
-              <option value="pending">Ждёт</option>
-              <option value="running">Работает</option>
-              <option value="waiting_approval">Одобрение</option>
-              <option value="done">Готово</option>
-              <option value="failed">Ошибка</option>
-            </select>
-            <button class="wmap-refresh" onclick="loadTechTasks()">↻</button>
-          </div>
-        </div>
-
-        <div id="tech-list" class="tech-list">
-          <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-        </div>
-      </div>
-
-      <!-- ─── TAB: IDEAS ─────────────────────────────────── -->
-      <div id="tab-ideas" class="tab-panel" style="display:none">
-        <div class="section-title">ИДЕИ</div>
-        <div class="ideas-toolbar">
-          <div class="ideas-filters">
-            <button class="idea-filter active" onclick="ideasFilterClick(this,'all')">ВСЕ</button>
-            <button class="idea-filter" onclick="ideasFilterClick(this,'idea')">НОВЫЕ</button>
-            <button class="idea-filter" onclick="ideasFilterClick(this,'testing')">В РАБОТЕ</button>
-            <button class="idea-filter" onclick="ideasFilterClick(this,'archived')">АРХИВ</button>
-          </div>
-          <button class="wmap-refresh" onclick="loadIdeas()">↻</button>
-        </div>
-        <div id="ideas-list"></div>
-      </div>
-
-      <!-- ─── TAB: FILES ─────────────────────────────────── -->
+      <!-- TAB: FILES -->
       <div id="tab-files" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:12px">ФАЙЛЫ ТОМАСА</div>
         <div class="files-layout">
-          <!-- Список файлов -->
           <div class="files-sidebar">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
               <input id="files-search" class="tech-fin" placeholder="Поиск..." oninput="filesFilterInput(this.value)" style="flex:1">
               <button class="wmap-refresh" onclick="loadFilesList()">↻</button>
             </div>
-            <div id="files-list" class="files-list">
-              <div class="files-empty">Нажмите ↻ для загрузки</div>
-            </div>
+            <div id="files-list" class="files-list"><div class="files-empty">Нажмите ↻ для загрузки</div></div>
           </div>
-          <!-- Просмотр файла -->
           <div class="files-viewer-wrap">
             <div class="files-viewer-header">
               <span id="file-viewer-name" class="files-viewer-title">— выберите файл —</span>
             </div>
-            <div id="file-viewer" class="files-viewer">
-              <div class="files-empty">Выберите файл слева</div>
-            </div>
+            <div id="file-viewer" class="files-viewer"><div class="files-empty">Выберите файл слева</div></div>
           </div>
         </div>
       </div>
 
-      <!-- ─── TAB: CONSTITUTION ────────────────────────── -->
+      <!-- TAB: SCRIBE -->
+      <div id="tab-scribe" class="tab-panel" style="display:none">
+        <div class="section-title" style="margin-bottom:14px">SCRIBE — ТРАНСКРИПЦИИ</div>
+        <div id="scribe-stats" class="lib-stats"><div class="lib-empty">Загрузка...</div></div>
+        <div class="lib-section" style="margin-top:18px">
+          <div class="lib-section-title">
+            <span>ИСТОРИЯ ТРАНСКРИПЦИЙ</span>
+            <button class="wmap-refresh" onclick="loadScribe()">↻</button>
+          </div>
+          <div id="scribe-list" class="lib-recent-list"><div class="lib-empty">Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: CONSTITUTION -->
       <div id="tab-constitution" class="tab-panel" style="display:none">
         <div class="const-toolbar">
           <div class="section-title" style="margin:0">КОНСТИТУЦИЯ МИРА</div>
@@ -542,183 +321,99 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
         <textarea id="const-textarea" class="const-textarea" spellcheck="false" oninput="_constOnEdit()"></textarea>
       </div>
 
-      <!-- ─── TAB: SCRIBE ──────────────────────────────── -->
-      <div id="tab-scribe" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:14px">SCRIBE — ТРАНСКРИПЦИИ</div>
-        <div id="scribe-stats" class="lib-stats">
-          <div class="lib-empty">Загрузка...</div>
-        </div>
-        <div class="lib-section" style="margin-top:18px">
-          <div class="lib-section-title">
-            <span>ИСТОРИЯ ТРАНСКРИПЦИЙ</span>
-            <button class="wmap-refresh" onclick="loadScribe()">↻</button>
-          </div>
-          <div id="scribe-list" class="lib-recent-list">
-            <div class="lib-empty">Загрузка...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── TAB: CIVILIZATION ──────────────────────────── -->
-      <div id="tab-civilization" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:14px">🏛️ ЦИВИЛИЗАЦИЯ АГЕНТОВ</div>
-
-        <div class="civ-section">
-          <div class="civ-section-title">
-            <span>РЕЕСТР АГЕНТОВ <span id="civ-agents-count" style="opacity:.6"></span></span>
-            <button class="wmap-refresh" onclick="loadAgents()">↻</button>
-          </div>
-          <div id="civ-agents-list" class="civ-agents-grid">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
-        </div>
-
-        <div class="civ-section" style="margin-top:22px">
-          <div class="civ-section-title">
-            <span>ПРЕДЛОЖЕНИЯ <span id="civ-proposals-count" style="opacity:.6"></span></span>
-            <button class="wmap-refresh" onclick="loadProposals()">↻</button>
-          </div>
-          <div id="civ-proposals-list">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
-        </div>
-
-        <!-- СОВЕТ -->
-        <div class="civ-section" style="margin-top:26px;border-top:1px solid var(--border);padding-top:18px">
-          <div class="civ-section-title">
-            <span>🧠 СОВЕТ — ОБСУЖДЕНИЯ <span id="civ-sessions-count" style="opacity:.6"></span></span>
-            <div style="display:flex;gap:6px">
-              <button class="wyrd-btn wyrd-btn-sm" onclick="showCouncilForm()">+ ЗАПУСТИТЬ</button>
-              <button class="wmap-refresh" onclick="loadSessions()">↻</button>
-            </div>
-          </div>
-          <!-- Форма запуска -->
-          <div id="council-form" style="display:none;margin-bottom:12px">
-            <textarea id="council-idea-input" class="tech-fin tech-fdesc" placeholder="Идея или вопрос для Совета..." rows="2" style="width:100%;box-sizing:border-box"></textarea>
-            <div style="display:flex;gap:7px;margin-top:6px">
-              <button class="wyrd-btn wyrd-btn-sm" onclick="submitCouncilSession()">ОТПРАВИТЬ</button>
-              <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideCouncilForm()">✕</button>
-            </div>
-          </div>
-          <div id="civ-sessions-list">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
-        </div>
-
-        <!-- КОПИЛКА МЫСЛЕЙ -->
-        <div class="civ-section" style="margin-top:22px">
-          <div class="civ-section-title">
-            <span>💭 МЫСЛИ НА ПЕРСПЕКТИВУ <span id="civ-thoughts-count" style="opacity:.6"></span></span>
-            <button class="wmap-refresh" onclick="loadThoughts()">↻</button>
-          </div>
-          <div id="civ-thoughts-list">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── TAB: EDUCATION ──────────────────────────── -->
+      <!-- TAB: EDUCATION -->
       <div id="tab-education" class="tab-panel" style="display:none">
         <div class="section-title" style="margin-bottom:14px">👔 ПРОФОБРАЗОВАНИЕ СОВЕТА</div>
-
-        <!-- Читатели Совета -->
         <div class="civ-section" style="margin-top:22px">
           <div class="civ-section-title">
             <span>📚 ЧИТАТЕЛИ СОВЕТА <span id="edu-readers-count" style="opacity:.6"></span></span>
           </div>
-          <div id="edu-readers-list">
-            <div style="color:var(--text-dim);font-size:.7rem">Загрузка...</div>
-          </div>
+          <div id="edu-readers-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
         </div>
-
-        <!-- Лог фабрики -->
         <div class="civ-section" style="margin-top:22px">
           <div class="civ-section-title">
             <span>📋 ЛОГ ПОСЛЕДНЕГО ЦИКЛА</span>
             <button class="wyrd-btn wyrd-btn-sm" onclick="applyCouncilPrompts()">⚡ ПРИМЕНИТЬ ПРОМПТЫ</button>
           </div>
-          <div id="edu-log" class="tech-result" style="max-height:300px;font-size:.6rem;line-height:1.6">
+          <div id="edu-log" class="tech-result" style="max-height:300px;font-size:.75rem;line-height:1.6">
             <span style="color:var(--text-dim)">Нажмите ↻ для загрузки...</span>
           </div>
         </div>
       </div>
 
-      <!-- ─── TAB: LIBRARY ─────────────────────────────── -->
-      <div id="tab-library" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
-
-        <!-- Статистика -->
-        <div id="lib-stats" class="lib-stats">
-          <div class="lib-empty">Загрузка...</div>
-        </div>
-
-        <!-- Поиск -->
-        <div class="lib-section">
-          <div class="lib-section-title">
-            <span>ПОИСК ПО ЗНАНИЯМ</span>
-          </div>
-          <div class="lib-search-box">
-            <input id="lib-search-input" class="lib-search-input" placeholder="Введите запрос..." oninput="libSearchInput(this.value)">
-            <button class="wmap-refresh" onclick="runLibSearch(document.getElementById('lib-search-input').value)">↵</button>
-          </div>
-          <div id="lib-search-results" class="lib-search-results"></div>
-        </div>
-
-        <!-- Читатели -->
-        <div class="lib-section">
-          <div class="lib-section-title">
-            <span>ЧИТАТЕЛИ <span id="lib-readers-count" style="opacity:.6"></span></span>
-            <div style="display:flex;gap:6px">
-              <input class="lib-search-input" style="width:160px;padding:4px 8px" placeholder="Фильтр..." oninput="libReadersFilter(this.value)">
-              <button class="wmap-refresh" onclick="loadLibReaders()">↻</button>
-            </div>
-          </div>
-          <div id="lib-readers-list" class="lib-readers-list">
-            <div class="lib-empty">Загрузка...</div>
-          </div>
-        </div>
-
-        <!-- Последние знания -->
-        <div class="lib-section">
-          <div class="lib-section-title">
-            <span>ПОСЛЕДНИЕ ЗНАНИЯ</span>
-            <button class="wmap-refresh" onclick="loadLibRecent()">↻</button>
-          </div>
-          <div id="lib-recent-list" class="lib-recent-list">
-            <div class="lib-empty">Загрузка...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── TAB: WORLD ─────────────────────────────────── -->
+      <!-- TAB: WORLD -->
       <div id="tab-world" class="tab-panel" style="display:none;padding:0;height:calc(100vh - 56px);overflow:hidden">
         <div style="display:flex;height:100%;gap:0">
-
-          <!-- Левая панель: список отделов и агентов -->
-          <div style="width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 8px;background:rgba(0,0,0,0.78);color:#e2e8f0">
-            <div style="font-size:.55rem;color:var(--text-dim);letter-spacing:.12em;margin-bottom:10px;padding:0 4px">ОТДЕЛЫ</div>
+          <div style="width:210px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 8px;background:rgba(8,8,17,.9)">
+            <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin-bottom:10px;padding:0 4px">ОТДЕЛЫ</div>
             <div id="world-dept-list"></div>
-            <div style="font-size:.55rem;color:var(--text-dim);letter-spacing:.12em;margin:14px 0 8px;padding:0 4px">АГЕНТЫ</div>
+            <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin:14px 0 8px;padding:0 4px">АГЕНТЫ</div>
             <div id="world-agents-list"></div>
           </div>
-
-          <!-- Правая панель: контент -->
-          <div id="world-content" style="flex:1;overflow-y:auto;padding:16px 20px;font-family:'Space Grotesk',sans-serif;background:rgba(0,0,0,0.78);color:#e2e8f0">
-            <div style="color:var(--text-dim);font-size:.65rem">Выбери отдел или агента слева</div>
+          <div id="world-content" style="flex:1;overflow-y:auto;padding:18px 22px;background:rgba(8,8,17,.9)">
+            <div style="color:var(--text-dim);font-size:.8rem">Выбери отдел или агента слева</div>
           </div>
         </div>
       </div>
 
     </main>
 
-    <!-- Лента событий -->
-    <aside class="feed">
-      <div class="section-title" style="margin-bottom:16px">ЛЕНТА</div>
-      <div id="event-feed">
-        <div style="color:var(--text-dim);font-size:.65rem">Загрузка...</div>
+    <!-- ─── ПАНЕЛЬ АГЕНТА ─────────────────────────────── -->
+    <aside id="agent-panel" class="agent-panel">
+      <div class="ap-header">
+        <span id="ap-emoji" class="ap-emoji">🤖</span>
+        <div class="ap-info">
+          <div id="ap-name" class="ap-name">Агент</div>
+          <div class="ap-status-row">
+            <span id="ap-status-dot" class="ap-status-dot" style="background:#10b981"></span>
+            <span id="ap-status-label" class="ap-status-label" style="color:#10b981">LIVE</span>
+            <span id="ap-room" class="ap-room"></span>
+          </div>
+        </div>
+        <button class="ap-close" onclick="closeAgentPanel()">✕</button>
+      </div>
+      <div class="ap-body">
+        <div>
+          <div class="ap-section-title">О АГЕНТЕ</div>
+          <div id="ap-desc" class="ap-desc">—</div>
+        </div>
+        <div>
+          <div class="ap-section-title">ПОСЛЕДНИЕ ЗАДАЧИ</div>
+          <div id="ap-tasks"><div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div></div>
+        </div>
+        <div>
+          <div class="ap-section-title">ПОСЛЕДНИЕ СОБЫТИЯ</div>
+          <div id="ap-events"><div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div></div>
+        </div>
+      </div>
+      <div class="ap-actions">
+        <button class="ap-btn" onclick="apCreateTask()">⚡ Задача Технику</button>
+        <button class="ap-btn" id="ap-trigger-btn" onclick="apTrigger()">▶ Запустить</button>
       </div>
     </aside>
+
   </div>
+
+  <!-- ─── ТОСТЫ ─────────────────────────────────────── -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script>
+  // Переключение карты
+  function setMapView(btn, src) {
+    document.getElementById('map-iframe').src = src;
+    document.querySelectorAll('.map-sv').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  // Запуск всех циклов
+  async function triggerAll(btn) {
+    btn.textContent = '⏳'; btn.disabled = true;
+    try {
+      await fetch('/trigger/all', {method:'POST'});
+      btn.textContent = '✅';
+      setTimeout(() => { btn.textContent = '⚡'; btn.disabled = false; }, 3000);
+    } catch { btn.textContent = '❌'; btn.disabled = false; }
+  }
+  </script>
 
   <script src="/assets/js/build.js"></script>
   <script src="/assets/js/hq.js"></script>

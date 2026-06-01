@@ -425,17 +425,232 @@ function escHtml(str) {
     .replace(/\n/g,'<br>');
 }
 
+/* ─── TOPBAR STATS ──────────────────────────────────── */
+async function loadTopbarStats() {
+  try {
+    const r = await fetch('/civilization/agents');
+    if (r.ok) {
+      const d = await r.json();
+      const agents = d.agents || [];
+      const now = Date.now();
+      const live = agents.filter(a => {
+        if (a.status !== 'active') return false;
+        const ms = a.last_pulse ? now - new Date(a.last_pulse+'Z').getTime() : Infinity;
+        return ms < 600000;
+      }).length;
+      const el = document.getElementById('stat-live');
+      if (el) el.textContent = live;
+    }
+  } catch {}
+  try {
+    const r = await fetch('/tech/tasks?status=running&limit=50');
+    if (r.ok) {
+      const d = await r.json();
+      const tasks = Array.isArray(d) ? d : (d.tasks || []);
+      const el = document.getElementById('stat-tasks');
+      if (el) el.textContent = tasks.length;
+    }
+  } catch {}
+  try {
+    const r = await fetch('/flags?type=risk&status=active');
+    if (r.ok) {
+      const risks = await r.json();
+      const count = Array.isArray(risks) ? risks.length : 0;
+      const el = document.getElementById('stat-risks');
+      if (el) el.textContent = count;
+      const wrap = document.getElementById('stat-risks-wrap');
+      if (wrap) wrap.style.color = count > 0 ? 'var(--red)' : '';
+    }
+  } catch {}
+}
+
+/* ─── TOAST ─────────────────────────────────────────── */
+function showToast(type, text, color) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const now = new Date();
+  const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+  const time = msk.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) + ' МСК';
+  toast.innerHTML = `
+    <div class="toast-type" style="color:${color||'var(--text-dim)'}">${escHtml(type)}</div>
+    <div class="toast-text">${escHtml(text)}</div>
+    <div class="toast-time">${time}</div>
+  `;
+  toast.onclick = () => toast.remove();
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 8000);
+}
+
+/* ─── AGENT PANEL ────────────────────────────────────── */
+const STATUS_COLORS = {
+  live:    '#10b981',
+  pause:   '#f59e0b',
+  ready:   '#3b82f6',
+  pending: '#f97316',
+  ghost:   '#6b7280',
+};
+const STATUS_LABELS = {
+  live: 'LIVE', pause: 'ПАУЗА', ready: 'ГОТОВ', pending: 'СТРОИТСЯ', ghost: 'НЕ СОЗДАН',
+};
+const ROOM_NAMES = {
+  hq:'ШТАБ HQ', lib:'БИБЛИОТЕКА', anlt:'АНАЛИТИКА', tech:'ТЕХНИК',
+  babla:'ОТДЕЛ БАБЛА', ideyny:'ИДЕЙНЫЙ', proekt:'ПРОЕКТНЫЙ', prod:'ПРОИЗВОДСТВО',
+  build:'СТРОИТЕЛЬСТВО', audit:'АУДИТ',
+};
+
+let _currentAgent = null;
+
+function openAgentPanel(agent) {
+  _currentAgent = agent;
+  const panel = document.getElementById('agent-panel');
+  if (!panel) return;
+
+  document.getElementById('ap-emoji').textContent  = agent.emoji || '🤖';
+  document.getElementById('ap-name').textContent   = agent.name  || 'Агент';
+  document.getElementById('ap-desc').textContent   = agent.desc  || '—';
+
+  const color = STATUS_COLORS[agent.status] || '#6b7280';
+  const label = STATUS_LABELS[agent.status] || agent.status?.toUpperCase() || '—';
+  document.getElementById('ap-status-dot').style.background = color;
+  document.getElementById('ap-status-dot').style.boxShadow  = `0 0 6px ${color}`;
+  document.getElementById('ap-status-label').textContent    = label;
+  document.getElementById('ap-status-label').style.color    = color;
+  document.getElementById('ap-room').textContent = agent.room ? ('· ' + (ROOM_NAMES[agent.room] || agent.room)) : '';
+
+  const triggerBtn = document.getElementById('ap-trigger-btn');
+  if (triggerBtn) triggerBtn.textContent = agent.status === 'live' ? '⏸ Остановить' : '▶ Запустить';
+
+  document.getElementById('ap-tasks').innerHTML  = '<div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div>';
+  document.getElementById('ap-events').innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div>';
+
+  panel.classList.add('open');
+
+  loadAgentTasks(agent);
+  loadAgentEvents(agent);
+}
+
+function closeAgentPanel() {
+  const panel = document.getElementById('agent-panel');
+  if (panel) panel.classList.remove('open');
+  _currentAgent = null;
+}
+
+async function loadAgentTasks(agent) {
+  const el = document.getElementById('ap-tasks');
+  if (!el) return;
+  try {
+    const r = await fetch(`/tech/tasks?limit=5`);
+    if (!r.ok) throw new Error();
+    const tasks = await r.json();
+    const list = (Array.isArray(tasks) ? tasks : (tasks.tasks || []))
+      .filter(t => t.description?.toLowerCase().includes(agent.name.toLowerCase()) ||
+                   t.title?.toLowerCase().includes(agent.name.toLowerCase()))
+      .slice(0, 3);
+    if (!list.length) {
+      el.innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Задач нет</div>';
+      return;
+    }
+    const STATUS_IC = {pending:'⏳',running:'⚙️',done:'✅',failed:'❌',waiting_approval:'🔔'};
+    el.innerHTML = list.map(t => `
+      <div class="ap-task-row">
+        <div class="ap-task-title">${STATUS_IC[t.status]||'•'} ${escHtml(t.title)}</div>
+        <div class="ap-task-meta">${t.status} · ${t.created_at ? timeAgo(t.created_at) : ''}</div>
+      </div>
+    `).join('');
+  } catch {
+    el.innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Нет данных</div>';
+  }
+}
+
+async function loadAgentEvents(agent) {
+  const el = document.getElementById('ap-events');
+  if (!el) return;
+  try {
+    const branch = agent.db || agent.id;
+    const r = await fetch(`/events?branch=${encodeURIComponent(branch)}&limit=5`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const events = (d.events || d || []).slice(0, 4);
+    if (!events.length) {
+      el.innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Событий нет</div>';
+      return;
+    }
+    el.innerHTML = events.map(ev => {
+      const payload = ev.payload || {};
+      const text = payload.summary || payload.name || payload.task || ev.type;
+      return `
+        <div class="ap-event-row">
+          <div class="ap-event-type" style="color:var(--text-dim)">${escHtml(ev.type)}</div>
+          <div class="ap-event-text">${escHtml(String(text).slice(0,120))}</div>
+          ${ev.created_at ? `<div class="ap-event-time">${timeAgo(ev.created_at)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Нет данных</div>';
+  }
+}
+
+async function apCreateTask() {
+  if (!_currentAgent) return;
+  const title = prompt(`Задача для Техника по агенту ${_currentAgent.name}:`);
+  if (!title) return;
+  try {
+    await fetch('/tech/tasks', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({title, description:`Агент: ${_currentAgent.name}`, created_by:'hq_panel', priority:5}),
+    });
+    showToast('ТЕХНИК', `Задача создана: ${title}`, '#f59e0b');
+    loadAgentTasks(_currentAgent);
+  } catch {}
+}
+
+async function apTrigger() {
+  if (!_currentAgent) return;
+  showToast('ДЕЙСТВИЕ', `Команда агенту ${_currentAgent.name} отправлена`, '#3b82f6');
+}
+
+/* ─── postMessage FROM MAP ───────────────────────────── */
+window.addEventListener('message', e => {
+  if (e.data?.type === 'wyrd-agent-click') {
+    openAgentPanel(e.data.agent);
+  }
+});
+
+/* ─── WS TOASTS ─────────────────────────────────────── */
+function initWSToasts() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onmessage = (msg) => {
+    try {
+      const data = JSON.parse(msg.data);
+      if (data.type === 'ping') return;
+      const payload = data.payload || {};
+      const text = payload.summary || payload.name || payload.task || data.type;
+      const COLORS = {
+        agent_born:'#a855f7', analytics_report:'#f97316',
+        babla_report:'#10b981', idea_report:'#8b5cf6',
+        agent_passport_issued:'#3b82f6',
+      };
+      showToast((data.branch||'EVENT').toUpperCase(), String(text).slice(0,100), COLORS[data.type]||'var(--text-dim)');
+      loadTopbarStats();
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(initWSToasts, 4000);
+}
+
 /* ─── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('starfield');
   if (canvas) initStars(canvas);
 
   startClock();
-  loadBranches();
-  loadEvents();
   initMap();
-  initWS();
+  initWSToasts();
+  loadTopbarStats();
 
-  setInterval(() => loadEvents(), 60000);
-  setInterval(() => loadBranches(), 30000);
+  setInterval(loadTopbarStats, 30000);
 });
