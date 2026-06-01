@@ -221,15 +221,36 @@ const MSG_CLASS = {
   thomas:       'civ-msg-thomas',
 };
 
+// speaker filter: sessionId → speaker key or null
+const sessionFilter = {};
+
+function toggleSpeakerFilter(sessionId, speaker) {
+  const current = sessionFilter[sessionId];
+  sessionFilter[sessionId] = current === speaker ? null : speaker;
+  _applyFilter(sessionId);
+}
+
+function _applyFilter(sessionId) {
+  const el = document.getElementById(`dialog-${sessionId}`);
+  if (!el) return;
+  const active = sessionFilter[sessionId];
+  el.querySelectorAll('.civ-msg').forEach(div => {
+    div.style.opacity = (!active || div.dataset.speaker === active) ? '1' : '0.18';
+  });
+  // подсветить активную кнопку спикера
+  el.querySelectorAll('.civ-msg-speaker').forEach(sp => {
+    const isActive = active && sp.closest('.civ-msg').dataset.speaker === active;
+    sp.style.outline = isActive ? '1px solid currentColor' : 'none';
+    sp.style.borderRadius = isActive ? '3px' : '';
+  });
+}
+
 async function loadDialog(sessionId) {
   const el = document.getElementById(`dialog-${sessionId}`);
   if (!el) return;
   try {
     const data = await fetch(`/council/sessions/${sessionId}/messages`).then(r => r.json());
     const msgs = data.messages || [];
-
-    // Найдём вердикт из sessions
-    const sCard = document.querySelector(`.civ-session-card[data-id="${sessionId}"]`);
 
     el.innerHTML = '';
     if (!msgs.length) {
@@ -239,19 +260,12 @@ async function loadDialog(sessionId) {
     msgs.forEach(m => {
       const div = document.createElement('div');
       div.className = `civ-msg ${MSG_CLASS[m.speaker] || ''}`;
-      div.innerHTML = `<div class="civ-msg-speaker">${escHtml(m.speaker_label || m.speaker)}</div>${escHtml(m.message)}`;
+      div.dataset.speaker = m.speaker;
+      div.innerHTML = `<div class="civ-msg-speaker" title="Нажми чтобы фильтровать" style="cursor:pointer" onclick="toggleSpeakerFilter(${sessionId},'${m.speaker}')">${escHtml(m.speaker_label || m.speaker)}</div>${escHtml(m.message)}`;
       el.appendChild(div);
     });
 
-    // Вердикт — берём из sessions list
-    const sessData = await fetch('/council/sessions?limit=50').then(r => r.json());
-    const sess = (sessData.sessions || []).find(s => s.id === sessionId);
-    if (sess && sess.verdict && sess.verdict.summary) {
-      const v = document.createElement('div');
-      v.className = 'civ-verdict';
-      v.innerHTML = `<div class="civ-verdict-label">ВЕРДИКТ</div>${escHtml(sess.verdict.summary)}`;
-      el.appendChild(v);
-    }
+    _applyFilter(sessionId);
   } catch {
     el.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem">Ошибка загрузки диалога</div>';
   }
