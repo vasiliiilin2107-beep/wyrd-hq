@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .models import Agent, Constitution, IdeaDeptReport, IncomeExperiment, IncomeIdea
-from .routers.education import get_trained_prompt, seed_prompt, train_agent
+from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -133,6 +133,7 @@ async def _run_ocenschik() -> str:
 
 
 async def run_idea_check() -> None:
+    await activate_passport(IDEA_FOREMAN)
     await _pulse(IDEA_FOREMAN, "active", "координация воркеров")
     gen, det, oce = await asyncio.gather(
         _run_generator(), _run_detalizator(), _run_ocenschik(),
@@ -166,10 +167,30 @@ async def _register_workers() -> None:
     constitution = const.text if const else ""
 
     workers_def = [
-        {"name": IDEA_FOREMAN, "role": "Координирует Генератора/Детализатора/Оценщика. Loop 3ч. Отчёт → Стратег.", "level": "foreman", "branch": "идеи", "sys": SYS_BRIGADIR},
-        {"name": "Генератор", "role": "Читает синтезы Библиотеки → предлагает новые идеи для WYRD.", "level": "worker", "branch": "идеи", "sys": SYS_GENERATOR},
-        {"name": "Детализатор", "role": "Берёт сырые идеи → детализирует до конкретных шагов реализации.", "level": "worker", "branch": "идеи", "sys": SYS_DETALIZATOR},
-        {"name": "Оценщик Идей", "role": "Приоритизирует банк идей и эксперименты. Выявляет что живёт, что тухнет.", "level": "worker", "branch": "идеи", "sys": SYS_OCENSCHIK},
+        {
+            "name": IDEA_FOREMAN, "level": "foreman", "branch": "идеи", "sys": SYS_BRIGADIR,
+            "role": "Координирует Генератора/Детализатора/Оценщика. Loop 3ч. Отчёт → Стратег.",
+            "dept": "Идейный отдел", "boss": "Стратег", "spec": "координация генерации и оценки идей",
+            "conn": {"reads": ["income_ideas", "income_experiments", "library_synthesis"], "writes": ["idea_dept_reports", "events"]},
+        },
+        {
+            "name": "Генератор", "level": "worker", "branch": "идеи", "sys": SYS_GENERATOR,
+            "role": "Читает синтезы Библиотеки → предлагает новые идеи для WYRD.",
+            "dept": "Идейный отдел", "boss": IDEA_FOREMAN, "spec": "генерация идей из трендов Библиотеки",
+            "conn": {"reads": ["library_synthesis", "income_ideas"], "writes": ["idea_dept_reports"]},
+        },
+        {
+            "name": "Детализатор", "level": "worker", "branch": "идеи", "sys": SYS_DETALIZATOR,
+            "role": "Берёт сырые идеи → детализирует до конкретных шагов реализации.",
+            "dept": "Идейный отдел", "boss": IDEA_FOREMAN, "spec": "детализация идей до конкретных шагов",
+            "conn": {"reads": ["income_ideas (status=idea)"], "writes": ["idea_dept_reports"]},
+        },
+        {
+            "name": "Оценщик Идей", "level": "worker", "branch": "идеи", "sys": SYS_OCENSCHIK,
+            "role": "Приоритизирует банк идей и эксперименты. Выявляет что живёт, что тухнет.",
+            "dept": "Идейный отдел", "boss": IDEA_FOREMAN, "spec": "приоритизация и оценка банка идей",
+            "conn": {"reads": ["income_ideas", "income_experiments"], "writes": ["idea_dept_reports"]},
+        },
     ]
     async with SessionLocal() as db:
         for w in workers_def:
@@ -186,8 +207,13 @@ async def _register_workers() -> None:
     for w in workers_def:
         train_agent(w["name"], w["sys"], constitution)
         seed_prompt(f"idea_{w['name'].lower().replace(' ', '_')}", w["name"], w["sys"])
+        await issue_passport(
+            agent_name=w["name"], department=w["dept"], boss=w["boss"],
+            level=w["level"], branch=w["branch"],
+            specialization=w["spec"], connections=w["conn"],
+        )
 
-    log.info("Идейный отдел: %d агентов обучены и зарегистрированы", len(workers_def))
+    log.info("Идейный отдел: %d агентов обучены, паспорта выданы, в очереди", len(workers_def))
 
 
 async def idea_loop() -> None:

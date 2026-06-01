@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .models import Agent, BuildCard, Constitution, ProjectDeptReport, TechTask
-from .routers.education import get_trained_prompt, seed_prompt, train_agent
+from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -120,6 +120,7 @@ async def _run_ocenschik_proj() -> str:
 
 
 async def run_project_check() -> None:
+    await activate_passport(PROJECT_FOREMAN)
     await _pulse(PROJECT_FOREMAN, "active", "координация воркеров")
     dec, syn, oce = await asyncio.gather(
         _run_decomposer(), _run_synchronizer(), _run_ocenschik_proj(),
@@ -153,10 +154,30 @@ async def _register_workers() -> None:
     constitution = const.text if const else ""
 
     workers_def = [
-        {"name": PROJECT_FOREMAN, "role": "Координирует Декомпозера/Синхронизатора/Оценщика. Loop 2ч. Отчёт → Архитектор.", "level": "foreman", "branch": "проекты", "sys": SYS_BRIGADIR_PROJ},
-        {"name": "Декомпозер", "role": "Разбивает waiting build_cards на атомарные задачи: файл → изменение → результат.", "level": "worker", "branch": "проекты", "sys": SYS_DECOMPOSER},
-        {"name": "Синхронизатор", "role": "Проверяет конфликты между новыми build_cards и текущими tech_tasks.", "level": "worker", "branch": "проекты", "sys": SYS_SYNCHRONIZER},
-        {"name": "Оценщик Проектов", "role": "Оценивает сложность и риски build_cards. Ищет блокеры.", "level": "worker", "branch": "проекты", "sys": SYS_OCENSCHIK_PROJ},
+        {
+            "name": PROJECT_FOREMAN, "level": "foreman", "branch": "проекты", "sys": SYS_BRIGADIR_PROJ,
+            "role": "Координирует Декомпозера/Синхронизатора/Оценщика. Loop 2ч. Отчёт → Архитектор.",
+            "dept": "Проектный отдел", "boss": "Архитектор", "spec": "координация проектирования и оценки рисков",
+            "conn": {"reads": ["build_cards", "tech_tasks"], "writes": ["project_dept_reports", "events"]},
+        },
+        {
+            "name": "Декомпозер", "level": "worker", "branch": "проекты", "sys": SYS_DECOMPOSER,
+            "role": "Разбивает waiting build_cards на атомарные задачи: файл → изменение → результат.",
+            "dept": "Проектный отдел", "boss": PROJECT_FOREMAN, "spec": "декомпозиция ТЗ на атомарные задачи",
+            "conn": {"reads": ["build_cards (status=waiting)"], "writes": ["project_dept_reports"]},
+        },
+        {
+            "name": "Синхронизатор", "level": "worker", "branch": "проекты", "sys": SYS_SYNCHRONIZER,
+            "role": "Проверяет конфликты между новыми build_cards и текущими tech_tasks.",
+            "dept": "Проектный отдел", "boss": PROJECT_FOREMAN, "spec": "проверка конфликтов в архитектуре",
+            "conn": {"reads": ["build_cards", "tech_tasks (running/pending)"], "writes": ["project_dept_reports"]},
+        },
+        {
+            "name": "Оценщик Проектов", "level": "worker", "branch": "проекты", "sys": SYS_OCENSCHIK_PROJ,
+            "role": "Оценивает сложность и риски build_cards. Ищет блокеры.",
+            "dept": "Проектный отдел", "boss": PROJECT_FOREMAN, "spec": "оценка сложности и рисков проектов",
+            "conn": {"reads": ["build_cards", "tech_tasks"], "writes": ["project_dept_reports"]},
+        },
     ]
     async with SessionLocal() as db:
         for w in workers_def:
@@ -173,8 +194,13 @@ async def _register_workers() -> None:
     for w in workers_def:
         train_agent(w["name"], w["sys"], constitution)
         seed_prompt(f"project_{w['name'].lower().replace(' ', '_')}", w["name"], w["sys"])
+        await issue_passport(
+            agent_name=w["name"], department=w["dept"], boss=w["boss"],
+            level=w["level"], branch=w["branch"],
+            specialization=w["spec"], connections=w["conn"],
+        )
 
-    log.info("Проектный отдел: %d агентов обучены и зарегистрированы", len(workers_def))
+    log.info("Проектный отдел: %d агентов обучены, паспорта выданы, в очереди", len(workers_def))
 
 
 async def project_loop() -> None:

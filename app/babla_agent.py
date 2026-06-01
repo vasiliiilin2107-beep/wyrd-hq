@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .models import Agent, AnalyticsReport, BablaReport, Constitution, IncomeExperiment, IncomeIdea
-from .routers.education import get_trained_prompt, seed_prompt, train_agent
+from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -247,6 +247,7 @@ async def _push_idea_to_bank(babla_report: str) -> None:
 
 
 async def run_babla_check() -> None:
+    await activate_passport(BABLA_FOREMAN)
     await _pulse(BABLA_FOREMAN, "active", "координация воркеров")
 
     slepopit, bot_razv, strukt, hunter, schetchik, prioritizer = await asyncio.gather(
@@ -295,13 +296,48 @@ async def _register_workers() -> None:
     constitution = const.text if const else ""
 
     workers_def = [
-        {"name": BABLA_FOREMAN, "role": "Координирует 6 воркеров. Loop 4ч. Отчёт → Казначей. Лучшая находка → income_ideas.", "level": "foreman", "branch": "бабло", "sys": SYS_BRIGADIR_BABLA},
-        {"name": "Следопыт", "role": "Разведка денежных потоков людей: платформы, ниши, схемы заработка.", "level": "worker", "branch": "бабло", "sys": SYS_SLEPOPIT},
-        {"name": "Бот-Разведчик", "role": "Где боты и AI зарабатывают: SaaS, автоматизация, контент-машины.", "level": "worker", "branch": "бабло", "sys": SYS_BOT_RAZVEDCHIK},
-        {"name": "Структуролог", "role": "Анализ бизнес-моделей: unit economics, CAC/LTV, маржинальность.", "level": "worker", "branch": "бабло", "sys": SYS_STRUKTUROLOG},
-        {"name": "Охотник", "role": "Ищет монетизационные окна через синтезы Библиотеки.", "level": "worker", "branch": "бабло", "sys": SYS_HUNTER},
-        {"name": "Счетовод", "role": "Анализирует income_experiments. Что работает, что убивать, что масштабировать.", "level": "worker", "branch": "бабло", "sys": SYS_SCHETCHIK},
-        {"name": "Приоритизатор", "role": "Ранжирует идеи: быстрые деньги / средний рост / долгая ставка.", "level": "worker", "branch": "бабло", "sys": SYS_PRIORITIZER},
+        {
+            "name": BABLA_FOREMAN, "level": "foreman", "branch": "бабло", "sys": SYS_BRIGADIR_BABLA,
+            "role": "Координирует 6 воркеров. Loop 4ч. Отчёт → Казначей. Лучшая находка → income_ideas.",
+            "dept": "Отдел Бабла", "boss": "Казначей", "spec": "координация бизнес-разведки",
+            "conn": {"reads": ["income_ideas", "income_experiments", "analytics_reports", "library_synthesis"], "writes": ["babla_reports", "income_ideas", "events"]},
+        },
+        {
+            "name": "Следопыт", "level": "worker", "branch": "бабло", "sys": SYS_SLEPOPIT,
+            "role": "Разведка денежных потоков людей: платформы, ниши, схемы заработка.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "денежные потоки людей (платформы, ниши, схемы)",
+            "conn": {"reads": ["library_synthesis"], "writes": ["babla_reports"]},
+        },
+        {
+            "name": "Бот-Разведчик", "level": "worker", "branch": "бабло", "sys": SYS_BOT_RAZVEDCHIK,
+            "role": "Где боты и AI зарабатывают: SaaS, автоматизация, контент-машины.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "монетизация ботов и AI (SaaS, автоматизация, API)",
+            "conn": {"reads": ["library_synthesis"], "writes": ["babla_reports"]},
+        },
+        {
+            "name": "Структуролог", "level": "worker", "branch": "бабло", "sys": SYS_STRUKTUROLOG,
+            "role": "Анализ бизнес-моделей: unit economics, CAC/LTV, маржинальность.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "бизнес-модели и unit economics",
+            "conn": {"reads": ["income_ideas", "income_experiments"], "writes": ["babla_reports"]},
+        },
+        {
+            "name": "Охотник", "level": "worker", "branch": "бабло", "sys": SYS_HUNTER,
+            "role": "Ищет монетизационные окна через синтезы Библиотеки.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "монетизационные окна из Библиотеки",
+            "conn": {"reads": ["library_synthesis", "income_ideas"], "writes": ["babla_reports"]},
+        },
+        {
+            "name": "Счетовод", "level": "worker", "branch": "бабло", "sys": SYS_SCHETCHIK,
+            "role": "Анализирует income_experiments. Что работает, что убивать, что масштабировать.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "анализ экспериментов и ROI",
+            "conn": {"reads": ["income_experiments"], "writes": ["babla_reports"]},
+        },
+        {
+            "name": "Приоритизатор", "level": "worker", "branch": "бабло", "sys": SYS_PRIORITIZER,
+            "role": "Ранжирует идеи: быстрые деньги / средний рост / долгая ставка.",
+            "dept": "Отдел Бабла", "boss": BABLA_FOREMAN, "spec": "приоритизация денежных возможностей",
+            "conn": {"reads": ["income_ideas", "income_experiments", "analytics_reports"], "writes": ["babla_reports"]},
+        },
     ]
 
     async with SessionLocal() as db:
@@ -319,8 +355,13 @@ async def _register_workers() -> None:
     for w in workers_def:
         train_agent(w["name"], w["sys"], constitution)
         seed_prompt(f"babla_{w['name'].lower().replace(' ', '_').replace('-', '_')}", w["name"], w["sys"])
+        await issue_passport(
+            agent_name=w["name"], department=w["dept"], boss=w["boss"],
+            level=w["level"], branch=w["branch"],
+            specialization=w["spec"], connections=w["conn"],
+        )
 
-    log.info("Отдел Бабла: %d агентов обучены и зарегистрированы", len(workers_def))
+    log.info("Отдел Бабла: %d агентов обучены, паспорта выданы, в очереди", len(workers_def))
 
 
 async def babla_loop() -> None:

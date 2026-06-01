@@ -78,6 +78,84 @@ def get_trained_prompt(agent_name: str, fallback: str = "") -> str:
     return _scores.get(f"trained:{agent_name}", {}).get("prompt", fallback)
 
 
+async def issue_passport(
+    agent_name: str,
+    department: str,
+    boss: str,
+    level: str,
+    branch: str,
+    specialization: str = "",
+    connections: dict | None = None,
+) -> None:
+    """Выдаёт паспорт обученному агенту и ставит его в очередь на рабочее место.
+    Нулёвый → обучен → паспорт выдан (queued) → на рабочем месте (active)."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from ..database import SessionLocal
+    from ..models import AgentPassport, Event
+
+    knows = [
+        "мир WYRD",
+        "иерархия отделов",
+        "три закона",
+        "конституция WYRD",
+        "конвейер идей (Бабла→Идейный→Совет)",
+    ]
+    if specialization:
+        knows.append(specialization)
+
+    async with SessionLocal() as db:
+        stmt = pg_insert(AgentPassport).values(
+            agent_name=agent_name,
+            department=department,
+            boss=boss,
+            level=level,
+            branch=branch,
+            specialization=specialization,
+            knows_json=knows,
+            connections_json=connections or {},
+            status="queued",
+        ).on_conflict_do_update(
+            index_elements=["agent_name"],
+            set_={
+                "department": department,
+                "boss": boss,
+                "level": level,
+                "branch": branch,
+                "specialization": specialization,
+                "knows_json": knows,
+                "connections_json": connections or {},
+                "status": "queued",
+                "trained_at": datetime.utcnow(),
+            },
+        )
+        await db.execute(stmt)
+        db.add(Event(
+            type="agent_passport_issued",
+            payload={"agent": agent_name, "department": department, "level": level, "status": "queued"},
+        ))
+        await db.commit()
+
+    log.info("[education] паспорт выдан: %s → очередь | отдел: %s", agent_name, department)
+
+
+async def activate_passport(agent_name: str) -> None:
+    """Переводит паспорт из queued → active когда агент выходит на работу."""
+    from sqlalchemy import select as sa_select
+    from ..database import SessionLocal
+    from ..models import AgentPassport
+
+    async with SessionLocal() as db:
+        p = (await db.execute(
+            sa_select(AgentPassport)
+            .where(AgentPassport.agent_name == agent_name)
+            .where(AgentPassport.status == "queued")
+        )).scalar_one_or_none()
+        if p:
+            p.status = "active"
+            await db.commit()
+            log.info("[education] паспорт активирован: %s", agent_name)
+
+
 @router.post("/cycle-result")
 async def save_cycle_result(request: Request):
     """Фабрика постит сюда после каждого агента."""

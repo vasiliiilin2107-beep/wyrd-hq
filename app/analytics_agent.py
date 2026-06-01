@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .routers.education import get_trained_prompt, seed_prompt, train_agent
+from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 from .models import Agent, AnalyticsReport, Constitution, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
@@ -194,6 +194,7 @@ async def _run_kritik() -> str:
 
 
 async def run_analytics_check() -> None:
+    await activate_passport(ANALYTICS_FOREMAN)
     await _pulse_agent(ANALYTICS_FOREMAN, "active", "координация воркеров")
     period_h = 24
 
@@ -241,10 +242,30 @@ async def _register_workers() -> None:
     constitution = const.text if const else ""
 
     workers_def = [
-        {"name": ANALYTICS_FOREMAN, "role": "Координирует Счётчика/Разведчика/Критика. Loop 2ч. Сводный отчёт → Картограф.", "level": "foreman", "branch": "аналитика", "sys": SYS_BRIGADIR},
-        {"name": "Счётчик", "role": "Внутренние метрики: события, пульсы агентов, задачи Техника. Ищет аномалии.", "level": "worker", "branch": "аналитика", "sys": SYS_SCHETCHIK},
-        {"name": "Разведчик", "role": "Внешние тренды через синтезы Библиотеки. Ищет окна возможностей и угрозы.", "level": "worker", "branch": "аналитика", "sys": SYS_RAZVEDCHIK},
-        {"name": "Критик", "role": "Обкатывает вердикты Совета и идеи. Стресс-тест: ищет слабые места и риски.", "level": "worker", "branch": "аналитика", "sys": SYS_KRITIK},
+        {
+            "name": ANALYTICS_FOREMAN, "level": "foreman", "branch": "аналитика", "sys": SYS_BRIGADIR,
+            "role": "Координирует Счётчика/Разведчика/Критика. Loop 2ч. Сводный отчёт → Картограф.",
+            "dept": "Отдел Аналитики", "boss": "Картограф", "spec": "координация аналитики мира",
+            "conn": {"reads": ["все отделы аналитики"], "writes": ["analytics_reports", "events"]},
+        },
+        {
+            "name": "Счётчик", "level": "worker", "branch": "аналитика", "sys": SYS_SCHETCHIK,
+            "role": "Внутренние метрики: события, пульсы агентов, задачи Техника. Ищет аномалии.",
+            "dept": "Отдел Аналитики", "boss": ANALYTICS_FOREMAN, "spec": "внутренние метрики и аномалии",
+            "conn": {"reads": ["events", "agents", "tech_tasks", "foreman_reports"], "writes": ["analytics_reports"]},
+        },
+        {
+            "name": "Разведчик", "level": "worker", "branch": "аналитика", "sys": SYS_RAZVEDCHIK,
+            "role": "Внешние тренды через синтезы Библиотеки. Ищет окна возможностей и угрозы.",
+            "dept": "Отдел Аналитики", "boss": ANALYTICS_FOREMAN, "spec": "внешние тренды и окна возможностей",
+            "conn": {"reads": ["library_synthesis", "knowledge_stats"], "writes": ["analytics_reports"]},
+        },
+        {
+            "name": "Критик", "level": "worker", "branch": "аналитика", "sys": SYS_KRITIK,
+            "role": "Обкатывает вердикты Совета и идеи. Стресс-тест: ищет слабые места и риски.",
+            "dept": "Отдел Аналитики", "boss": ANALYTICS_FOREMAN, "spec": "стресс-тест идей и вердиктов Совета",
+            "conn": {"reads": ["council_sessions", "income_ideas", "council_thoughts"], "writes": ["analytics_reports"]},
+        },
     ]
     async with SessionLocal() as db:
         for w in workers_def:
@@ -261,8 +282,13 @@ async def _register_workers() -> None:
     for w in workers_def:
         train_agent(w["name"], w["sys"], constitution)
         seed_prompt(f"analytics_{w['name'].lower().replace(' ', '_').replace('ё', 'e')}", w["name"], w["sys"])
+        await issue_passport(
+            agent_name=w["name"], department=w["dept"], boss=w["boss"],
+            level=w["level"], branch=w["branch"],
+            specialization=w["spec"], connections=w["conn"],
+        )
 
-    log.info("Аналитика: %d агентов обучены и зарегистрированы", len(workers_def))
+    log.info("Аналитика: %d агентов обучены, паспорта выданы, в очереди", len(workers_def))
 
 
 async def analytics_loop() -> None:

@@ -250,6 +250,24 @@ class AnalyticsReport(Base):
     analysis: Mapped[str] = mapped_column(Text)
 
 
+class AgentPassport(Base):
+    __tablename__ = "agent_passports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    department: Mapped[str] = mapped_column(String(200))
+    boss: Mapped[str] = mapped_column(String(100))
+    level: Mapped[str] = mapped_column(String(50))
+    branch: Mapped[str] = mapped_column(String(100))
+    specialization: Mapped[str | None] = mapped_column(Text)
+    knows_json: Mapped[list[str] | None] = mapped_column(JSON)
+    connections_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # queued | active | revoked
+    status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    trained_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    issued_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class IdeaDeptReport(Base):
     __tablename__ = "idea_dept_reports"
 

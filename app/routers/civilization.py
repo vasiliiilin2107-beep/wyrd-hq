@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, Proposal
+from ..models import Agent, AgentPassport, Proposal
 
 router = APIRouter(prefix="/civilization", tags=["civilization"])
 
@@ -123,6 +123,31 @@ async def patch_proposal(prop_id: int, body: ProposalPatch, session: AsyncSessio
     return {"ok": True}
 
 
+# ─── passports ────────────────────────────────────────────
+
+@router.get("/passports")
+async def list_passports(status: str | None = None, session: AsyncSession = Depends(get_session)):
+    """Очередь агентов: queued = обучен, ждёт старта | active = на рабочем месте."""
+    query = select(AgentPassport).order_by(AgentPassport.issued_at.desc())
+    if status:
+        query = query.where(AgentPassport.status == status)
+    rows = (await session.execute(query)).scalars().all()
+    return {"passports": [_passport_dict(p) for p in rows], "total": len(rows)}
+
+
+@router.patch("/passports/{agent_name}/activate")
+async def activate_passport_endpoint(agent_name: str, session: AsyncSession = Depends(get_session)):
+    p = (await session.execute(
+        select(AgentPassport).where(AgentPassport.agent_name == agent_name)
+    )).scalar_one_or_none()
+    if not p:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Паспорт не найден")
+    p.status = "active"
+    await session.commit()
+    return {"ok": True, "agent": agent_name, "status": "active"}
+
+
 # ─── helpers ──────────────────────────────────────────────
 
 def _agent_dict(a: Agent) -> dict:
@@ -146,6 +171,22 @@ def _agent_dict(a: Agent) -> dict:
         "last_pulse": a.last_pulse.isoformat() if a.last_pulse else None,
         "pulse_ago": pulse_ago,
         "created_at": a.created_at.isoformat(),
+    }
+
+
+def _passport_dict(p: AgentPassport) -> dict:
+    return {
+        "agent_name": p.agent_name,
+        "department": p.department,
+        "boss": p.boss,
+        "level": p.level,
+        "branch": p.branch,
+        "specialization": p.specialization,
+        "knows": p.knows_json,
+        "connections": p.connections_json,
+        "status": p.status,
+        "trained_at": p.trained_at.isoformat(),
+        "issued_at": p.issued_at.isoformat(),
     }
 
 
