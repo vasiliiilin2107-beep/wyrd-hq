@@ -13,11 +13,14 @@ from .database import engine, Base, SessionLocal
 from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
 from .routers.civilization import seed_agents
-from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council, education, world_docs, build, analytics
+from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council, education, world_docs, build, analytics, ideas_dept, projects_dept, babla
 from .council_agent import council_autonomous_loop
 from .foreman_agent import foreman_loop
 from .audit_agent import audit_loop, router as audit_router
 from .analytics_agent import analytics_loop
+from .idea_agent import idea_loop
+from .project_agent import project_loop
+from .babla_agent import babla_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -37,6 +40,9 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(foreman_loop())
     asyncio.create_task(audit_loop())
     asyncio.create_task(analytics_loop())
+    asyncio.create_task(idea_loop())
+    asyncio.create_task(project_loop())
+    asyncio.create_task(babla_loop())
     yield
     await close_qdrant()
     await close_redis()
@@ -66,6 +72,9 @@ app.include_router(world_docs.router)
 app.include_router(build.router)
 app.include_router(audit_router)
 app.include_router(analytics.router)
+app.include_router(ideas_dept.router)
+app.include_router(projects_dept.router)
+app.include_router(babla.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")

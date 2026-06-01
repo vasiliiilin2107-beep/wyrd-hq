@@ -250,6 +250,33 @@ class AnalyticsReport(Base):
     analysis: Mapped[str] = mapped_column(Text)
 
 
+class IdeaDeptReport(Base):
+    __tablename__ = "idea_dept_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    metrics_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    analysis: Mapped[str] = mapped_column(Text)
+
+
+class ProjectDeptReport(Base):
+    __tablename__ = "project_dept_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    metrics_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    analysis: Mapped[str] = mapped_column(Text)
+
+
+class BablaReport(Base):
+    __tablename__ = "babla_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    metrics_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    analysis: Mapped[str] = mapped_column(Text)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 
