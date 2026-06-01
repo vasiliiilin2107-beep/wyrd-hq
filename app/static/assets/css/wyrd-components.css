@@ -89,12 +89,17 @@
 .tech-fdesc { resize:vertical; min-height:44px; }
 .tech-list { display:flex; flex-direction:column; gap:6px; overflow-y:auto; }
 .tech-row {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-  padding:10px 13px; display:flex; flex-direction:column; gap:5px;
-  border-left: 3px solid var(--tech-status-color, var(--border));
-  transition: border-color var(--transition);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius); padding:10px 13px;
+  display:flex; flex-direction:column; gap:5px;
+  border-left: 2px solid var(--tech-status-color, rgba(255,255,255,0.15));
+  transition: all 0.18s ease;
 }
-.tech-row:hover { border-color: var(--tech-status-color, var(--border-hi)); }
+.tech-row:hover {
+  background: rgba(255,255,255,0.07);
+  transform: translateX(2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
 .tech-row-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .tech-badge {
   font-size:0.65rem; letter-spacing:.08em; padding:2px 8px; border:1px solid;
@@ -126,12 +131,19 @@
   font-size:0.7rem; padding:5px 12px; border-radius:20px; letter-spacing:.1em; transition:all .15s;
 }
 .idea-filter.active,.idea-filter:hover { border-color:var(--gold); color:var(--gold); }
-#ideas-list { display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+#ideas-list { display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
 .idea-card {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-  padding:14px 16px; display:flex; flex-direction:column; gap:8px; transition:border-color .2s;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius); padding:13px 16px;
+  display:flex; flex-direction:column; gap:8px;
+  transition: all 0.18s ease;
 }
-.idea-card:hover { border-color:var(--border-hi); }
+.idea-card:hover {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.07);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
 .idea-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .idea-badge { font-size:0.65rem; letter-spacing:.08em; padding:2px 8px; border:1px solid; border-radius:12px; white-space:nowrap; font-weight:700; }
 .idea-source {
@@ -294,7 +306,12 @@
 .lib-empty { font-size: 0.72rem; color: var(--text-dim); padding: 6px 2px; }
 
 /* ─── BUILD ──────────────────────────────────────────── */
-.build-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; }
+.build-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius); margin-bottom:8px;
+  transition: all 0.18s ease;
+}
+.build-card:hover { background: rgba(255,255,255,0.07); }
 .build-card-done { opacity:.65; }
 .build-card-hdr { display:flex; align-items:center; gap:8px; padding:12px 14px; cursor:pointer; flex-wrap:wrap; }
 .build-card-hdr:hover { background:rgba(255,255,255,.04); }
@@ -369,16 +386,36 @@
   font-size:0.7rem; letter-spacing:.15em; color:var(--text-dim); font-weight:700;
   text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;
 }
-.civ-agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:7px; align-items:start; }
-.civ-agent-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; }
-.civ-agent-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
-.civ-badge { font-size:0.62rem; letter-spacing:.09em; padding:2px 8px; border:1px solid; border-radius:12px; white-space:nowrap; font-weight:700; }
-.civ-agent-name { font-size:0.85rem; font-weight:700; letter-spacing:.04em; }
-.civ-agent-status { font-size:1rem; }
-.civ-branch-tag { font-size:0.62rem; color:var(--text-dim); background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 7px; }
-.civ-pulse-time { font-size:0.62rem; color:var(--text-dim); margin-left:auto; font-family:var(--mono); }
-.civ-agent-role { font-size:0.75rem; color:var(--text-dim); line-height:1.4; margin-bottom:3px; }
-.civ-agent-task { font-size:0.75rem; color:#10b981; line-height:1.4; }
+.civ-agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; align-items:start; }
+.civ-agent-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-left: 2px solid var(--agent-color, rgba(255,255,255,0.15));
+  border-radius: var(--radius); padding:12px 14px;
+  transition: all 0.18s ease;
+  position: relative; overflow: hidden;
+}
+.civ-agent-card::before {
+  content: '';
+  position: absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, var(--agent-color, transparent), transparent);
+  opacity: 0.4;
+}
+.civ-agent-card:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  border-left-color: var(--agent-color, rgba(255,255,255,0.3));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04);
+}
+.civ-agent-top { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:6px; }
+.civ-badge { font-size:0.6rem; letter-spacing:.1em; padding:2px 7px; border:1px solid; border-radius:10px; white-space:nowrap; font-weight:700; }
+.civ-agent-name { font-size:0.82rem; font-weight:700; letter-spacing:.03em; }
+.civ-agent-status { font-size:0.9rem; }
+.civ-branch-tag { font-size:0.6rem; color:var(--text-dim); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius-sm); padding:2px 6px; }
+.civ-pulse-time { font-size:0.6rem; color:var(--text-dim); margin-left:auto; font-family:var(--mono); }
+.civ-agent-role { font-size:0.72rem; color:var(--text-dim); line-height:1.45; margin-bottom:4px; }
+.civ-agent-task { font-size:0.72rem; color:#10b981; line-height:1.45; }
 .civ-proposal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:7px; }
 .civ-proposal-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
 .civ-prop-from { font-size:0.7rem; color:var(--text-dim); }

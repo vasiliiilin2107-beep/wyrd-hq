@@ -60,6 +60,7 @@ function buildAgentCard(a) {
   const st = AGENT_STATUS[a.status] || { icon: '⚪', label: a.status };
   const card = document.createElement('div');
   card.className = 'civ-agent-card';
+  card.style.setProperty('--agent-color', lv.color);
   card.innerHTML = `
     <div class="civ-agent-top">
       <span class="civ-badge" style="color:${lv.color};border-color:${lv.color}40">${lv.label}</span>

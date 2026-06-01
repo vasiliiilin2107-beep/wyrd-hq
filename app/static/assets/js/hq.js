@@ -1,26 +1,47 @@
 /* ─── STARFIELD ─────────────────────────────────────── */
 function initStars(canvas) {
   const ctx = canvas.getContext('2d');
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    drawStars(ctx, canvas.width, canvas.height);
+  let stars = [];
+  let W, H, raf;
+
+  function buildStars(w, h) {
+    stars = [];
+    const n = Math.floor((w * h) / 3200);
+    for (let i = 0; i < n; i++) {
+      const bright = Math.random() > 0.9;
+      stars.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: bright ? Math.random() * 1.0 + 0.5 : Math.random() * 0.8 + 0.1,
+        a: bright ? Math.random() * 0.5 + 0.3 : Math.random() * 0.35 + 0.05,
+        twinkle: Math.random() > 0.65,
+        ph: Math.random() * Math.PI * 2,
+        sp: Math.random() * 0.5 + 0.2,
+      });
+    }
   }
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    buildStars(W, H);
+  }
+
+  function frame(t) {
+    ctx.clearRect(0, 0, W, H);
+    const ts = t * 0.001;
+    stars.forEach(s => {
+      const a = s.twinkle ? s.a * (0.55 + 0.45 * Math.sin(ts * s.sp + s.ph)) : s.a;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+      ctx.fill();
+    });
+    raf = requestAnimationFrame(frame);
+  }
+
   window.addEventListener('resize', resize);
   resize();
-}
-function drawStars(ctx, w, h) {
-  ctx.clearRect(0, 0, w, h);
-  for (let i = 0; i < Math.floor((w * h) / 4000); i++) {
-    const x = Math.random() * w;
-    const y = Math.random() * h;
-    const r = Math.random() * 1.2 + 0.2;
-    const a = Math.random() * 0.5 + 0.1;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.fill();
-  }
+  raf = requestAnimationFrame(frame);
 }
 
 /* ─── CLOCK ─────────────────────────────────────────── */
