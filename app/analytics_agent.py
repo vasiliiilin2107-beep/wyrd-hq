@@ -9,8 +9,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .routers.education import seed_prompt
-from .models import Agent, AnalyticsReport, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
+from .routers.education import get_trained_prompt, seed_prompt, train_agent
+from .models import Agent, AnalyticsReport, Constitution, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ async def _run_schetchik(period_h: int) -> str:
         lines.append(f"\nБригадир Стройки: застряло {last_foreman.stuck_count} задач")
         lines.append(f"  {last_foreman.analysis[:150]}")
 
-    result = await _llm(SYS_SCHETCHIK, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Счётчик", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse_agent("Счётчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -150,7 +150,7 @@ async def _run_razvedchik() -> str:
     ctx = f"Всего знаний в Библиотеке: {total}\n"
     ctx += "По категориям: " + ", ".join(f"{k}: {v}" for k, v in list(by_cat.items())[:6])
     ctx += f"\n\n{synthesis}"
-    result = await _llm(SYS_RAZVEDCHIK, [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Разведчик", SYS_RAZVEDCHIK), [{"role": "user", "content": ctx}])
     await _pulse_agent("Разведчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -188,7 +188,7 @@ async def _run_kritik() -> str:
         for t in thoughts:
             lines.append(f"  • {t.text[:100]}")
 
-    result = await _llm(SYS_KRITIK, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Критик", SYS_KRITIK), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse_agent("Критик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -214,7 +214,7 @@ async def run_analytics_check() -> None:
     )
 
     log.info("Analytics: бригадир сводит доклады")
-    analysis = await _llm(SYS_BRIGADIR, [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(ANALYTICS_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}])
 
     metrics_json = {
         "period_hours": period_h,
@@ -236,43 +236,33 @@ async def run_analytics_check() -> None:
 
 
 async def _register_workers() -> None:
-    workers = [
-        {
-            "name": ANALYTICS_FOREMAN,
-            "role": "Координирует Счётчика/Разведчика/Критика. Loop 2ч. Сводный отчёт → Картограф.",
-            "level": "foreman", "branch": "аналитика", "can_propose": False,
-        },
-        {
-            "name": "Счётчик",
-            "role": "Внутренние метрики: события, пульсы агентов, задачи Техника. Ищет аномалии.",
-            "level": "worker", "branch": "аналитика", "can_propose": False,
-        },
-        {
-            "name": "Разведчик",
-            "role": "Внешние тренды через синтезы Библиотеки. Ищет окна возможностей и угрозы.",
-            "level": "worker", "branch": "аналитика", "can_propose": False,
-        },
-        {
-            "name": "Критик",
-            "role": "Обкатывает вердикты Совета и идеи. Стресс-тест: ищет слабые места и риски.",
-            "level": "worker", "branch": "аналитика", "can_propose": False,
-        },
+    async with SessionLocal() as db:
+        const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
+    constitution = const.text if const else ""
+
+    workers_def = [
+        {"name": ANALYTICS_FOREMAN, "role": "Координирует Счётчика/Разведчика/Критика. Loop 2ч. Сводный отчёт → Картограф.", "level": "foreman", "branch": "аналитика", "sys": SYS_BRIGADIR},
+        {"name": "Счётчик", "role": "Внутренние метрики: события, пульсы агентов, задачи Техника. Ищет аномалии.", "level": "worker", "branch": "аналитика", "sys": SYS_SCHETCHIK},
+        {"name": "Разведчик", "role": "Внешние тренды через синтезы Библиотеки. Ищет окна возможностей и угрозы.", "level": "worker", "branch": "аналитика", "sys": SYS_RAZVEDCHIK},
+        {"name": "Критик", "role": "Обкатывает вердикты Совета и идеи. Стресс-тест: ищет слабые места и риски.", "level": "worker", "branch": "аналитика", "sys": SYS_KRITIK},
     ]
     async with SessionLocal() as db:
-        for w in workers:
-            stmt = pg_insert(Agent).values(**w, status="idle").on_conflict_do_update(
+        for w in workers_def:
+            stmt = pg_insert(Agent).values(
+                name=w["name"], role=w["role"], level=w["level"],
+                branch=w["branch"], can_propose=False, status="idle",
+            ).on_conflict_do_update(
                 index_elements=["name"],
                 set_={"role": w["role"], "level": w["level"], "branch": w["branch"]},
             )
             await db.execute(stmt)
         await db.commit()
-    log.info("Аналитика: воркеры зарегистрированы (Счётчик / Разведчик / Критик)")
 
-    seed_prompt("analytics_schetchik", "Счётчик", SYS_SCHETCHIK)
-    seed_prompt("analytics_razvedchik", "Разведчик", SYS_RAZVEDCHIK)
-    seed_prompt("analytics_kritik", "Критик", SYS_KRITIK)
-    seed_prompt("analytics_brigadir", "Бригадир Аналитики", SYS_BRIGADIR)
-    log.info("Аналитика: промпты засеяны в Профобразование")
+    for w in workers_def:
+        train_agent(w["name"], w["sys"], constitution)
+        seed_prompt(f"analytics_{w['name'].lower().replace(' ', '_').replace('ё', 'e')}", w["name"], w["sys"])
+
+    log.info("Аналитика: %d агентов обучены и зарегистрированы", len(workers_def))
 
 
 async def analytics_loop() -> None:

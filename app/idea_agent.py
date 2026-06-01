@@ -9,8 +9,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, IdeaDeptReport, IncomeExperiment, IncomeIdea
-from .routers.education import seed_prompt
+from .models import Agent, Constitution, IdeaDeptReport, IncomeExperiment, IncomeIdea
+from .routers.education import get_trained_prompt, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ async def _run_generator() -> str:
         )).scalars().all()
     titles = "\n".join(f"- {i.title}" for i in existing) or "банк пуст"
     ctx = f"{synthesis}\n\nУже есть в банке идей:\n{titles}"
-    result = await _llm(SYS_GENERATOR, [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}])
     await _pulse("Генератор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -107,7 +107,7 @@ async def _run_detalizator() -> str:
     lines = ["Активные идеи:"]
     for i in ideas:
         lines.append(f"\n[{i.id}] {i.title}\n{(i.description or 'без описания')[:200]}")
-    result = await _llm(SYS_DETALIZATOR, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Детализатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -127,7 +127,7 @@ async def _run_ocenschik() -> str:
     lines.append("\nЭксперименты:")
     for e in experiments:
         lines.append(f"  [{e.status}] {e.title}: {(e.result or 'нет результата')[:80]}")
-    result = await _llm(SYS_OCENSCHIK, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Оценщик Идей", SYS_OCENSCHIK), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Оценщик Идей", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -147,7 +147,7 @@ async def run_idea_check() -> None:
         f"=== ДЕТАЛИЗАТОР (шаги реализации) ===\n{safe(det)}\n\n"
         f"=== ОЦЕНЩИК (приоритеты банка идей) ===\n{safe(oce)}"
     )
-    analysis = await _llm(SYS_BRIGADIR, [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(IDEA_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}])
 
     async with SessionLocal() as db:
         db.add(IdeaDeptReport(
@@ -161,26 +161,33 @@ async def run_idea_check() -> None:
 
 
 async def _register_workers() -> None:
-    workers = [
-        {"name": IDEA_FOREMAN, "role": "Координирует Генератора/Детализатора/Оценщика. Loop 3ч. Отчёт → Стратег.", "level": "foreman", "branch": "идеи", "can_propose": False},
-        {"name": "Генератор", "role": "Читает синтезы Библиотеки → предлагает новые идеи для WYRD.", "level": "worker", "branch": "идеи", "can_propose": False},
-        {"name": "Детализатор", "role": "Берёт сырые идеи → детализирует до конкретных шагов реализации.", "level": "worker", "branch": "идеи", "can_propose": False},
-        {"name": "Оценщик Идей", "role": "Приоритизирует банк идей и эксперименты. Выявляет что живёт, что тухнет.", "level": "worker", "branch": "идеи", "can_propose": False},
+    async with SessionLocal() as db:
+        const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
+    constitution = const.text if const else ""
+
+    workers_def = [
+        {"name": IDEA_FOREMAN, "role": "Координирует Генератора/Детализатора/Оценщика. Loop 3ч. Отчёт → Стратег.", "level": "foreman", "branch": "идеи", "sys": SYS_BRIGADIR},
+        {"name": "Генератор", "role": "Читает синтезы Библиотеки → предлагает новые идеи для WYRD.", "level": "worker", "branch": "идеи", "sys": SYS_GENERATOR},
+        {"name": "Детализатор", "role": "Берёт сырые идеи → детализирует до конкретных шагов реализации.", "level": "worker", "branch": "идеи", "sys": SYS_DETALIZATOR},
+        {"name": "Оценщик Идей", "role": "Приоритизирует банк идей и эксперименты. Выявляет что живёт, что тухнет.", "level": "worker", "branch": "идеи", "sys": SYS_OCENSCHIK},
     ]
     async with SessionLocal() as db:
-        for w in workers:
-            stmt = pg_insert(Agent).values(**w, status="idle").on_conflict_do_update(
+        for w in workers_def:
+            stmt = pg_insert(Agent).values(
+                name=w["name"], role=w["role"], level=w["level"],
+                branch=w["branch"], can_propose=False, status="idle",
+            ).on_conflict_do_update(
                 index_elements=["name"],
                 set_={"role": w["role"], "level": w["level"], "branch": w["branch"]},
             )
             await db.execute(stmt)
         await db.commit()
-    log.info("Идейный отдел: воркеры зарегистрированы")
-    seed_prompt("idea_generator", "Генератор", SYS_GENERATOR)
-    seed_prompt("idea_detalizator", "Детализатор", SYS_DETALIZATOR)
-    seed_prompt("idea_ocenschik", "Оценщик Идей", SYS_OCENSCHIK)
-    seed_prompt("idea_brigadir", IDEA_FOREMAN, SYS_BRIGADIR)
-    log.info("Идейный отдел: промпты засеяны")
+
+    for w in workers_def:
+        train_agent(w["name"], w["sys"], constitution)
+        seed_prompt(f"idea_{w['name'].lower().replace(' ', '_')}", w["name"], w["sys"])
+
+    log.info("Идейный отдел: %d агентов обучены и зарегистрированы", len(workers_def))
 
 
 async def idea_loop() -> None:

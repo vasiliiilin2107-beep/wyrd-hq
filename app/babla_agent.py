@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime
@@ -9,8 +10,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, AnalyticsReport, BablaReport, IncomeExperiment, IncomeIdea
-from .routers.education import seed_prompt
+from .models import Agent, AnalyticsReport, BablaReport, Constitution, IncomeExperiment, IncomeIdea
+from .routers.education import get_trained_prompt, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -21,37 +22,68 @@ _FMT = """
 Отвечай строго в формате:
 НАБЛЮДЕНИЕ: [факт, цифра, сигнал — конкретно]
 ВЫВОД: [что это значит для денег WYRD]
-ПРЕДЛОЖЕНИЕ: [конкретное действие]
+ПРЕДЛОЖЕНИЕ: [конкретное действие или идея для монетизации]
 ПРИОРИТЕТ: [высокий / средний / низкий]
 
 Не больше 150 слов. Никакой воды."""
+
+# === КОММЕРСАНТЫ ===
+
+SYS_SLEPOPIT = f"""Ты — Следопыт, разведчик денежных потоков людей.
+Ты изучаешь где и как люди зарабатывают деньги прямо сейчас в интернете.
+Смотри на: YouTube/TikTok/Telegram монетизация, newsletters, SaaS, консалтинг, курсы, маркетплейсы.
+Ищи конкретные ниши где люди зарабатывают стабильно и где есть растущий спрос.
+Предложи одну нишу которую WYRD может занять или автоматизировать.{_FMT}"""
+
+SYS_BOT_RAZVEDCHIK = f"""Ты — Бот-Разведчик, охотник за ботовыми деньгами.
+Ты изучаешь где боты, AI-агенты и автоматизация зарабатывают деньги.
+Смотри на: AI SaaS инструменты, контент-автоматизация, API-сервисы, n8n/Make флоу на продажу,
+AI-агенты как услуга, prompt-маркетплейсы, автоматические рассылки, AI-генерация медиа.
+Найди конкретную ботовую монетизацию которую WYRD может запустить за 30 дней.{_FMT}"""
+
+SYS_STRUKTUROLOG = f"""Ты — Структуролог, аналитик бизнес-моделей мира WYRD.
+Ты разбираешь как устроены деньги: unit economics, CAC, LTV, маржинальность.
+Смотри на бизнес-модели: подписка vs разово, B2B vs B2C, freemium vs premium, SaaS vs агентство.
+Какая структура лучше всего подходит для агентского бизнеса?
+Где самая высокая маржа при минимальных операционных затратах?{_FMT}"""
+
+# === КЛАССИЧЕСКИЕ ВОРКЕРЫ ===
 
 SYS_HUNTER = f"""Ты — Охотник, ищешь монетизационные окна для мира WYRD.
 Ты читаешь синтезы Библиотеки: рынки, аудитории, тренды, SaaS-модели.
 Найди одну конкретную монетизационную возможность которую WYRD может реализовать за 30 дней.
 Оцени: кто платит, за что, сколько, почему WYRD это может делать прямо сейчас.
-Строй на том что уже есть — агенты, Библиотека, HQ. Не фантазируй.{_FMT}"""
+Строй на том что уже есть — агенты, Библиотека, HQ.{_FMT}"""
 
 SYS_SCHETCHIK = f"""Ты — Счетовод, смотришь на деньги и эксперименты мира WYRD.
 Ты видишь income_experiments: что запущено, что дало результат, что провалилось.
-Посчитай что работает и что нет. Где тратим время без отдачи? Где есть результат?
-Дай конкретный вердикт по каждому эксперименту: убрать / масштабировать / продолжить тестировать.{_FMT}"""
+Посчитай что работает и что нет. Где тратим время без отдачи?
+Вердикт по каждому эксперименту: убрать / масштабировать / продолжить тестировать.{_FMT}"""
 
 SYS_PRIORITIZER = f"""Ты — Приоритизатор, расставляешь денежные приоритеты мира WYRD.
 Ты видишь банк идей, эксперименты и последние аналитические отчёты.
 Раздели возможности на три категории:
-  - Быстрые деньги (≤7 дней): что можно сделать и получить деньги прямо сейчас
-  - Среднесрочный рост (≤30 дней): что строить чтобы платили регулярно
-  - Долгая ставка (≥90 дней): куда инвестировать время для большой отдачи
+  - Быстрые деньги (≤7 дней)
+  - Среднесрочный рост (≤30 дней)
+  - Долгая ставка (≥90 дней)
 Скажи что сейчас важнее всего и почему.{_FMT}"""
 
-SYS_BRIGADIR_BABLA = """Ты — Бригадир Бабла мира WYRD. Получил три доклада от воркеров.
-Сведи в отчёт для Казначея:
-1. Лучшая монетизационная возможность прямо сейчас (из доклада Охотника)
-2. Что убить / что масштабировать (из доклада Счетовода)
-3. Один вопрос который нужно решить чтобы деньги потекли
+SYS_BRIGADIR_BABLA = """Ты — Бригадир Бабла мира WYRD. Получил шесть докладов от воркеров.
+Сведи в единый отчёт:
+1. Лучшая монетизационная возможность прямо сейчас (из докладов Коммерсантов)
+2. Лучшая ботовая схема заработка (из доклада Бот-Разведчика)
+3. Рекомендуемая бизнес-структура (из доклада Структуролога)
+4. Что убить / что масштабировать (из доклада Счетовода)
+5. Главный приоритет: куда вложить время чтобы потекли деньги
 
-Деньги — не философия. Конкретно. Не больше 200 слов."""
+Деньги — не философия. Конкретно. Не больше 250 слов."""
+
+SYS_IDEA_CREATOR = """Ты — агент WYRD создающий записи в банк идей.
+На основе аналитического отчёта Отдела Бабла сформулируй ОДНУ конкретную идею для монетизации.
+Идея должна быть реалистичной — основана на том что уже есть в WYRD (агенты, Библиотека, HQ).
+
+Отвечай ТОЛЬКО валидным JSON без markdown и пояснений:
+{"title": "краткое название до 100 символов", "description": "что делаем, кто платит, почему сработает (до 300 символов)", "expected_revenue": "потенциал (например: $300-500/мес, высокая маржа)"}"""
 
 
 async def _pulse(name: str, status: str, task: str | None = None) -> None:
@@ -73,7 +105,7 @@ async def _library_synthesis() -> str:
         items = r.json().get("items", [])
         if not items:
             return "Синтезы Библиотеки: пусто"
-        lines = ["Синтезы Библиотеки (монетизация / рынки / SaaS):"]
+        lines = ["Синтезы Библиотеки:"]
         for item in items[:5]:
             lines.append(f"\n[{item.get('category', '?')}]\n{item.get('synthesis', '')[:250]}")
         return "\n".join(lines)
@@ -82,16 +114,64 @@ async def _library_synthesis() -> str:
         return "Библиотека: недоступна"
 
 
+# === КОММЕРСАНТЫ ===
+
+async def _run_slepopit() -> str:
+    await _pulse("Следопыт", "active", "разведка денежных потоков людей")
+    synthesis = await _library_synthesis()
+    result = await _llm(
+        get_trained_prompt("Следопыт", SYS_SLEPOPIT),
+        [{"role": "user", "content": f"Данные из Библиотеки:\n{synthesis}"}],
+    )
+    await _pulse("Следопыт", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    return result
+
+
+async def _run_bot_razvedchik() -> str:
+    await _pulse("Бот-Разведчик", "active", "разведка ботовых схем заработка")
+    synthesis = await _library_synthesis()
+    result = await _llm(
+        get_trained_prompt("Бот-Разведчик", SYS_BOT_RAZVEDCHIK),
+        [{"role": "user", "content": f"Данные из Библиотеки:\n{synthesis}"}],
+    )
+    await _pulse("Бот-Разведчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    return result
+
+
+async def _run_strukturolog() -> str:
+    await _pulse("Структуролог", "active", "анализ бизнес-моделей")
+    async with SessionLocal() as db:
+        ideas = (await db.execute(
+            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(5)
+        )).scalars().all()
+        experiments = (await db.execute(
+            select(IncomeExperiment).order_by(desc(IncomeExperiment.created_at)).limit(5)
+        )).scalars().all()
+    lines = ["Текущие идеи и эксперименты WYRD:"]
+    for i in ideas:
+        lines.append(f"  [{i.status}] {i.title}: {(i.expected_revenue or '')} ")
+    for e in experiments:
+        lines.append(f"  [exp/{e.status}] {e.title}")
+    result = await _llm(
+        get_trained_prompt("Структуролог", SYS_STRUKTUROLOG),
+        [{"role": "user", "content": "\n".join(lines)}],
+    )
+    await _pulse("Структуролог", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    return result
+
+
+# === КЛАССИЧЕСКИЕ ВОРКЕРЫ ===
+
 async def _run_hunter() -> str:
     await _pulse("Охотник", "active", "поиск монетизационных окон")
     synthesis = await _library_synthesis()
     async with SessionLocal() as db:
         ideas = (await db.execute(
-            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(5)
+            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(4)
         )).scalars().all()
     active = "\n".join(f"- [{i.status}] {i.title}" for i in ideas) or "нет идей"
     ctx = f"{synthesis}\n\nАктивные идеи WYRD:\n{active}"
-    result = await _llm(SYS_HUNTER, [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Охотник", SYS_HUNTER), [{"role": "user", "content": ctx}])
     await _pulse("Охотник", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -105,14 +185,14 @@ async def _run_schetchik() -> str:
     if not experiments:
         await _pulse("Счетовод", "idle")
         return "Нет экспериментов для анализа."
-    lines = ["Эксперименты (все активные и завершённые):"]
+    lines = ["Эксперименты:"]
     for e in experiments:
         lines.append(
             f"\n[{e.status}] {e.title}\n"
             f"Гипотеза: {(e.hypothesis or 'нет')[:100]}\n"
             f"Результат: {(e.result or 'нет результата')[:100]}"
         )
-    result = await _llm(SYS_SCHETCHIK, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Счетовод", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Счетовод", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -131,15 +211,46 @@ async def _run_prioritizer() -> str:
     for i in ideas:
         lines.append(f"  [{i.status}] {i.title}: {(i.description or '')[:80]}")
     if last_report:
-        lines.append(f"\nПоследний аналитический отчёт:\n{last_report.analysis[:400]}")
-    result = await _llm(SYS_PRIORITIZER, [{"role": "user", "content": "\n".join(lines)}])
+        lines.append(f"\nАналитический отчёт:\n{last_report.analysis[:400]}")
+    result = await _llm(get_trained_prompt("Приоритизатор", SYS_PRIORITIZER), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Приоритизатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
 
+async def _push_idea_to_bank(babla_report: str) -> None:
+    """Лучшая находка цикла → income_ideas → Идейный отдел подхватит."""
+    try:
+        raw = await _llm(SYS_IDEA_CREATOR, [{"role": "user", "content": babla_report}])
+        raw = raw.strip().strip("```").strip()
+        if raw.lower().startswith("json"):
+            raw = raw[4:].strip()
+        data = json.loads(raw)
+        title = str(data.get("title", ""))[:300].strip()
+        if not title:
+            return
+        async with SessionLocal() as db:
+            exists = (await db.execute(
+                select(IncomeIdea).where(IncomeIdea.title == title)
+            )).scalar_one_or_none()
+            if not exists:
+                db.add(IncomeIdea(
+                    title=title,
+                    description=str(data.get("description", ""))[:1000],
+                    expected_revenue=str(data.get("expected_revenue", ""))[:200],
+                    source="коммерсанты",
+                    status="idea",
+                ))
+                await db.commit()
+                log.info("Бабла → Идейный отдел: создана идея '%s'", title)
+    except Exception as e:
+        log.warning("_push_idea_to_bank failed: %s", e)
+
+
 async def run_babla_check() -> None:
     await _pulse(BABLA_FOREMAN, "active", "координация воркеров")
-    hunter, schetchik, prioritizer = await asyncio.gather(
+
+    slepopit, bot_razv, strukt, hunter, schetchik, prioritizer = await asyncio.gather(
+        _run_slepopit(), _run_bot_razvedchik(), _run_strukturolog(),
         _run_hunter(), _run_schetchik(), _run_prioritizer(),
         return_exceptions=True,
     )
@@ -148,44 +259,68 @@ async def run_babla_check() -> None:
         return r if isinstance(r, str) else f"[ошибка: {r}]"
 
     report_ctx = (
+        f"=== СЛЕДОПЫТ (где люди зарабатывают) ===\n{safe(slepopit)}\n\n"
+        f"=== БОТ-РАЗВЕДЧИК (где боты зарабатывают) ===\n{safe(bot_razv)}\n\n"
+        f"=== СТРУКТУРОЛОГ (бизнес-модели) ===\n{safe(strukt)}\n\n"
         f"=== ОХОТНИК (монетизационные окна) ===\n{safe(hunter)}\n\n"
         f"=== СЧЕТОВОД (эксперименты) ===\n{safe(schetchik)}\n\n"
         f"=== ПРИОРИТИЗАТОР (быстро/средне/долго) ===\n{safe(prioritizer)}"
     )
-    analysis = await _llm(SYS_BRIGADIR_BABLA, [{"role": "user", "content": report_ctx}])
+
+    analysis = await _llm(
+        get_trained_prompt(BABLA_FOREMAN, SYS_BRIGADIR_BABLA),
+        [{"role": "user", "content": report_ctx}],
+    )
 
     async with SessionLocal() as db:
         db.add(BablaReport(
-            metrics_json={"hunter": safe(hunter), "schetchik": safe(schetchik), "prioritizer": safe(prioritizer)},
+            metrics_json={
+                "slepopit": safe(slepopit), "bot_razvedchik": safe(bot_razv),
+                "strukturolog": safe(strukt), "hunter": safe(hunter),
+                "schetchik": safe(schetchik), "prioritizer": safe(prioritizer),
+            },
             analysis=analysis,
         ))
         await db.commit()
 
-    log.info("Отдел Бабла: отчёт сохранён")
+    await _push_idea_to_bank(analysis)
+
+    log.info("Отдел Бабла: отчёт сохранён, идея отправлена в банк")
     await _pulse(BABLA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
 
 
 async def _register_workers() -> None:
-    workers = [
-        {"name": BABLA_FOREMAN, "role": "Координирует Охотника/Счетовода/Приоритизатора. Loop 4ч. Отчёт → Казначей.", "level": "foreman", "branch": "бабло", "can_propose": False},
-        {"name": "Охотник", "role": "Ищет монетизационные окна через синтезы Библиотеки. Что можно продать за 30 дней.", "level": "worker", "branch": "бабло", "can_propose": False},
-        {"name": "Счетовод", "role": "Анализирует income_experiments. Что работает, что убивать, что масштабировать.", "level": "worker", "branch": "бабло", "can_propose": False},
-        {"name": "Приоритизатор", "role": "Ранжирует идеи по срокам: быстрые деньги / средний рост / долгая ставка.", "level": "worker", "branch": "бабло", "can_propose": False},
-    ]
     async with SessionLocal() as db:
-        for w in workers:
-            stmt = pg_insert(Agent).values(**w, status="idle").on_conflict_do_update(
+        const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
+    constitution = const.text if const else ""
+
+    workers_def = [
+        {"name": BABLA_FOREMAN, "role": "Координирует 6 воркеров. Loop 4ч. Отчёт → Казначей. Лучшая находка → income_ideas.", "level": "foreman", "branch": "бабло", "sys": SYS_BRIGADIR_BABLA},
+        {"name": "Следопыт", "role": "Разведка денежных потоков людей: платформы, ниши, схемы заработка.", "level": "worker", "branch": "бабло", "sys": SYS_SLEPOPIT},
+        {"name": "Бот-Разведчик", "role": "Где боты и AI зарабатывают: SaaS, автоматизация, контент-машины.", "level": "worker", "branch": "бабло", "sys": SYS_BOT_RAZVEDCHIK},
+        {"name": "Структуролог", "role": "Анализ бизнес-моделей: unit economics, CAC/LTV, маржинальность.", "level": "worker", "branch": "бабло", "sys": SYS_STRUKTUROLOG},
+        {"name": "Охотник", "role": "Ищет монетизационные окна через синтезы Библиотеки.", "level": "worker", "branch": "бабло", "sys": SYS_HUNTER},
+        {"name": "Счетовод", "role": "Анализирует income_experiments. Что работает, что убивать, что масштабировать.", "level": "worker", "branch": "бабло", "sys": SYS_SCHETCHIK},
+        {"name": "Приоритизатор", "role": "Ранжирует идеи: быстрые деньги / средний рост / долгая ставка.", "level": "worker", "branch": "бабло", "sys": SYS_PRIORITIZER},
+    ]
+
+    async with SessionLocal() as db:
+        for w in workers_def:
+            stmt = pg_insert(Agent).values(
+                name=w["name"], role=w["role"], level=w["level"],
+                branch=w["branch"], can_propose=False, status="idle",
+            ).on_conflict_do_update(
                 index_elements=["name"],
                 set_={"role": w["role"], "level": w["level"], "branch": w["branch"]},
             )
             await db.execute(stmt)
         await db.commit()
-    log.info("Отдел Бабла: воркеры зарегистрированы")
-    seed_prompt("babla_hunter", "Охотник", SYS_HUNTER)
-    seed_prompt("babla_schetchik", "Счетовод", SYS_SCHETCHIK)
-    seed_prompt("babla_prioritizer", "Приоритизатор", SYS_PRIORITIZER)
-    seed_prompt("babla_brigadir", BABLA_FOREMAN, SYS_BRIGADIR_BABLA)
-    log.info("Отдел Бабла: промпты засеяны")
+
+    for w in workers_def:
+        train_agent(w["name"], w["sys"], constitution)
+        seed_prompt(f"babla_{w['name'].lower().replace(' ', '_').replace('-', '_')}", w["name"], w["sys"])
+
+    log.info("Отдел Бабла: %d агентов обучены и зарегистрированы", len(workers_def))
 
 
 async def babla_loop() -> None:

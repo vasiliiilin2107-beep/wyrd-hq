@@ -7,8 +7,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, BuildCard, ProjectDeptReport, TechTask
-from .routers.education import seed_prompt
+from .models import Agent, BuildCard, Constitution, ProjectDeptReport, TechTask
+from .routers.education import get_trained_prompt, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ async def _run_decomposer() -> str:
     lines = ["Build cards ожидающие реализации:"]
     for c in cards:
         lines.append(f"\n[{c.id}] {c.topic[:80]}\nТЗ: {(c.tz_text or 'нет ТЗ')[:300]}")
-    result = await _llm(SYS_DECOMPOSER, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Декомпозер", SYS_DECOMPOSER), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Декомпозер", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -94,7 +94,7 @@ async def _run_synchronizer() -> str:
         lines.append(f"  [{c.id}] {c.topic[:80]}")
     if not active_tasks and not waiting_cards:
         lines.append("  очередь пуста")
-    result = await _llm(SYS_SYNCHRONIZER, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Синхронизатор", SYS_SYNCHRONIZER), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Синхронизатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -114,7 +114,7 @@ async def _run_ocenschik_proj() -> str:
     lines.append("\nТехнические задачи по статусам:")
     for status, cnt in task_stats:
         lines.append(f"  {status}: {cnt}")
-    result = await _llm(SYS_OCENSCHIK_PROJ, [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Оценщик Проектов", SYS_OCENSCHIK_PROJ), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Оценщик Проектов", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -134,7 +134,7 @@ async def run_project_check() -> None:
         f"=== СИНХРОНИЗАТОР (конфликты) ===\n{safe(syn)}\n\n"
         f"=== ОЦЕНЩИК (сложность и риски) ===\n{safe(oce)}"
     )
-    analysis = await _llm(SYS_BRIGADIR_PROJ, [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(PROJECT_FOREMAN, SYS_BRIGADIR_PROJ), [{"role": "user", "content": report_ctx}])
 
     async with SessionLocal() as db:
         db.add(ProjectDeptReport(
@@ -148,26 +148,33 @@ async def run_project_check() -> None:
 
 
 async def _register_workers() -> None:
-    workers = [
-        {"name": PROJECT_FOREMAN, "role": "Координирует Декомпозера/Синхронизатора/Оценщика. Loop 2ч. Отчёт → Архитектор.", "level": "foreman", "branch": "проекты", "can_propose": False},
-        {"name": "Декомпозер", "role": "Разбивает waiting build_cards на атомарные задачи: файл → изменение → результат.", "level": "worker", "branch": "проекты", "can_propose": False},
-        {"name": "Синхронизатор", "role": "Проверяет конфликты между новыми build_cards и текущими tech_tasks.", "level": "worker", "branch": "проекты", "can_propose": False},
-        {"name": "Оценщик Проектов", "role": "Оценивает сложность и риски build_cards. Ищет блокеры.", "level": "worker", "branch": "проекты", "can_propose": False},
+    async with SessionLocal() as db:
+        const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
+    constitution = const.text if const else ""
+
+    workers_def = [
+        {"name": PROJECT_FOREMAN, "role": "Координирует Декомпозера/Синхронизатора/Оценщика. Loop 2ч. Отчёт → Архитектор.", "level": "foreman", "branch": "проекты", "sys": SYS_BRIGADIR_PROJ},
+        {"name": "Декомпозер", "role": "Разбивает waiting build_cards на атомарные задачи: файл → изменение → результат.", "level": "worker", "branch": "проекты", "sys": SYS_DECOMPOSER},
+        {"name": "Синхронизатор", "role": "Проверяет конфликты между новыми build_cards и текущими tech_tasks.", "level": "worker", "branch": "проекты", "sys": SYS_SYNCHRONIZER},
+        {"name": "Оценщик Проектов", "role": "Оценивает сложность и риски build_cards. Ищет блокеры.", "level": "worker", "branch": "проекты", "sys": SYS_OCENSCHIK_PROJ},
     ]
     async with SessionLocal() as db:
-        for w in workers:
-            stmt = pg_insert(Agent).values(**w, status="idle").on_conflict_do_update(
+        for w in workers_def:
+            stmt = pg_insert(Agent).values(
+                name=w["name"], role=w["role"], level=w["level"],
+                branch=w["branch"], can_propose=False, status="idle",
+            ).on_conflict_do_update(
                 index_elements=["name"],
                 set_={"role": w["role"], "level": w["level"], "branch": w["branch"]},
             )
             await db.execute(stmt)
         await db.commit()
-    log.info("Проектный отдел: воркеры зарегистрированы")
-    seed_prompt("project_decomposer", "Декомпозер", SYS_DECOMPOSER)
-    seed_prompt("project_synchronizer", "Синхронизатор", SYS_SYNCHRONIZER)
-    seed_prompt("project_ocenschik", "Оценщик Проектов", SYS_OCENSCHIK_PROJ)
-    seed_prompt("project_brigadir", PROJECT_FOREMAN, SYS_BRIGADIR_PROJ)
-    log.info("Проектный отдел: промпты засеяны")
+
+    for w in workers_def:
+        train_agent(w["name"], w["sys"], constitution)
+        seed_prompt(f"project_{w['name'].lower().replace(' ', '_')}", w["name"], w["sys"])
+
+    log.info("Проектный отдел: %d агентов обучены и зарегистрированы", len(workers_def))
 
 
 async def project_loop() -> None:
