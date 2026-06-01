@@ -130,6 +130,12 @@ _TRIGGERS = {
     "professor": run_professor_check,
 }
 
+@app.post("/trigger/all", tags=["trigger"])
+async def trigger_all():
+    for fn in _TRIGGERS.values():
+        asyncio.create_task(fn())
+    return {"ok": True, "launched": list(_TRIGGERS)}
+
 @app.post("/trigger/{agent}", tags=["trigger"])
 async def trigger_agent(agent: str):
     fn = _TRIGGERS.get(agent)
@@ -138,12 +144,6 @@ async def trigger_agent(agent: str):
         raise HTTPException(404, f"Триггер '{agent}' не найден. Доступны: {list(_TRIGGERS)}")
     asyncio.create_task(fn())
     return {"ok": True, "agent": agent, "status": "запущен"}
-
-@app.post("/trigger/all", tags=["trigger"])
-async def trigger_all():
-    for name, fn in _TRIGGERS.items():
-        asyncio.create_task(fn())
-    return {"ok": True, "launched": list(_TRIGGERS)}
 
 @app.get("/health")
 def health():

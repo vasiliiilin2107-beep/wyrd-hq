@@ -273,7 +273,19 @@ body{background:url('https://avatars.mds.yandex.net/get-shedevrum/15236108/img_9
       <button class="nav-btn" title="Томас" onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
+      <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)" style="margin-top:4px">⚡</button>
     </nav>
+    <script>
+    async function triggerAll(btn) {
+      btn.textContent = '⏳'; btn.disabled = true;
+      try {
+        const r = await fetch('/trigger/all', {method:'POST'});
+        const d = await r.json();
+        btn.textContent = '✅';
+        setTimeout(() => { btn.textContent = '⚡'; btn.disabled = false; }, 3000);
+      } catch { btn.textContent = '❌'; btn.disabled = false; }
+    }
+    </script>
 
     <!-- Главная область -->
     <main class="main-area">
