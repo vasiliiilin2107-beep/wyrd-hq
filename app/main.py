@@ -15,7 +15,7 @@ from .qdrant_store import init_qdrant, close_qdrant
 from .routers.civilization import seed_agents
 from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council, education, world_docs, build
 from .council_agent import council_autonomous_loop
-from .foreman_agent import foreman_loop
+from .foreman_agent import foreman_loop, register_analytics_foreman
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
         await seed_agents(session)
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
+    asyncio.create_task(register_analytics_foreman())
     yield
     await close_qdrant()
     await close_redis()

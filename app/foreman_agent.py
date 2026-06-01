@@ -94,6 +94,22 @@ async def run_foreman_check() -> None:
     await _pulse("idle", f"последний отчёт: {len(stuck)} застрявших")
 
 
+async def register_analytics_foreman() -> None:
+    """Бригадир Аналитики — заглушка. Ф4 не построена, регистрируем в agents заранее."""
+    async with SessionLocal() as db:
+        stmt = pg_insert(Agent).values(
+            name="Бригадир Аналитики",
+            role="Старший в поле ветки аналитики. Ждёт Ф4. Активируется когда отдел аналитики будет построен.",
+            level="foreman",
+            branch="аналитика",
+            status="idle",
+            can_propose=False,
+        ).on_conflict_do_nothing(index_elements=["name"])
+        await db.execute(stmt)
+        await db.commit()
+    log.info("Foreman Analytics: зарегистрирован как заглушка (Ф4 не построена)")
+
+
 async def foreman_loop() -> None:
     await asyncio.sleep(60)
     await _register_foreman()
