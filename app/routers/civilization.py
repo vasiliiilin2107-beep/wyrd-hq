@@ -82,11 +82,18 @@ async def register_agent(body: AgentIn, session: AsyncSession = Depends(get_sess
     return {"ok": True, "id": agent.id, "updated": False}
 
 
+async def _get_agent_by_id_or_name(agent_id: str, session: AsyncSession):
+    if agent_id.isdigit():
+        return await session.get(Agent, int(agent_id))
+    result = await session.execute(select(Agent).where(Agent.name == agent_id))
+    return result.scalars().first()
+
+
 @router.post("/agents/{agent_id}/trigger")
-async def trigger_agent(agent_id: int, body: TriggerIn = None, session: AsyncSession = Depends(get_session)):
+async def trigger_agent(agent_id: str, body: TriggerIn = None, session: AsyncSession = Depends(get_session)):
     if body is None:
         body = TriggerIn()
-    agent = await session.get(Agent, agent_id)
+    agent = await _get_agent_by_id_or_name(agent_id, session)
     if not agent:
         from fastapi import HTTPException
         raise HTTPException(404, "Agent not found")
@@ -106,8 +113,8 @@ async def trigger_agent(agent_id: int, body: TriggerIn = None, session: AsyncSes
 
 
 @router.post("/agents/{agent_id}/pulse")
-async def agent_pulse(agent_id: int, body: PulseIn, session: AsyncSession = Depends(get_session)):
-    agent = await session.get(Agent, agent_id)
+async def agent_pulse(agent_id: str, body: PulseIn, session: AsyncSession = Depends(get_session)):
+    agent = await _get_agent_by_id_or_name(agent_id, session)
     if not agent:
         from fastapi import HTTPException
         raise HTTPException(404, "Agent not found")
