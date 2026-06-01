@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from datetime import datetime
 
 import httpx
@@ -125,13 +126,12 @@ async def _generate_dna(proposal: Proposal, context: str) -> str:
 async def _validate_dna(dna: str) -> tuple[bool, int, str]:
     raw = await _llm(SYS_DNA_VALIDATOR, [{"role": "user", "content": f"ДНК:\n{dna}"}])
     try:
-        raw = raw.strip().strip("```").strip()
-        if raw.lower().startswith("json"):
-            raw = raw[4:].strip()
-        data = json.loads(raw)
+        m = re.search(r'\{[^{}]*"ok"[^{}]*\}', raw, re.DOTALL)
+        candidate = m.group(0) if m else raw.strip()
+        data = json.loads(candidate)
         return bool(data.get("ok", False)), int(data.get("score", 0)), str(data.get("reason", ""))
     except Exception as e:
-        log.warning("Validate DNA parse error: %s | raw: %s", e, raw[:100])
+        log.warning("Validate DNA parse error: %s | raw: %s", e, raw[:200])
         return False, 0, "не удалось распарсить"
 
 
