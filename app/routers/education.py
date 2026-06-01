@@ -10,6 +10,18 @@ _scores: dict[str, dict] = {}
 _last_cycle: str = ""
 
 
+def seed_prompt(file: str, agent: str, prompt: str) -> None:
+    """Засеять промпт агента в профобразование (вызывается при старте)."""
+    if file not in _scores:
+        _scores[file] = {
+            "agent": agent,
+            "best_score": 1.0,
+            "cycle": 0,
+            "prompt": prompt,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+
 @router.post("/cycle-result")
 async def save_cycle_result(request: Request):
     """Фабрика постит сюда после каждого агента."""

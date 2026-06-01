@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
+from .routers.education import seed_prompt
 from .models import Agent, AnalyticsReport, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
@@ -266,6 +267,12 @@ async def _register_workers() -> None:
             await db.execute(stmt)
         await db.commit()
     log.info("Аналитика: воркеры зарегистрированы (Счётчик / Разведчик / Критик)")
+
+    seed_prompt("analytics_schetchik", "Счётчик", SYS_SCHETCHIK)
+    seed_prompt("analytics_razvedchik", "Разведчик", SYS_RAZVEDCHIK)
+    seed_prompt("analytics_kritik", "Критик", SYS_KRITIK)
+    seed_prompt("analytics_brigadir", "Бригадир Аналитики", SYS_BRIGADIR)
+    log.info("Аналитика: промпты засеяны в Профобразование")
 
 
 async def analytics_loop() -> None:
