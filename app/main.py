@@ -16,6 +16,7 @@ from .routers.civilization import seed_agents
 from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council, education, world_docs, build
 from .council_agent import council_autonomous_loop
 from .foreman_agent import foreman_loop, register_analytics_foreman
+from .audit_agent import audit_loop, router as audit_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
     asyncio.create_task(register_analytics_foreman())
+    asyncio.create_task(audit_loop())
     yield
     await close_qdrant()
     await close_redis()
@@ -61,6 +63,7 @@ app.include_router(council.router)
 app.include_router(education.router)
 app.include_router(world_docs.router)
 app.include_router(build.router)
+app.include_router(audit_router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")

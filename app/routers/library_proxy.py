@@ -75,6 +75,20 @@ async def get_knowledge_item(kid: int):
         raise HTTPException(status_code=503, detail="Library недоступна")
 
 
+@router.get("/synthesis")
+async def library_synthesis():
+    """Последние синтезы Писателя с полным текстом — фоновый контекст для Совета."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            r = await c.get(f"{LIBRARY_URL}/writer/briefs", headers=_headers())
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail="Library недоступна")
+        return r.json()
+    except httpx.RequestError as e:
+        log.warning("[library_proxy] synthesis error: %s", e)
+        raise HTTPException(status_code=503, detail="Library недоступна")
+
+
 @router.get("/stats")
 async def library_stats():
     try:

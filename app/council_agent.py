@@ -218,6 +218,26 @@ async def _llm(system: str, messages: list[dict]) -> str:
         return f"[ошибка LLM: {e}]"
 
 
+async def _get_synthesis_brief() -> str:
+    """Синтезы Писателя Библиотеки — постоянный фоновый контекст для умного Совета."""
+    library_url = os.environ.get("LIBRARY_URL", "http://at23vp1rnqm4koa2ufqvlm0d.147.45.212.155.sslip.io").rstrip("/")
+    token = os.environ.get("WYRD_INTERNAL_TOKEN", "")
+    headers = {"x-wyrd-token": token} if token else {}
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            r = await c.get(f"{library_url}/writer/briefs", headers=headers)
+        items = r.json().get("items", [])
+        if not items:
+            return ""
+        lines = ["=== СИНТЕЗ ЗНАНИЙ БИБЛИОТЕКИ ==="]
+        for item in items:
+            lines.append(f"\n[{item.get('category', '?')}]\n{item.get('synthesis', '')}")
+        return "\n".join(lines)
+    except Exception as e:
+        log.warning("Synthesis brief failed: %s", e)
+        return ""
+
+
 async def _library_search(query: str) -> str:
     library_url = os.environ.get("LIBRARY_URL", "http://at23vp1rnqm4koa2ufqvlm0d.147.45.212.155.sslip.io").rstrip("/")
     token = os.environ.get("WYRD_INTERNAL_TOKEN", "")
@@ -284,7 +304,10 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
     try:
         snapshot = await _world_snapshot()
         library_ctx = await _library_search(idea)
+        synthesis_brief = await _get_synthesis_brief()
         ctx = f"Состояние мира:\n{snapshot}"
+        if synthesis_brief:
+            ctx += f"\n\n{synthesis_brief}"
         if library_ctx:
             ctx += f"\n\n{library_ctx}"
         ctx += f"\n\nТема обсуждения: {idea}"
