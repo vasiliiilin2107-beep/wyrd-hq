@@ -44,6 +44,7 @@ function renderTechTasks(tasks) {
     const row = document.createElement('div');
     row.className = 'tech-row';
     row.dataset.id = t.id;
+    row.style.setProperty('--tech-status-color', st.color + '88');
     row.innerHTML = `
       <div class="tech-row-top">
         <span class="tech-badge" style="color:${st.color};border-color:${st.color}40">${st.label}</span>

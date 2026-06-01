@@ -113,33 +113,44 @@
       </div>
 
       <!-- TAB: LIBRARY -->
-      <div id="tab-library" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:12px">БИБЛИОТЕКА</div>
-        <div id="lib-stats" class="lib-stats"><div class="lib-empty">Загрузка...</div></div>
-        <div class="lib-section">
-          <div class="lib-section-title"><span>ПОИСК ПО ЗНАНИЯМ</span></div>
-          <div class="lib-search-box">
-            <input id="lib-search-input" class="lib-search-input" placeholder="Введите запрос..." oninput="libSearchInput(this.value)">
-            <button class="wmap-refresh" onclick="runLibSearch(document.getElementById('lib-search-input').value)">↵</button>
-          </div>
-          <div id="lib-search-results" class="lib-search-results"></div>
-        </div>
-        <div class="lib-section">
-          <div class="lib-section-title">
-            <span>ЧИТАТЕЛИ <span id="lib-readers-count" style="opacity:.6"></span></span>
-            <div style="display:flex;gap:6px">
-              <input class="lib-search-input" style="width:160px;padding:5px 9px" placeholder="Фильтр..." oninput="libReadersFilter(this.value)">
+      <div id="tab-library" class="tab-panel" style="display:none;padding:0;height:calc(100vh - 56px);overflow:hidden">
+        <div class="lib-3col">
+
+          <!-- Колонка 1: Читатели -->
+          <div class="lib-col">
+            <div class="lib-col-hdr">
+              <span class="lib-col-title">ЧИТАТЕЛИ</span>
+              <span id="lib-readers-count" style="font-size:.62rem;color:var(--text-dim)"></span>
+              <div style="flex:1"></div>
               <button class="wmap-refresh" onclick="loadLibReaders()">↻</button>
             </div>
+            <div id="lib-stats" class="lib-mini-stats"><div class="lib-empty" style="padding:10px 14px">Загрузка...</div></div>
+            <input class="lib-col-filter" placeholder="Фильтр читателей..." oninput="libReadersFilter(this.value)">
+            <div id="lib-readers-list" class="lib-col-scroll"><div class="lib-empty">Загрузка...</div></div>
           </div>
-          <div id="lib-readers-list" class="lib-readers-list"><div class="lib-empty">Загрузка...</div></div>
-        </div>
-        <div class="lib-section">
-          <div class="lib-section-title">
-            <span>ПОСЛЕДНИЕ ЗНАНИЯ</span>
-            <button class="wmap-refresh" onclick="loadLibRecent()">↻</button>
+
+          <!-- Колонка 2: Поток знаний -->
+          <div class="lib-col">
+            <div class="lib-col-hdr">
+              <span class="lib-col-title">ПОТОК ЗНАНИЙ</span>
+              <div style="flex:1"></div>
+              <button class="wmap-refresh" onclick="loadLibRecent()">↻</button>
+            </div>
+            <div id="lib-recent-list" class="lib-col-scroll"><div class="lib-empty">Загрузка...</div></div>
           </div>
-          <div id="lib-recent-list" class="lib-recent-list"><div class="lib-empty">Загрузка...</div></div>
+
+          <!-- Колонка 3: Поиск -->
+          <div class="lib-col">
+            <div class="lib-col-hdr">
+              <span class="lib-col-title">ПОИСК</span>
+            </div>
+            <div class="lib-col-searchbar">
+              <input id="lib-search-input" class="lib-search-input" placeholder="Введите запрос..." oninput="libSearchInput(this.value)">
+              <button class="wmap-refresh" onclick="runLibSearch(document.getElementById('lib-search-input').value)">↵</button>
+            </div>
+            <div id="lib-search-results" class="lib-col-scroll"></div>
+          </div>
+
         </div>
       </div>
 

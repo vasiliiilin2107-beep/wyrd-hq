@@ -21,14 +21,14 @@ async function loadLibStats() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     el.innerHTML = `
-      <div class="lib-stat-box">
-        <div class="lib-stat-num">${d.total || 0}</div>
-        <div class="lib-stat-label">знаний</div>
+      <div class="lib-mini-stat">
+        <div class="lib-mini-num">${d.total || 0}</div>
+        <div class="lib-mini-label">знаний</div>
       </div>
-      ${(d.by_category || []).slice(0, 4).map(c =>
-        `<div class="lib-stat-box">
-          <div class="lib-stat-num">${c.count}</div>
-          <div class="lib-stat-label">${c.category}</div>
+      ${(d.by_category || []).slice(0, 3).map(c =>
+        `<div class="lib-mini-stat">
+          <div class="lib-mini-num">${c.count}</div>
+          <div class="lib-mini-label">${c.category}</div>
         </div>`
       ).join('')}`;
   } catch (e) {
