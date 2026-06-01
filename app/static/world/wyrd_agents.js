@@ -65,6 +65,7 @@ const LINKS = [
   {source:'strateg',     target:'kartograf',   type:'command'},
   {source:'arhitektor',  target:'kaznachey',   type:'command'},
   {source:'arhitektor',  target:'proektniy',   type:'command'},
+  {source:'arhitektor',  target:'tomas',       type:'report'},
   {source:'kaznachey',   target:'tomas',       type:'report'},
   {source:'kartograf',   target:'tomas',       type:'report'},
   {source:'proektniy',   target:'audit',       type:'report'},

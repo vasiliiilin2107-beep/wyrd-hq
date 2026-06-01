@@ -70,7 +70,7 @@ const LINKS = [
   {s:'audit',t:'shef',type:'report'},
   {s:'tomas',t:'strateg',type:'command'},{s:'strateg',t:'arhitektor',type:'command'},
   {s:'strateg',t:'kartograf',type:'command'},
-  {s:'arhitektor',t:'kaznachey',type:'command'},
+  {s:'arhitektor',t:'kaznachey',type:'command'},{s:'arhitektor',t:'tomas',type:'report'},
   {s:'tomas',t:'professor',type:'command'},
   {s:'professor',t:'br_anlt',type:'knowledge'},
   {s:'professor',t:'br_babla',type:'knowledge'},
