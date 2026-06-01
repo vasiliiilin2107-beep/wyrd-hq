@@ -169,10 +169,33 @@ async function loadEvents() {
         items.push({
           icon:  '📚',
           color: '#10b981',
-          label: k.category || 'library',
+          label: k.category || 'world',
           text:  k.question,
           time:  null,
         });
+      });
+    }
+  } catch {}
+
+  try {
+    const r = await fetch('/events?limit=20');
+    if (r.ok) {
+      const d = await r.json();
+      const EVT = {
+        agent_born:           {ic:'🐣', col:'#a855f7', lbl:'АГЕНТ'},
+        agent_dna_rejected:   {ic:'❌', col:'#ef4444', lbl:'ДНК ОТКЛОНЕНА'},
+        agent_passport_issued:{ic:'🎫', col:'#4a9eff', lbl:'ПАСПОРТ'},
+        proposal_submitted:   {ic:'📝', col:'#f59e0b', lbl:'ПРЕДЛОЖЕНИЕ'},
+        analytics_report:     {ic:'📊', col:'#ffaa00', lbl:'АНАЛИТИКА'},
+        babla_report:         {ic:'💰', col:'#44ff44', lbl:'БАБЛО'},
+        idea_report:          {ic:'💡', col:'#cc44ff', lbl:'ИДЕЙНЫЙ'},
+      };
+      (d.events || d || []).slice(0, 8).forEach(ev => {
+        const cfg = EVT[ev.type];
+        if (!cfg) return;
+        const payload = ev.payload || {};
+        const text = payload.name || payload.agent || payload.summary || ev.type;
+        items.push({ icon: cfg.ic, color: cfg.col, label: cfg.lbl, text, time: ev.created_at });
       });
     }
   } catch {}
