@@ -455,9 +455,9 @@ async function loadTopbarStats() {
       const agents = d.agents || [];
       const now = Date.now();
       const live = agents.filter(a => {
-        if (a.status !== 'active') return false;
-        const ms = a.last_pulse ? now - new Date(a.last_pulse+'Z').getTime() : Infinity;
-        return ms < 600000;
+        if (!a.last_pulse) return false;
+        const ms = now - new Date(a.last_pulse.endsWith('Z') ? a.last_pulse : a.last_pulse+'Z').getTime();
+        return ms < 1200000; // 20 мин
       }).length;
       const el = document.getElementById('stat-live');
       if (el) el.textContent = live;
@@ -511,15 +511,66 @@ const STATUS_COLORS = {
   ready:   '#3b82f6',
   pending: '#f97316',
   ghost:   '#6b7280',
+  active:  '#10b981',
+  idle:    '#f59e0b',
+  offline: '#ef4444',
 };
 const STATUS_LABELS = {
   live: 'LIVE', pause: 'ПАУЗА', ready: 'ГОТОВ', pending: 'СТРОИТСЯ', ghost: 'НЕ СОЗДАН',
+  active: 'LIVE', idle: 'ОЖИДАЕТ', offline: 'ОФЛАЙН',
 };
 const ROOM_NAMES = {
   hq:'ШТАБ HQ', lib:'БИБЛИОТЕКА', anlt:'АНАЛИТИКА', tech:'ТЕХНИК',
   babla:'ОТДЕЛ БАБЛА', ideyny:'ИДЕЙНЫЙ', proekt:'ПРОЕКТНЫЙ', prod:'ПРОИЗВОДСТВО',
   build:'СТРОИТЕЛЬСТВО', audit:'АУДИТ',
 };
+
+// Умные действия по агенту
+function getAgentActions(agent) {
+  const name = (agent.name || '').toLowerCase();
+  const level = (agent.level || '').toLowerCase();
+  const branch = (agent.branch || '').toLowerCase();
+
+  if (name.includes('thomas') || name === 'томас') return [
+    {label:'🌍 Патруль мира',  action:'patrol'},
+    {label:'🧠 Запустить Совет', action:'council'},
+    {label:'📋 Дайджест',      action:'digest'},
+    {label:'⚡ Задача Технику', action:'_task'},
+  ];
+  if (name.includes('библиотек') || name.includes('library') || name.includes('scribe')) return [
+    {label:'📚 Запустить читателей', action:'read'},
+    {label:'🔄 Синхронизация',       action:'sync'},
+    {label:'⚡ Задача Технику',       action:'_task'},
+  ];
+  if (level === 'foreman' || name.includes('бригадир')) return [
+    {label:'▶ Запустить цикл',  action:'run'},
+    {label:'📊 Сводный отчёт',  action:'report'},
+    {label:'⏸ Поставить на паузу', action:'pause'},
+    {label:'⚡ Задача Технику', action:'_task'},
+  ];
+  if (branch.includes('бабл') || branch.includes('income')) return [
+    {label:'💰 Поиск идей',     action:'scan'},
+    {label:'📊 Отчёт по бабл',  action:'report'},
+    {label:'⚡ Задача Технику', action:'_task'},
+  ];
+  if (branch.includes('аналит') || branch.includes('analyt')) return [
+    {label:'📈 Запустить анализ', action:'analyze'},
+    {label:'📊 Отчёт',           action:'report'},
+    {label:'⚡ Задача Технику',   action:'_task'},
+  ];
+  if (branch.includes('иде') || branch.includes('idea')) return [
+    {label:'💡 Генерация идей',  action:'generate'},
+    {label:'🔍 Детализация',     action:'detail'},
+    {label:'⚡ Задача Технику',  action:'_task'},
+  ];
+  // Default
+  return [
+    {label:'▶ Запустить',       action:'run'},
+    {label:'⏸ Стоп',            action:'stop'},
+    {label:'📊 Отчёт',          action:'report'},
+    {label:'⚡ Задача Технику', action:'_task'},
+  ];
+}
 
 let _currentAgent = null;
 
@@ -540,8 +591,14 @@ function openAgentPanel(agent) {
   document.getElementById('ap-status-label').style.color    = color;
   document.getElementById('ap-room').textContent = agent.room ? ('· ' + (ROOM_NAMES[agent.room] || agent.room)) : '';
 
-  const triggerBtn = document.getElementById('ap-trigger-btn');
-  if (triggerBtn) triggerBtn.textContent = agent.status === 'live' ? '⏸ Остановить' : '▶ Запустить';
+  // Умные действия
+  const actionsEl = document.getElementById('ap-actions');
+  if (actionsEl) {
+    const actions = getAgentActions(agent);
+    actionsEl.innerHTML = actions.map(a =>
+      `<button class="ap-btn" onclick="apAction('${a.action}')">${escHtml(a.label)}</button>`
+    ).join('');
+  }
 
   document.getElementById('ap-tasks').innerHTML  = '<div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div>';
   document.getElementById('ap-events').innerHTML = '<div class="ap-desc" style="color:var(--text-dim)">Загрузка...</div>';
@@ -614,24 +671,41 @@ async function loadAgentEvents(agent) {
   }
 }
 
-async function apCreateTask() {
+async function apAction(action) {
   if (!_currentAgent) return;
-  const title = prompt(`Задача для Техника по агенту ${_currentAgent.name}:`);
-  if (!title) return;
-  try {
-    await fetch('/tech/tasks', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({title, description:`Агент: ${_currentAgent.name}`, created_by:'hq_panel', priority:5}),
-    });
-    showToast('ТЕХНИК', `Задача создана: ${title}`, '#f59e0b');
-    loadAgentTasks(_currentAgent);
-  } catch {}
-}
+  const agent = _currentAgent;
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
 
-async function apTrigger() {
-  if (!_currentAgent) return;
-  showToast('ДЕЙСТВИЕ', `Команда агенту ${_currentAgent.name} отправлена`, '#3b82f6');
+  try {
+    if (action === '_task') {
+      const title = prompt(`Задача для Техника (агент ${agent.name}):`);
+      if (!title) { if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
+      await fetch('/tech/tasks', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({title, description:`Агент: ${agent.name}`, created_by:'hq_panel', priority:6}),
+      });
+      showToast('ТЕХНИК', `Задача создана: ${title}`, '#f59e0b');
+      loadAgentTasks(agent);
+    } else {
+      const agentId = agent.id || agent.db;
+      if (!agentId) { showToast('ОШИБКА', 'ID агента не найден', '#ef4444'); return; }
+      const r = await fetch(`/civilization/agents/${agentId}/trigger`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({action}),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json();
+      showToast(agent.name.toUpperCase(), `Команда "${action}" → задача #${d.task_id}`, '#10b981');
+      loadAgentTasks(agent);
+    }
+  } catch(e) {
+    showToast('ОШИБКА', String(e).slice(0, 80), '#ef4444');
+  } finally {
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } }, 2000);
+  }
 }
 
 /* ─── postMessage FROM MAP ───────────────────────────── */

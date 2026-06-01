@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, AgentPassport, AgentReport, Proposal
+from ..models import Agent, AgentPassport, AgentReport, Proposal, TechTask, Event
 
 router = APIRouter(prefix="/civilization", tags=["civilization"])
 
@@ -53,6 +53,9 @@ class ProposalIn(BaseModel):
 class ProposalPatch(BaseModel):
     status: str
 
+class TriggerIn(BaseModel):
+    action: str = "run"
+
 
 # ─── agents ──────────────────────────────────────────────
 
@@ -77,6 +80,29 @@ async def register_agent(body: AgentIn, session: AsyncSession = Depends(get_sess
     await session.commit()
     await session.refresh(agent)
     return {"ok": True, "id": agent.id, "updated": False}
+
+
+@router.post("/agents/{agent_id}/trigger")
+async def trigger_agent(agent_id: int, body: TriggerIn = None, session: AsyncSession = Depends(get_session)):
+    if body is None:
+        body = TriggerIn()
+    agent = await session.get(Agent, agent_id)
+    if not agent:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Agent not found")
+    task = TechTask(
+        title=f"[{body.action.upper()}] {agent.name}",
+        description=f"Ручной запуск из HQ Panel. Агент: {agent.name}, ветка: {agent.branch}, действие: {body.action}",
+        created_by="hq_panel",
+        priority=7,
+        status="pending",
+    )
+    session.add(task)
+    ev = Event(type="agent_trigger", payload={"agent": agent.name, "action": body.action, "source": "hq_panel"})
+    session.add(ev)
+    await session.commit()
+    await session.refresh(task)
+    return {"ok": True, "agent": agent.name, "task_id": task.id}
 
 
 @router.post("/agents/{agent_id}/pulse")
