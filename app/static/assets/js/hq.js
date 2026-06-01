@@ -615,6 +615,12 @@ function closeAgentPanel() {
   _currentAgent = null;
 }
 
+function openPassport() {
+  if (!_currentAgent) return;
+  const name = _currentAgent.db || _currentAgent.id || _currentAgent.name?.toLowerCase().replace(/\s+/g,'_');
+  if (name) window.open(`/agent/${name}`, '_blank');
+}
+
 async function loadAgentTasks(agent) {
   const el = document.getElementById('ap-tasks');
   if (!el) return;

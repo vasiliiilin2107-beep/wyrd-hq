@@ -278,6 +278,34 @@ class AgentPassport(Base):
     issued_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class AgentPrompt(Base):
+    __tablename__ = "agent_prompts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    prompt: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[str] = mapped_column(String(20), default="v1.0")
+    # idle | queued | in_training | done
+    training_status: Mapped[str] = mapped_column(String(30), default="idle")
+    last_trained_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentJournal(Base):
+    __tablename__ = "agent_journal"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), index=True)
+    # update | error | repair | downtime | training
+    entry_type: Mapped[str] = mapped_column(String(30), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(100), default="hq_panel")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
 class IdeaDeptReport(Base):
     __tablename__ = "idea_dept_reports"
 

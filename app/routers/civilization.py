@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Agent, AgentPassport, AgentReport, Proposal, TechTask, Event
+from ..models import Agent, AgentPassport, AgentPrompt, AgentJournal, AgentReport, Proposal, TechTask, Event
 
 router = APIRouter(prefix="/civilization", tags=["civilization"])
 
@@ -55,6 +55,16 @@ class ProposalPatch(BaseModel):
 
 class TriggerIn(BaseModel):
     action: str = "run"
+
+class PromptIn(BaseModel):
+    prompt: str
+    notes: Optional[str] = None
+
+class JournalIn(BaseModel):
+    entry_type: str = "update"
+    title: str
+    body: Optional[str] = None
+    created_by: str = "hq_panel"
 
 
 # ─── agents ──────────────────────────────────────────────
@@ -126,6 +136,110 @@ async def agent_pulse(agent_id: str, body: PulseIn, session: AsyncSession = Depe
         agent.metrics = body.metrics
     await session.commit()
     return {"ok": True}
+
+
+# ─── prompt ───────────────────────────────────────────────
+
+@router.get("/agents/{agent_id}/prompt")
+async def get_agent_prompt(agent_id: str, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    p = (await session.execute(select(AgentPrompt).where(AgentPrompt.agent_name == agent.name))).scalar_one_or_none()
+    if not p:
+        return {"agent_name": agent.name, "prompt": None, "version": "v1.0", "training_status": "idle",
+                "last_trained_at": None, "notes": None}
+    return {"agent_name": p.agent_name, "prompt": p.prompt, "version": p.version,
+            "training_status": p.training_status, "last_trained_at": p.last_trained_at.isoformat() if p.last_trained_at else None,
+            "notes": p.notes, "updated_at": p.updated_at.isoformat() if p.updated_at else None}
+
+
+@router.put("/agents/{agent_id}/prompt")
+async def save_agent_prompt(agent_id: str, body: PromptIn, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    p = (await session.execute(select(AgentPrompt).where(AgentPrompt.agent_name == agent.name))).scalar_one_or_none()
+    if p:
+        old_ver = p.version
+        ver_num = int(old_ver.replace("v","").split(".")[1] if "." in old_ver else "0") + 1
+        p.prompt = body.prompt
+        p.version = f"v1.{ver_num}"
+        p.notes = body.notes
+        p.updated_at = datetime.utcnow()
+    else:
+        p = AgentPrompt(agent_name=agent.name, prompt=body.prompt, notes=body.notes)
+        session.add(p)
+    j = AgentJournal(agent_name=agent.name, entry_type="update",
+                     title=f"Промпт обновлён ({p.version})", body=body.notes, created_by="hq_panel")
+    session.add(j)
+    await session.commit()
+    return {"ok": True, "version": p.version}
+
+
+# ─── journal ──────────────────────────────────────────────
+
+@router.get("/agents/{agent_id}/journal")
+async def get_agent_journal(agent_id: str, entry_type: str | None = None,
+                             limit: int = 30, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    q = select(AgentJournal).where(AgentJournal.agent_name == agent.name).order_by(AgentJournal.created_at.desc()).limit(limit)
+    if entry_type:
+        q = q.where(AgentJournal.entry_type == entry_type)
+    rows = (await session.execute(q)).scalars().all()
+    return {"entries": [{"id": r.id, "entry_type": r.entry_type, "title": r.title,
+                          "body": r.body, "created_by": r.created_by,
+                          "created_at": r.created_at.isoformat()} for r in rows]}
+
+
+@router.post("/agents/{agent_id}/journal")
+async def add_journal_entry(agent_id: str, body: JournalIn, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    j = AgentJournal(agent_name=agent.name, entry_type=body.entry_type,
+                     title=body.title, body=body.body, created_by=body.created_by)
+    session.add(j)
+    await session.commit()
+    await session.refresh(j)
+    return {"ok": True, "id": j.id}
+
+
+# ─── train ────────────────────────────────────────────────
+
+@router.post("/agents/{agent_id}/train")
+async def send_to_training(agent_id: str, session: AsyncSession = Depends(get_session)):
+    from fastapi import HTTPException
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    p = (await session.execute(select(AgentPrompt).where(AgentPrompt.agent_name == agent.name))).scalar_one_or_none()
+    if p:
+        p.training_status = "queued"
+        p.updated_at = datetime.utcnow()
+    else:
+        p = AgentPrompt(agent_name=agent.name, training_status="queued")
+        session.add(p)
+    task = TechTask(
+        title=f"[ОБУЧЕНИЕ] {agent.name}",
+        description=f"Профессор: проверить и улучшить промпт агента '{agent.name}'. Ветка: {agent.branch}.",
+        created_by="hq_panel", priority=8, status="pending",
+    )
+    session.add(task)
+    j = AgentJournal(agent_name=agent.name, entry_type="training",
+                     title="Отправлен на обучение к Профессору", created_by="hq_panel")
+    session.add(j)
+    ev = Event(type="agent_train_queued", payload={"agent": agent.name, "source": "hq_panel"})
+    session.add(ev)
+    await session.commit()
+    await session.refresh(task)
+    return {"ok": True, "agent": agent.name, "task_id": task.id, "training_status": "queued"}
 
 
 # ─── proposals ────────────────────────────────────────────

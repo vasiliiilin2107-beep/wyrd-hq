@@ -117,6 +117,11 @@ def pulse_page():
     return _html("pulse.html")
 
 
+@app.get("/agent/{name}", include_in_schema=False)
+def agent_passport_page(name: str):
+    return _html("agent_passport.html")
+
+
 @app.get("/manifest.json", include_in_schema=False)
 def manifest():
     return FileResponse(str(STATIC_DIR / "manifest.json"), media_type="application/manifest+json")
