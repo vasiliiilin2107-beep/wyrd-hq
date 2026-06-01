@@ -6,7 +6,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
+from .models import Agent, AnalyticsReport, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
 
@@ -259,6 +259,17 @@ async def _library_search(query: str) -> str:
         return ""
 
 
+async def _get_analytics_brief() -> str:
+    """Последний отчёт Аналитики — контекст для Картографа."""
+    async with SessionLocal() as db:
+        report = (await db.execute(
+            select(AnalyticsReport).order_by(AnalyticsReport.checked_at.desc()).limit(1)
+        )).scalar_one_or_none()
+    if not report:
+        return ""
+    return f"=== АНАЛИТИКА МИРА (последние {report.period_hours}ч) ===\n{report.analysis}"
+
+
 async def _world_snapshot() -> str:
     async with SessionLocal() as db:
         agents = (await db.execute(select(Agent))).scalars().all()
@@ -337,14 +348,17 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         strat2 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat2_ctx}])
         await _save_msg(session_id, "strategist", strat2)
 
-        # Картограф — вердикт
+        # Картограф — вердикт (читает аналитику мира)
+        analytics_brief = await _get_analytics_brief()
         carto_ctx = (
             f"{ctx}\n\n"
             f"Стратег (1):\n{strat1}\n\n"
             f"Архитектор:\n{arch1}\n\n"
             f"Стратег (итог):\n{strat2}\n\n"
-            "Дай вердикт: что строим, порядок, зависимости, риски."
         )
+        if analytics_brief:
+            carto_ctx += f"{analytics_brief}\n\n"
+        carto_ctx += "Дай вердикт: что строим, порядок, зависимости, риски."
         carto = await _llm(SYS_CARTOGRAPHER, [{"role": "user", "content": carto_ctx}])
         await _save_msg(session_id, "cartographer", carto)
 

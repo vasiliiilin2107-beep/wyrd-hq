@@ -240,6 +240,16 @@ class BuildCard(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class AnalyticsReport(Base):
+    __tablename__ = "analytics_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    period_hours: Mapped[int] = mapped_column(default=24)
+    metrics_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    analysis: Mapped[str] = mapped_column(Text)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 
