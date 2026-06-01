@@ -17,11 +17,11 @@ from .routers import branches, events, memory, ws, notes, tasks, backups, flags,
 from .council_agent import council_autonomous_loop
 from .foreman_agent import foreman_loop
 from .audit_agent import audit_loop, router as audit_router
-from .analytics_agent import analytics_loop
-from .idea_agent import idea_loop
-from .project_agent import project_loop
-from .babla_agent import babla_loop
-from .professor_agent import professor_loop
+from .analytics_agent import analytics_loop, run_analytics_check
+from .idea_agent import idea_loop, run_idea_check
+from .project_agent import project_loop, run_project_check
+from .babla_agent import babla_loop, run_babla_check
+from .professor_agent import professor_loop, run_professor_check
 from .template_agent import template_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -121,6 +121,29 @@ def pulse_page():
 def manifest():
     return FileResponse(str(STATIC_DIR / "manifest.json"), media_type="application/manifest+json")
 
+
+_TRIGGERS = {
+    "analytics": run_analytics_check,
+    "ideas":     run_idea_check,
+    "projects":  run_project_check,
+    "babla":     run_babla_check,
+    "professor": run_professor_check,
+}
+
+@app.post("/trigger/{agent}", tags=["trigger"])
+async def trigger_agent(agent: str):
+    fn = _TRIGGERS.get(agent)
+    if not fn:
+        from fastapi import HTTPException
+        raise HTTPException(404, f"Триггер '{agent}' не найден. Доступны: {list(_TRIGGERS)}")
+    asyncio.create_task(fn())
+    return {"ok": True, "agent": agent, "status": "запущен"}
+
+@app.post("/trigger/all", tags=["trigger"])
+async def trigger_all():
+    for name, fn in _TRIGGERS.items():
+        asyncio.create_task(fn())
+    return {"ok": True, "launched": list(_TRIGGERS)}
 
 @app.get("/health")
 def health():
