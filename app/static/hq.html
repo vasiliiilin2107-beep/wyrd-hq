@@ -60,7 +60,6 @@
       <button class="nav-btn"        title="Цивилизация"    data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
       <button class="nav-btn"        title="Стройка"        data-tab="build"        onclick="setTab('build',this);loadBuild()">🏗️</button>
       <button class="nav-btn"        title="Заметки"        data-tab="notes"        onclick="setTab('notes',this)">📝</button>
-      <button class="nav-btn"        title="Задачи"         data-tab="tasks"        onclick="setTab('tasks',this)">✅</button>
       <button class="nav-btn"        title="Файлы Томаса"   data-tab="files"        onclick="setTab('files',this);loadFilesList()">📁</button>
       <button class="nav-btn"        title="Scribe"         data-tab="scribe"       onclick="setTab('scribe',this);loadScribe()">📺</button>
       <button class="nav-btn"        title="Конституция"    data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
@@ -238,54 +237,6 @@
         <div id="notes-list" class="notes-list"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
       </div>
 
-      <!-- TAB: TASKS -->
-      <div id="tab-tasks" class="tab-panel" style="display:none">
-        <div class="section-title">ДОСКА ЗАДАЧ</div>
-        <div class="kanban-board">
-          <div class="kanban-col" data-status="todo">
-            <div class="kanban-col-header">
-              <span class="kanban-col-title todo-color">TODO</span>
-              <button class="kanban-add-btn" onclick="showTaskInput('todo')" title="Добавить">+</button>
-            </div>
-            <div class="kanban-add-form" id="add-form-todo" style="display:none">
-              <input class="task-input" id="task-input-todo" placeholder="Название задачи..." onkeydown="taskInputKey(event,'todo')">
-              <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('todo')">ОК</button>
-                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('todo')">✕</button>
-              </div>
-            </div>
-            <div class="kanban-cards" id="cards-todo"></div>
-          </div>
-          <div class="kanban-col" data-status="in_progress">
-            <div class="kanban-col-header">
-              <span class="kanban-col-title inprogress-color">В РАБОТЕ</span>
-              <button class="kanban-add-btn" onclick="showTaskInput('in_progress')" title="Добавить">+</button>
-            </div>
-            <div class="kanban-add-form" id="add-form-in_progress" style="display:none">
-              <input class="task-input" id="task-input-in_progress" placeholder="Название задачи..." onkeydown="taskInputKey(event,'in_progress')">
-              <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('in_progress')">ОК</button>
-                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('in_progress')">✕</button>
-              </div>
-            </div>
-            <div class="kanban-cards" id="cards-in_progress"></div>
-          </div>
-          <div class="kanban-col" data-status="done">
-            <div class="kanban-col-header">
-              <span class="kanban-col-title done-color">ГОТОВО</span>
-              <button class="kanban-add-btn" onclick="showTaskInput('done')" title="Добавить">+</button>
-            </div>
-            <div class="kanban-add-form" id="add-form-done" style="display:none">
-              <input class="task-input" id="task-input-done" placeholder="Название задачи..." onkeydown="taskInputKey(event,'done')">
-              <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="wyrd-btn wyrd-btn-sm" onclick="addTask('done')">ОК</button>
-                <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="hideTaskInput('done')">✕</button>
-              </div>
-            </div>
-            <div class="kanban-cards" id="cards-done"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- TAB: FILES -->
       <div id="tab-files" class="tab-panel" style="display:none">
