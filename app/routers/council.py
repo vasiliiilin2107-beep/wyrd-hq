@@ -54,6 +54,17 @@ async def create_session(
     return {"ok": True, "session_id": s.id}
 
 
+@router.get("/sessions/{session_id}")
+async def get_session(session_id: int, session: AsyncSession = Depends(get_session)):
+    row = (await session.execute(
+        select(CouncilSession).where(CouncilSession.id == session_id)
+    )).scalar_one_or_none()
+    if not row:
+        from fastapi import HTTPException
+        raise HTTPException(404, f"Сессия {session_id} не найдена")
+    return _session_dict(row)
+
+
 @router.get("/sessions/{session_id}/messages")
 async def get_messages(session_id: int, session: AsyncSession = Depends(get_session)):
     rows = (await session.execute(

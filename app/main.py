@@ -87,6 +87,8 @@ if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
 if (STATIC_DIR / "world").exists():
     app.mount("/world", StaticFiles(directory=str(STATIC_DIR / "world")), name="world")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def _html(name: str) -> FileResponse:
