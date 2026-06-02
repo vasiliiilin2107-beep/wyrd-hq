@@ -152,6 +152,10 @@ async def _run_strukturolog() -> str:
         lines.append(f"  [{i.status}] {i.title}: {(i.expected_revenue or '')} ")
     for e in experiments:
         lines.append(f"  [exp/{e.status}] {e.title}")
+    if not ideas and not experiments:
+        lines.append("  Данных пока нет.")
+        lines.append("  Контекст WYRD: FastAPI-агенты 24/7, Библиотека (Qdrant), Instagram/TikTok через Graph API,")
+        lines.append("  GPT-4o карусели, Telegram-воронки. Монетизация: affiliate, подписки, контент.")
     result = await _llm(
         get_trained_prompt("Структуролог", SYS_STRUKTUROLOG),
         [{"role": "user", "content": "\n".join(lines)}],
@@ -288,6 +292,33 @@ async def run_babla_check() -> None:
 
     log.info("Отдел Бабла: отчёт сохранён, идея отправлена в банк")
     await _pulse(BABLA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
+    asyncio.create_task(_trigger_council_from_babla(analysis))
+
+
+async def _trigger_council_from_babla(analysis: str) -> None:
+    """Лучшее монетизационное окно → Совет (каждый 3-й цикл)."""
+    import random
+    if random.random() > 0.33:
+        return
+    if not analysis or len(analysis) < 50:
+        return
+    from .council_agent import _llm as council_llm, run_council_dialog
+    from .models import CouncilSession
+    topic = await council_llm(
+        "Сформулируй один вопрос для Совета WYRD о монетизации на основе отчёта (одно предложение, без кавычек).",
+        [{"role": "user", "content": analysis[:500]}],
+    )
+    topic = topic.strip().strip('"').strip("'")
+    if len(topic) < 10:
+        return
+    async with SessionLocal() as db:
+        s = CouncilSession(idea_text=topic, source="babla_dept")
+        db.add(s)
+        await db.commit()
+        await db.refresh(s)
+        sid = s.id
+    asyncio.create_task(run_council_dialog(sid, topic))
+    log.info("Бабло → Совет: '%s'", topic[:60])
 
 
 async def _register_workers() -> None:
@@ -373,4 +404,4 @@ async def babla_loop() -> None:
         except Exception as e:
             log.error("Babla loop error: %s", e)
             await _pulse(BABLA_FOREMAN, "idle")
-        await asyncio.sleep(4 * 60 * 60)
+        await asyncio.sleep(60 * 60)

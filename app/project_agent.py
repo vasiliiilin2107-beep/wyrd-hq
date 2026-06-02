@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import datetime
 
@@ -58,6 +59,51 @@ async def _pulse(name: str, status: str, task: str | None = None) -> None:
             await db.commit()
 
 
+async def _create_tech_tasks(card_id: int, card_topic: str, decomposition: str) -> int:
+    """Из текста декомпозиции → реальные TechTask в БД."""
+    extract_prompt = (
+        f"Задача: {card_topic[:100]}\nДекомпозиция:\n{decomposition[:700]}\n\n"
+        "Ответь ТОЛЬКО JSON массивом без markdown и пояснений:\n"
+        '[{"title": "краткое название", "description": "что конкретно сделать"}]\n'
+        "Максимум 5 задач. Если ТЗ расплывчато — создай задачу 'Уточнить ТЗ у Архитектора'."
+    )
+    raw = await _llm(
+        "Конвертируй текст в JSON массив задач. Только JSON, без markdown и пояснений.",
+        [{"role": "user", "content": extract_prompt}],
+    )
+    try:
+        raw = raw.strip().strip("```").strip()
+        if raw.lower().startswith("json"):
+            raw = raw[4:].strip()
+        tasks_data = json.loads(raw)
+        if not isinstance(tasks_data, list):
+            return 0
+        count = 0
+        async with SessionLocal() as db:
+            for t in tasks_data[:5]:
+                title = str(t.get("title", ""))[:200].strip()
+                if not title:
+                    continue
+                exists = (await db.execute(
+                    select(TechTask).where(TechTask.title == title)
+                )).scalar_one_or_none()
+                if not exists:
+                    db.add(TechTask(
+                        title=title,
+                        description=str(t.get("description", ""))[:500],
+                        status="pending",
+                        created_by=f"decomposer_card_{card_id}",
+                        priority=5,
+                    ))
+                    count += 1
+            await db.commit()
+        log.info("Декомпозер: создано %d задач из build_card #%d", count, card_id)
+        return count
+    except Exception as e:
+        log.warning("_create_tech_tasks failed: %s", e)
+        return 0
+
+
 async def _run_decomposer() -> str:
     await _pulse("Декомпозер", "active", "разбивка build_cards")
     async with SessionLocal() as db:
@@ -72,6 +118,11 @@ async def _run_decomposer() -> str:
     for c in cards:
         lines.append(f"\n[{c.id}] {c.topic[:80]}\nТЗ: {(c.tz_text or 'нет ТЗ')[:300]}")
     result = await _llm(get_trained_prompt("Декомпозер", SYS_DECOMPOSER), [{"role": "user", "content": "\n".join(lines)}])
+    # Создаём реальные задачи из первой карточки с ТЗ
+    for c in cards:
+        if c.tz_text and len(c.tz_text) > 20:
+            asyncio.create_task(_create_tech_tasks(c.id, c.topic, result))
+            break
     await _pulse("Декомпозер", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -212,4 +263,4 @@ async def project_loop() -> None:
         except Exception as e:
             log.error("Project loop error: %s", e)
             await _pulse(PROJECT_FOREMAN, "idle")
-        await asyncio.sleep(2 * 60 * 60)
+        await asyncio.sleep(30 * 60)

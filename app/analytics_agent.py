@@ -148,7 +148,12 @@ async def _run_razvedchik() -> str:
     total = stats.get("total", "?")
     by_cat = stats.get("by_category", {})
     ctx = f"Всего знаний в Библиотеке: {total}\n"
-    ctx += "По категориям: " + ", ".join(f"{k}: {v}" for k, v in list(by_cat.items())[:6])
+    if isinstance(by_cat, dict):
+        ctx += "По категориям: " + ", ".join(f"{k}: {v}" for k, v in list(by_cat.items())[:6])
+    elif isinstance(by_cat, list):
+        ctx += "По категориям: " + ", ".join(str(x) for x in by_cat[:6])
+    else:
+        ctx += "По категориям: данные недоступны"
     ctx += f"\n\n{synthesis}"
     result = await _llm(get_trained_prompt("Разведчик", SYS_RAZVEDCHIK), [{"role": "user", "content": ctx}])
     await _pulse_agent("Разведчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
@@ -234,6 +239,33 @@ async def run_analytics_check() -> None:
 
     log.info("Analytics: отчёт сохранён")
     await _pulse_agent(ANALYTICS_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
+    asyncio.create_task(_trigger_council_from_analytics(analysis))
+
+
+async def _trigger_council_from_analytics(analysis: str) -> None:
+    """Главная находка Аналитики → Совет как новая тема (раз в несколько циклов)."""
+    import random
+    if random.random() > 0.4:
+        return
+    if not analysis or len(analysis) < 50:
+        return
+    topic = await _llm(
+        "Сформулируй один стратегический вопрос для Совета WYRD на основе отчёта (одно предложение, без кавычек).",
+        [{"role": "user", "content": analysis[:600]}],
+    )
+    topic = topic.strip().strip('"').strip("'")
+    if len(topic) < 10:
+        return
+    from .models import CouncilSession
+    from .council_agent import run_council_dialog
+    async with SessionLocal() as db:
+        s = CouncilSession(idea_text=topic, source="analytics")
+        db.add(s)
+        await db.commit()
+        await db.refresh(s)
+        sid = s.id
+    asyncio.create_task(run_council_dialog(sid, topic))
+    log.info("Аналитика → Совет: '%s'", topic[:60])
 
 
 async def _register_workers() -> None:
@@ -300,4 +332,4 @@ async def analytics_loop() -> None:
         except Exception as e:
             log.error("Analytics loop error: %s", e)
             await _pulse_agent(ANALYTICS_FOREMAN, "idle")
-        await asyncio.sleep(2 * 60 * 60)
+        await asyncio.sleep(30 * 60)

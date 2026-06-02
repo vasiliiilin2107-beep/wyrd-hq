@@ -80,6 +80,13 @@ async def _library_synthesis() -> str:
         return "Библиотека: недоступна"
 
 
+_WYRD_FALLBACK = """Контекст мира WYRD:
+WYRD — многоагентная система с HQ (штаб), Библиотекой (знания), Томасом (президент), Советом (Стратег/Архитектор/Картограф), отделами (Аналитика, Идеи, Бабло, Проекты).
+Технический стек: FastAPI + PostgreSQL + Qdrant + Redis. Агенты работают 24/7.
+Возможности: Instagram/TikTok/YouTube (Graph API), контент через GPT-4o, DeepSeek, Telegram-воронки.
+Монетизация в фокусе: affiliate, подписки, контент-воронки, AI as a Service."""
+
+
 async def _run_generator() -> str:
     await _pulse("Генератор", "active", "чтение синтезов")
     synthesis = await _library_synthesis()
@@ -88,6 +95,8 @@ async def _run_generator() -> str:
             select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(5)
         )).scalars().all()
     titles = "\n".join(f"- {i.title}" for i in existing) or "банк пуст"
+    if "пусто" in synthesis or "недоступна" in synthesis:
+        synthesis = _WYRD_FALLBACK
     ctx = f"{synthesis}\n\nУже есть в банке идей:\n{titles}"
     result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}])
     await _pulse("Генератор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
@@ -159,6 +168,33 @@ async def run_idea_check() -> None:
 
     log.info("Идейный отдел: отчёт сохранён")
     await _pulse(IDEA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
+    asyncio.create_task(_push_top_idea_to_council(analysis))
+
+
+async def _push_top_idea_to_council(analysis: str) -> None:
+    """Лучшая идея цикла → тема для Совета (каждый 3-й цикл)."""
+    import random
+    if random.random() > 0.33:
+        return
+    if not analysis or len(analysis) < 50:
+        return
+    from .council_agent import _llm as council_llm, run_council_dialog
+    from .models import CouncilSession
+    topic = await council_llm(
+        "Сформулируй один конкретный вопрос для Совета WYRD об идее из отчёта (одно предложение, без кавычек).",
+        [{"role": "user", "content": analysis[:500]}],
+    )
+    topic = topic.strip().strip('"').strip("'")
+    if len(topic) < 10:
+        return
+    async with SessionLocal() as db:
+        s = CouncilSession(idea_text=topic, source="ideas_dept")
+        db.add(s)
+        await db.commit()
+        await db.refresh(s)
+        sid = s.id
+    asyncio.create_task(run_council_dialog(sid, topic))
+    log.info("Идейный → Совет: '%s'", topic[:60])
 
 
 async def _register_workers() -> None:
@@ -225,4 +261,4 @@ async def idea_loop() -> None:
         except Exception as e:
             log.error("Idea loop error: %s", e)
             await _pulse(IDEA_FOREMAN, "idle")
-        await asyncio.sleep(3 * 60 * 60)
+        await asyncio.sleep(45 * 60)
