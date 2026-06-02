@@ -381,11 +381,11 @@
     btn.classList.add('active');
   }
   // Book Studio — загрузка данных через /stats
-  const BS_URL = 'http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io';
+  const BS_URL = '';
   async function loadBookStudio() {
     document.getElementById('bs-stats').innerHTML = '<div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div>';
     try {
-      const r = await fetch(BS_URL + '/stats');
+      const r = await fetch('/bs/stats');
       const d = await r.json();
       // Статы
       const total = d.total_chapters || 0;
@@ -437,7 +437,7 @@
     }
   }
   async function bsGenerate(slug) {
-    const r = await fetch(BS_URL + '/books/' + slug + '/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({book_slug:slug,target_words:2000})});
+    const r = await fetch('/bs/books/' + slug + '/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({book_slug:slug,target_words:2000})});
     const d = await r.json();
     showToast(d.ok ? '✅ Глава ' + d.queued_chapter + ' в очереди' : '❌ Ошибка');
     setTimeout(loadBookStudio, 3000);
