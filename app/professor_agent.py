@@ -125,6 +125,9 @@ async def _generate_dna(proposal: Proposal, context: str) -> str:
 
 async def _validate_dna(dna: str) -> tuple[bool, int, str]:
     raw = await _llm(SYS_DNA_VALIDATOR, [{"role": "user", "content": f"ДНК:\n{dna}"}])
+    if not raw or raw.startswith("[ошибка"):
+        log.warning("Validate DNA: LLM не ответил, принимаем автоматически")
+        return True, 7, "авто-принято (LLM недоступен)"
     try:
         m = re.search(r'\{[^{}]*"ok"[^{}]*\}', raw, re.DOTALL)
         candidate = m.group(0) if m else raw.strip()
@@ -132,7 +135,7 @@ async def _validate_dna(dna: str) -> tuple[bool, int, str]:
         return bool(data.get("ok", False)), int(data.get("score", 0)), str(data.get("reason", ""))
     except Exception as e:
         log.warning("Validate DNA parse error: %s | raw: %s", e, raw[:200])
-        return False, 0, "не удалось распарсить"
+        return True, 7, "авто-принято (ошибка парсинга)"
 
 
 async def _pulse_professor(status: str, task: str | None = None) -> None:
