@@ -99,6 +99,15 @@ async def _get_agent_by_id_or_name(agent_id: str, session: AsyncSession):
     return result.scalars().first()
 
 
+@router.get("/agents/{agent_id}")
+async def get_agent(agent_id: str, session: AsyncSession = Depends(get_session)):
+    agent = await _get_agent_by_id_or_name(agent_id, session)
+    if not agent:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Agent not found")
+    return _agent_dict(agent)
+
+
 @router.post("/agents/{agent_id}/trigger")
 async def trigger_agent(agent_id: str, body: TriggerIn = None, session: AsyncSession = Depends(get_session)):
     if body is None:

@@ -116,7 +116,7 @@
   </div>
 </div>
 <script>
-const AGENT_NAME = location.pathname.split('/agent/')[1];
+const AGENT_NAME = decodeURIComponent(location.pathname.split('/agent/')[1] || '');
 const SC = {live:'#10b981',pause:'#f59e0b',ready:'#3b82f6',ghost:'#6b7280',active:'#10b981',idle:'#f59e0b',offline:'#ef4444',pending:'#f97316'};
 const SL = {live:'LIVE',pause:'ПАУЗА',ready:'ГОТОВ',ghost:'НЕ СОЗДАН',active:'LIVE',idle:'ОЖИДАЕТ',offline:'ОФЛАЙН',pending:'СТРОИТСЯ'};
 const EMOJIS = {thomas:'🎙',technik:'🔧',scribe:'🌍',library:'📖',studio:'🎬',professor:'🎓',strateg:'🧠',arhitektor:'📐',kartograf:'🗺',kaznachey:'💰',tomas:'🎙'};
