@@ -15,7 +15,7 @@ from .models import (
     Agent, AgentReport, AnalyticsReport, BablaReport, Constitution,
     Event, IdeaDeptReport, ProjectDeptReport, Proposal,
 )
-from .routers.education import get_trained_prompt, issue_passport, train_agent
+from .routers.education import get_trained_prompt, issue_passport, train_agent, persist_dna
 
 log = logging.getLogger(__name__)
 
@@ -173,8 +173,9 @@ async def _birth_agent(proposal: Proposal, constitution: str) -> bool:
 
     log.info("Профессор: ДНК валидна '%s' score=%d — вшиваю", agent_name, score)
 
-    # Вшиваем ДНК
-    train_agent(agent_name, dna, constitution)
+    # Вшиваем ДНК в память и сохраняем в БД
+    full_prompt = train_agent(agent_name, dna, constitution)
+    await persist_dna(agent_name, full_prompt)
 
     # Регистрируем в HQ
     async with SessionLocal() as db:
@@ -273,7 +274,8 @@ async def _register_professor() -> None:
         const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
     constitution = const.text if const else ""
 
-    train_agent(PROFESSOR_NAME, SYS_DNA_GENERATOR, constitution)
+    full_prompt = train_agent(PROFESSOR_NAME, SYS_DNA_GENERATOR, constitution)
+    await persist_dna(PROFESSOR_NAME, full_prompt)
     await issue_passport(
         agent_name=PROFESSOR_NAME,
         department="Профобразование",

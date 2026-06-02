@@ -13,6 +13,7 @@ from .database import engine, Base, SessionLocal
 from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
 from .routers.civilization import seed_agents
+from .routers.education import load_all_dna
 from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, constitution, civilization, council, education, world_docs, build, analytics, ideas_dept, projects_dept, babla
 from .council_agent import council_autonomous_loop
 from .foreman_agent import foreman_loop
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     await init_qdrant()
     async with SessionLocal() as session:
         await seed_agents(session)
+    await load_all_dna()
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
     asyncio.create_task(audit_loop())

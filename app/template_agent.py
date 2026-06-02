@@ -187,10 +187,10 @@ async def run_all_template_workers() -> None:
 
 
 async def template_loop() -> None:
-    await asyncio.sleep(300)
+    await asyncio.sleep(120)
     while True:
         try:
             await run_all_template_workers()
         except Exception as e:
             log.error("Template loop error: %s", e)
-        await asyncio.sleep(3 * 60 * 60)
+        await asyncio.sleep(30 * 60)

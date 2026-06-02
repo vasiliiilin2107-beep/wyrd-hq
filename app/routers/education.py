@@ -5,9 +5,66 @@ from fastapi import APIRouter, Request
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/education", tags=["education"])
 
-# in-memory: ключ = имя файла агента (council_strategist и т.д.)
+# in-memory кэш: ключ = "trained:<agent_name>"
+# Загружается из PostgreSQL при старте, пишется туда же при train_agent
 _scores: dict[str, dict] = {}
 _last_cycle: str = ""
+
+
+async def persist_dna(agent_name: str, prompt: str) -> None:
+    """Сохраняет обученный промпт агента в PostgreSQL (agent_prompts)."""
+    try:
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        from ..database import SessionLocal
+        from ..models import AgentPrompt
+        async with SessionLocal() as db:
+            stmt = pg_insert(AgentPrompt).values(
+                agent_name=agent_name,
+                prompt=prompt,
+                version="v1.0",
+                training_status="trained",
+                last_trained_at=datetime.utcnow(),
+            ).on_conflict_do_update(
+                index_elements=["agent_name"],
+                set_={
+                    "prompt": prompt,
+                    "training_status": "trained",
+                    "last_trained_at": datetime.utcnow(),
+                },
+            )
+            await db.execute(stmt)
+            await db.commit()
+        log.info("[education] ДНК сохранена в БД: %s", agent_name)
+    except Exception as e:
+        log.warning("[education] persist_dna error для %s: %s", agent_name, e)
+
+
+async def load_all_dna() -> int:
+    """Загружает все ДНК из agent_prompts в _scores при старте."""
+    try:
+        from sqlalchemy import select
+        from ..database import SessionLocal
+        from ..models import AgentPrompt
+        async with SessionLocal() as db:
+            rows = (await db.execute(select(AgentPrompt))).scalars().all()
+        count = 0
+        for r in rows:
+            if r.prompt:
+                key = f"trained:{r.agent_name}"
+                _scores[key] = {
+                    "agent": r.agent_name,
+                    "best_score": 1.0,
+                    "cycle": 0,
+                    "prompt": r.prompt,
+                    "timestamp": r.last_trained_at.isoformat() if r.last_trained_at else "",
+                    "trained": True,
+                }
+                count += 1
+        log.info("[education] загружено ДНК из БД: %d агентов", count)
+        return count
+    except Exception as e:
+        log.warning("[education] load_all_dna error: %s", e)
+        return 0
 
 WYRD_PREAMBLE = """# МИР WYRD — КОНТЕКСТ АГЕНТА (читать обязательно)
 
