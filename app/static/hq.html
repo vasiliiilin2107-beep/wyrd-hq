@@ -321,14 +321,17 @@
       </div>
 
       <!-- TAB: BOOKSTUDIO -->
-      <div id="tab-bookstudio" class="tab-panel" style="display:none;padding:0;height:calc(100vh - 56px);overflow:hidden;position:relative">
-        <div style="position:absolute;top:0;left:0;right:0;height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--border);background:rgba(8,8,17,.95);z-index:1">
-          <span style="font-size:.65rem;font-weight:700;color:var(--text-dim);letter-spacing:.15em">📖 BOOK STUDIO</span>
-          <div style="flex:1"></div>
-          <button class="wmap-refresh" onclick="document.getElementById('bs-iframe').contentWindow.location.reload()">↻</button>
-          <a href="http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io/ui/" target="_blank" style="font-size:.7rem;color:var(--amber);text-decoration:none;padding:3px 8px;border:1px solid #f59e0b44;border-radius:3px">↗ ОТКРЫТЬ</a>
+      <div id="tab-bookstudio" class="tab-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div class="section-title" style="margin:0">📖 BOOK STUDIO</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="wmap-refresh" onclick="loadBookStudio()">↻</button>
+            <a href="http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io/ui/" target="_blank" class="wyrd-btn wyrd-btn-sm">↗ Открыть дашборд</a>
+          </div>
         </div>
-        <iframe id="bs-iframe" src="" style="position:absolute;top:38px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 38px);border:none"></iframe>
+        <div id="bs-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px"></div>
+        <div id="bs-books"></div>
+        <div id="bs-scout" style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px"></div>
       </div>
 
     </main>
@@ -377,13 +380,67 @@
     document.querySelectorAll('.map-sv').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  // Book Studio — ленивая загрузка iframe
-  function loadBookStudio() {
-    const fr = document.getElementById('bs-iframe');
-    if (!fr.dataset.loaded) {
-      fr.src = 'http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io/ui/';
-      fr.dataset.loaded = '1';
+  // Book Studio — загрузка данных через /stats
+  const BS_URL = 'http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io';
+  async function loadBookStudio() {
+    document.getElementById('bs-stats').innerHTML = '<div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div>';
+    try {
+      const r = await fetch(BS_URL + '/stats');
+      const d = await r.json();
+      // Статы
+      const total = d.total_chapters || 0;
+      const pub = d.total_published || 0;
+      document.getElementById('bs-stats').innerHTML = `
+        <div class="stat-card" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+          <div style="font-size:1.6rem;font-weight:800;color:var(--amber)">${total}</div>
+          <div style="font-size:.7rem;color:var(--text-dim);margin-top:2px">ГЛАВ НАПИСАНО</div>
+        </div>
+        <div class="stat-card" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+          <div style="font-size:1.6rem;font-weight:800;color:var(--green)">${pub}</div>
+          <div style="font-size:.7rem;color:var(--text-dim);margin-top:2px">ОПУБЛИКОВАНО</div>
+        </div>
+        <div class="stat-card" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+          <div style="font-size:1.6rem;font-weight:800;color:var(--purple)">${(d.books||[]).length}</div>
+          <div style="font-size:.7rem;color:var(--text-dim);margin-top:2px">КНИГ</div>
+        </div>`;
+      // Книги
+      const booksHtml = (d.books || []).map(b => `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:.85rem;font-weight:700;color:var(--text)">${b.title}</span>
+            <span style="font-size:.7rem;color:var(--text-dim)">${b.genre}</span>
+          </div>
+          <div style="display:flex;gap:16px;font-size:.75rem;color:var(--text-dim);margin-bottom:10px">
+            <span>Глав: <b style="color:var(--text)">${b.chapters_total}</b></span>
+            <span>Опубл: <b style="color:var(--green)">${b.chapters_published}</b></span>
+            <span>Оценка: <b style="color:var(--amber)">${b.avg_score || '—'}</b></span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="wyrd-btn wyrd-btn-sm" onclick="bsGenerate('${b.slug}')">＋ Глава</button>
+            ${b.rulate_url ? `<a href="${b.rulate_url}" target="_blank" class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost">Rulate ↗</a>` : ''}
+          </div>
+        </div>`).join('');
+      document.getElementById('bs-books').innerHTML = booksHtml || '<div style="color:var(--text-dim);font-size:.8rem">Книг нет</div>';
+      // Scout
+      if (d.scout) {
+        const s = d.scout;
+        document.getElementById('bs-scout').innerHTML = `
+          <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin-bottom:8px">🔭 РАЗВЕДКА РЫНКА</div>
+          <div style="font-size:.78rem;color:var(--text);line-height:1.7">
+            <b>Тренды:</b> ${(s.trending_genres||[]).join(', ')}<br>
+            <b>Механики:</b> ${(s.top_mechanics||[]).join(', ')}<br>
+            <b>Избегать:</b> ${(s.avoid||[]).join(', ')}
+          </div>`;
+      }
+    } catch(e) {
+      document.getElementById('bs-stats').innerHTML = `<div style="color:var(--red);font-size:.8rem">Ошибка: ${e.message}</div>`;
     }
+  }
+  async function bsGenerate(slug) {
+    const r = await fetch(BS_URL + '/books/' + slug + '/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({book_slug:slug,target_words:2000})});
+    const d = await r.json();
+    showToast(d.ok ? '✅ Глава ' + d.queued_chapter + ' в очереди' : '❌ Ошибка');
+    setTimeout(loadBookStudio, 3000);
   }
   // Запуск всех циклов
   async function triggerAll(btn) {
