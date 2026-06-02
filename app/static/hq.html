@@ -65,6 +65,7 @@
       <button class="nav-btn"        title="Конституция"    data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
       <button class="nav-btn"        title="Профобразование" data-tab="education"   onclick="setTab('education',this);loadEducation()">👔</button>
       <button class="nav-btn"        title="Мир — паспорта" data-tab="world"        onclick="setTab('world',this);loadWorld()">🌍</button>
+      <button class="nav-btn"        title="Book Studio"    data-tab="bookstudio"   onclick="setTab('bookstudio',this);loadBookStudio()">📖</button>
       <button class="nav-btn"        title="Томас"          onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)">⚡</button>
@@ -319,6 +320,17 @@
         </div>
       </div>
 
+      <!-- TAB: BOOKSTUDIO -->
+      <div id="tab-bookstudio" class="tab-panel" style="display:none;padding:0;height:calc(100vh - 56px);overflow:hidden;position:relative">
+        <div style="position:absolute;top:0;left:0;right:0;height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--border);background:rgba(8,8,17,.95);z-index:1">
+          <span style="font-size:.65rem;font-weight:700;color:var(--text-dim);letter-spacing:.15em">📖 BOOK STUDIO</span>
+          <div style="flex:1"></div>
+          <button class="wmap-refresh" onclick="document.getElementById('bs-iframe').contentWindow.location.reload()">↻</button>
+          <a href="http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io/ui/" target="_blank" style="font-size:.7rem;color:var(--amber);text-decoration:none;padding:3px 8px;border:1px solid #f59e0b44;border-radius:3px">↗ ОТКРЫТЬ</a>
+        </div>
+        <iframe id="bs-iframe" src="" style="position:absolute;top:38px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 38px);border:none"></iframe>
+      </div>
+
     </main>
 
     <!-- ─── ПАНЕЛЬ АГЕНТА ─────────────────────────────── -->
@@ -364,6 +376,14 @@
     document.getElementById('map-iframe').src = src;
     document.querySelectorAll('.map-sv').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+  }
+  // Book Studio — ленивая загрузка iframe
+  function loadBookStudio() {
+    const fr = document.getElementById('bs-iframe');
+    if (!fr.dataset.loaded) {
+      fr.src = 'http://wrris41i40wtmo83omhsdkoy.147.45.212.155.sslip.io/ui/';
+      fr.dataset.loaded = '1';
+    }
   }
   // Запуск всех циклов
   async function triggerAll(btn) {
