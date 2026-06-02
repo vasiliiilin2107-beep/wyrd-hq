@@ -59,6 +59,12 @@ const AGENTS = [
   // СТРОИТЕЛЬСТВО
   {id:'wyrd_insta', e:'📸',n:'WYRD INSTA',     room:'build', s:'pending',d:'🔨 Строится. Карусели EU→RU и RU→EN.'},
   {id:'wyrd_income',e:'💸',n:'WYRD INCOME',    room:'build', s:'pending',d:'🔨 Строится. Конвейер Бабло→Идеи.'},
+  // BOOK STUDIO
+  {id:'bs_razv',  e:'📡',n:'РАЗВЕДЧИК КН.',  room:'bookstudio', s:'live',  d:'Сканирует топ Rulate/RoyalRoad. Ищет паттерны продающих книг.'},
+  {id:'bs_arh',   e:'📐',n:'АРХИТЕКТОР КН.', room:'bookstudio', s:'live',  d:'Строит арки и Story Bible. Сейчас: Толстяк 5 арок.'},
+  {id:'bs_pis',   e:'✍', n:'ПИСАТЕЛЬ КН.',   room:'bookstudio', s:'live',  d:'Пишет главы 1800-2000 слов. XianXia Comedy формула.'},
+  {id:'bs_red',   e:'✅',n:'РЕДАКТОР КН.',   room:'bookstudio', s:'live',  d:'Правит стиль, убирает SLOP-паттерны, сохраняет голос.'},
+  {id:'bs_pub',   e:'📤',n:'ПУБЛИКАТОР',     room:'bookstudio', s:'live',  d:'Выкладывает главы на Rulate. Авто-публикация.'},
 ];
 
 // Автоматическая карта DB-имён → JS-id
@@ -103,6 +109,15 @@ const LINKS = [
   {s:'studiya',t:'tomas',type:'report'},     {s:'tehnik',t:'tomas',type:'report'},
   {s:'kartograf',t:'wyrd_insta',type:'command'},{s:'wyrd_insta',t:'tomas',type:'report'},
   {s:'kartograf',t:'wyrd_income',type:'command'},{s:'wyrd_income',t:'br_idei',type:'knowledge'},
+  // BOOK STUDIO links
+  {s:'shef',    t:'bs_razv',  type:'command'},
+  {s:'razvedchik',t:'bs_razv',type:'knowledge'},
+  {s:'bs_razv', t:'bs_arh',  type:'knowledge'},
+  {s:'bs_arh',  t:'bs_pis',  type:'command'},
+  {s:'bs_pis',  t:'bs_red',  type:'command'},
+  {s:'bs_red',  t:'bs_pub',  type:'command'},
+  {s:'bs_pub',  t:'tomas',   type:'report'},
+  {s:'br_babla',t:'bs_razv', type:'knowledge'},
 ];
 
 const ROOMS = [
@@ -114,8 +129,9 @@ const ROOMS = [
   {id:'babla', label:'ОТДЕЛ БАБЛА',   color:'#44ff44', x:.03, y:.49, w:.41, h:.17},
   {id:'ideyny',label:'ИДЕЙНЫЙ',       color:'#cc44ff', x:.47, y:.49, w:.24, h:.17},
   {id:'proekt',label:'ПРОЕКТНЫЙ',     color:'#4a9eff', x:.74, y:.36, w:.22, h:.18},
-  {id:'prod',  label:'ПРОИЗВОДСТВО',  color:'#aa44ff', x:.03, y:.70, w:.22, h:.12},
-  {id:'build', label:'СТРОИТЕЛЬСТВО', color:'#ff8800', x:.28, y:.70, w:.42, h:.12},
+  {id:'prod',       label:'ПРОИЗВОДСТВО',  color:'#aa44ff', x:.03, y:.70, w:.22, h:.12},
+  {id:'build',      label:'СТРОИТЕЛЬСТВО', color:'#ff8800', x:.28, y:.70, w:.42, h:.12},
+  {id:'bookstudio', label:'BOOK STUDIO',   color:'#f59e0b', x:.74, y:.57, w:.22, h:.27},
 ];
 
 const roomMap = {};
