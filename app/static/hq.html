@@ -66,6 +66,7 @@
       <button class="nav-btn"        title="Профобразование" data-tab="education"   onclick="setTab('education',this);loadEducation()">👔</button>
       <button class="nav-btn"        title="Мир — паспорта" data-tab="world"        onclick="setTab('world',this);loadWorld()">🌍</button>
       <button class="nav-btn"        title="Book Studio"    data-tab="bookstudio"   onclick="setTab('bookstudio',this);loadBookStudio()">📖</button>
+      <button class="nav-btn"        title="Аудит мира"     data-tab="audit"        onclick="setTab('audit',this);loadAudit()">🔍</button>
       <button class="nav-btn"        title="Томас"          onclick="window.location='/thomas'">👁️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)">⚡</button>
@@ -334,6 +335,24 @@
         <div id="bs-scout" style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px"></div>
       </div>
 
+      <!-- TAB: AUDIT -->
+      <div id="tab-audit" class="tab-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div class="section-title" style="margin:0">🔍 АУДИТ МИРА</div>
+          <div style="display:flex;gap:8px">
+            <button class="wmap-refresh" onclick="loadAudit()">↻</button>
+            <button class="wyrd-btn wyrd-btn-sm" onclick="runAuditNow()">▶ Запустить</button>
+          </div>
+        </div>
+        <div id="audit-health" style="margin-bottom:16px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div id="audit-agents" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px"></div>
+          <div id="audit-council" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px"></div>
+        </div>
+        <div id="audit-professor" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px"></div>
+        <div id="audit-log" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px"></div>
+      </div>
+
     </main>
 
     <!-- ─── ПАНЕЛЬ АГЕНТА ─────────────────────────────── -->
@@ -465,5 +484,6 @@
   <script src="/assets/js/civilization.js"></script>
   <script src="/assets/js/education.js"></script>
   <script src="/assets/js/world.js"></script>
+  <script src="/assets/js/audit.js"></script>
 </body>
 </html>
