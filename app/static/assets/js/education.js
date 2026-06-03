@@ -136,6 +136,35 @@ function _showEduModal(title, text) {
   </div>`;
 }
 
+async function loadEduLog() {
+  const el = document.getElementById('edu-log');
+  if (!el) return;
+  el.innerHTML = '<span style="color:var(--text-dim)">Загрузка...</span>';
+  try {
+    const r = await fetch('/education/scores');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    const entries = Object.entries(data).filter(([k]) => k !== 'last_cycle');
+    if (!entries.length) {
+      el.innerHTML = '<span style="color:var(--text-dim)">Нет данных об обучении</span>';
+      return;
+    }
+    el.innerHTML = entries.map(([key, s]) => {
+      const name = s.agent || key;
+      const score = s.best_score ?? '—';
+      const ts = s.timestamp ? new Date(s.timestamp).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const color = score >= 0.95 ? '#10b981' : score >= 0.8 ? '#f59e0b' : '#6b7280';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <span style="color:${color};font-weight:700;min-width:40px">${Math.round((score||0)*100)}%</span>
+        <span style="flex:1;font-size:.7rem">${name}</span>
+        <span style="color:var(--text-dim);font-size:.6rem">${ts}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<span style="color:#ef4444">Ошибка: ${e.message}</span>`;
+  }
+}
+
 async function applyCouncilPrompts() {
   if (!confirm('Применить промпты из фабрики к агентам Совета? Это создаст задачу Технику.')) return;
   try {

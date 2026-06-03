@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -194,6 +194,7 @@
             <div style="display:flex;gap:6px">
               <button class="wyrd-btn wyrd-btn-sm" onclick="showCouncilForm()">+ ЗАПУСТИТЬ</button>
               <button class="wmap-refresh" onclick="loadSessions()">↻</button>
+              <button class="wyrd-btn wyrd-btn-sm" style="color:#ef4444;border-color:rgba(239,68,68,.3)" onclick="clearAllSessions()">🗑 ОЧИСТИТЬ</button>
             </div>
           </div>
           <div id="council-form" style="display:none;margin-bottom:12px">
@@ -297,8 +298,11 @@
         </div>
         <div class="civ-section" style="margin-top:22px">
           <div class="civ-section-title">
-            <span>📋 ЛОГ ПОСЛЕДНЕГО ЦИКЛА</span>
-            <button class="wyrd-btn wyrd-btn-sm" onclick="applyCouncilPrompts()">⚡ ПРИМЕНИТЬ ПРОМПТЫ</button>
+            <span>📋 СОСТОЯНИЕ ОБУЧЕНИЯ</span>
+            <div style="display:flex;gap:6px">
+              <button class="wmap-refresh" onclick="loadEduLog()" title="Обновить">↻</button>
+              <button class="wyrd-btn wyrd-btn-sm" onclick="applyCouncilPrompts()">⚡ ПРИМЕНИТЬ ПРОМПТЫ</button>
+            </div>
           </div>
           <div id="edu-log" class="tech-result" style="max-height:300px;font-size:.75rem;line-height:1.6">
             <span style="color:var(--text-dim)">Нажмите ↻ для загрузки...</span>

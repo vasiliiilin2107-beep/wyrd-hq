@@ -274,6 +274,18 @@ async function loadDialog(sessionId) {
 
 // ─── COUNCIL FORM ─────────────────────────────────────────
 
+async function clearAllSessions() {
+  const count = document.getElementById('civ-sessions-count').textContent.replace(/\D/g, '');
+  if (!confirm(`Удалить все сессии Совета (${count || '?'})? Это нельзя отменить.`)) return;
+  try {
+    await fetch('/council/sessions', { method: 'DELETE' });
+    openSessions.clear();
+    await loadSessions();
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
+  }
+}
+
 function showCouncilForm() {
   document.getElementById('council-form').style.display = 'block';
   document.getElementById('council-idea-input').focus();
