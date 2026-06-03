@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 
 import httpx
 from sqlalchemy import select, desc
@@ -182,6 +183,23 @@ SYS_THOMAS = """Ты — Томас, голос и маршрутизатор Ш
 Оцени диалог честно. Если было много воды, повторений, уклонений от конкретики — назови прямо и скажи что именно мешало. Если диалог был чётким — тоже скажи. Это нужно чтобы Совет становился лучше с каждым разом.
 
 Тон: прямой, без лести. Ты не боишься сказать Стратегу что он повторял одно и то же трижды. Говори от первого лица как Томас."""
+
+AUDIT_THRESHOLD = 10  # кол-во висящих идей → переключаемся в режим аудита
+
+SYS_AUDITOR = """Ты — Совет мира WYRD в режиме АУДИТА. Не генерируй новые идеи.
+
+Тебе дан список идей которые висят без реализации. Твоя задача:
+
+1. **Оцени каждую идею** — нужна ли она ПРЯМО СЕЙЧАС или это фантазия?
+   Критерий: есть ли у нас инструменты/агенты чтобы реализовать это за 48 часов?
+   Формат: [ID] → KEEP / DROP + одна фраза почему
+
+2. **Опиши 3 реальные проблемы мира прямо сейчас** — что не работает, что тормозит.
+   Только факты из контекста. Не фантазии.
+
+3. **Сигнал Шефу** — одно предложение: что критично и требует его внимания.
+
+Отвечай структурированно. Никакой воды."""
 
 AUTONOMOUS_TOPICS = [
     # ── Архитектура и мир ────────────────────────────────────────────────────
@@ -421,21 +439,102 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
                 await db.commit()
 
 
+async def _council_world_audit() -> None:
+    """Режим аудита: когда идей накопилось >= AUDIT_THRESHOLD.
+    Совет перестаёт генерировать — оценивает что висит, чистит мусор, сигналит Томасу."""
+    log.info("Council: режим АУДИТА — слишком много висящих идей")
+
+    async with SessionLocal() as db:
+        # Все висящие идеи
+        pending = (await db.execute(
+            select(CouncilSession)
+            .where(CouncilSession.status == "verdict")
+            .order_by(CouncilSession.created_at.desc())
+            .limit(20)
+        )).scalars().all()
+
+        # Контекст мира
+        analytics = (await db.execute(
+            select(AnalyticsReport).order_by(desc(AnalyticsReport.checked_at)).limit(1)
+        )).scalar_one_or_none()
+
+    ideas_list = "\n".join(
+        f"[{s.id}] {s.idea_text[:120]}" for s in pending
+    )
+    world_ctx = analytics.analysis[:600] if analytics else "нет данных аналитики"
+
+    audit_prompt = (
+        f"Висящие идеи ({len(pending)} штук):\n{ideas_list}\n\n"
+        f"Состояние мира:\n{world_ctx}"
+    )
+
+    result = await _llm(SYS_AUDITOR, [{"role": "user", "content": audit_prompt}])
+    log.info("Council audit result: %s", result[:200])
+
+    # Парсим DROP-решения и удаляем мусор
+    dropped_ids = []
+    for line in result.splitlines():
+        if "DROP" in line.upper():
+            import re
+            m = re.search(r'\[(\d+)\]', line)
+            if m:
+                dropped_ids.append(int(m.group(1)))
+
+    if dropped_ids:
+        async with SessionLocal() as db:
+            for sid in dropped_ids:
+                s = await db.get(CouncilSession, sid)
+                if s and s.status == "verdict":
+                    s.status = "done"
+                    s.verdict_json = s.verdict_json or {}
+                    s.verdict_json["cleaned_by"] = "council_audit"
+            await db.commit()
+        log.info("Council audit: очищено %d идей: %s", len(dropped_ids), dropped_ids)
+
+    # Создаём задачу Томасу с сигналом
+    remaining = len(pending) - len(dropped_ids)
+    task_title = f"[АУДИТ СОВЕТА] Висело {len(pending)} идей → удалено {len(dropped_ids)}, осталось {remaining}"
+    async with SessionLocal() as db:
+        db.add(TechTask(
+            title=task_title,
+            description=result,
+            status="pending",
+            created_by="council_audit",
+            priority=2,
+        ))
+        await db.commit()
+
+    log.info("Council audit: задача Томасу создана, осталось висеть %d идей", remaining)
+
+
 async def council_autonomous_loop() -> None:
     global _topic_idx
     await asyncio.sleep(30 * 60)  # первый запуск через 30 мин
     while True:
         try:
-            topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
-            _topic_idx += 1
+            # Проверяем: не накопились ли висящие идеи?
             async with SessionLocal() as db:
-                s = CouncilSession(idea_text=topic, source="autonomous")
-                db.add(s)
-                await db.commit()
-                await db.refresh(s)
-                sid = s.id
-            log.info("Council autonomous session %d: %s", sid, topic[:50])
-            await run_council_dialog(sid, topic)
+                pending_count = (await db.execute(
+                    select(CouncilSession).where(CouncilSession.status == "verdict")
+                )).scalars()
+                pending_count = len(pending_count.all())
+
+            if pending_count >= AUDIT_THRESHOLD:
+                # Режим аудита — чистим мусор, сигналим Томасу
+                await _council_world_audit()
+            else:
+                # Обычный режим — генерируем новую идею
+                topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
+                _topic_idx += 1
+                async with SessionLocal() as db:
+                    s = CouncilSession(idea_text=topic, source="autonomous")
+                    db.add(s)
+                    await db.commit()
+                    await db.refresh(s)
+                    sid = s.id
+                log.info("Council autonomous session %d: %s", sid, topic[:50])
+                await run_council_dialog(sid, topic)
+
         except Exception as e:
             log.error("Council autonomous loop: %s", e)
         await asyncio.sleep(90 * 60)  # каждые 90 мин
