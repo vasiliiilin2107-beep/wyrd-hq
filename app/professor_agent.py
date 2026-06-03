@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .models import (
-    Agent, AgentReport, AnalyticsReport, BablaReport, Constitution,
-    Event, IdeaDeptReport, ProjectDeptReport, Proposal,
+    Agent, AgentPassport, AgentReport, AnalyticsReport, BablaReport,
+    Constitution, Event, IdeaDeptReport, ProjectDeptReport, Proposal, TechTask,
 )
 from .routers.education import get_trained_prompt, issue_passport, train_agent, persist_dna
 
@@ -227,19 +227,161 @@ async def _birth_agent(proposal: Proposal, constitution: str) -> bool:
     return True
 
 
-async def run_professor_check() -> None:
-    await _pulse_professor("active", "обработка заявок")
+BRANCH_DEPT_MAP = {
+    "бабло":        ("Отдел Бабла",      "Бригадир Бабла"),
+    "идеи":         ("Идейный отдел",    "Бригадир Идей"),
+    "проекты":      ("Проектный отдел",  "Бригадир Проектов"),
+    "аналитика":    ("Отдел Аналитики",  "Бригадир Аналитики"),
+    "строительство":("Стройка",          "Техник"),
+    "контент":      ("Студия",           "Марк"),
+    "наука":        ("Библиотека",       "Скрайб"),
+    "образование":  ("Профобразование",  "Профессор"),
+    "global":       ("Штаб HQ",          "Томас"),
+}
 
+
+async def _issue_missing_passports() -> int:
+    """Находит агентов без паспорта — выдаёт им паспорт автоматически."""
+    issued = 0
+    async with SessionLocal() as db:
+        all_agents = (await db.execute(select(Agent))).scalars().all()
+        passport_names = set(
+            r[0] for r in (await db.execute(
+                select(AgentPassport.agent_name)
+            )).all()
+        )
+
+    agents_without = [a for a in all_agents if a.name not in passport_names]
+    if not agents_without:
+        log.info("Профессор [паспорта]: все агенты с паспортами")
+        return 0
+
+    log.info("Профессор [паспорта]: %d агентов без паспорта → выдаём", len(agents_without))
+
+    for agent in agents_without:
+        try:
+            branch = agent.branch or "global"
+            dept, boss = BRANCH_DEPT_MAP.get(branch, ("Штаб HQ", "Томас"))
+            await issue_passport(
+                agent_name=agent.name,
+                department=dept,
+                boss=boss,
+                level=agent.level or "worker",
+                branch=branch,
+                specialization=agent.role or "",
+                connections={"reads": ["library_synthesis", "analytics_reports"], "writes": ["agent_reports"]},
+                initial_status="active",
+            )
+            async with SessionLocal() as db:
+                db.add(Event(
+                    type="passport_issued",
+                    payload={"agent": agent.name, "dept": dept, "by": "professor_auto"},
+                ))
+                await db.commit()
+            log.info("Профессор [паспорта]: выдан паспорт → %s (%s)", agent.name, dept)
+            issued += 1
+        except Exception as e:
+            log.warning("Профессор [паспорта]: ошибка %s: %s", agent.name, e)
+
+    return issued
+
+
+async def _check_agent_health() -> dict:
+    """Проверяет живость агентов — кто молчит > 2ч помечается offline."""
+    from datetime import timedelta
+    now = datetime.utcnow()
+    threshold = now - timedelta(hours=2)
+    flagged = []
+
+    async with SessionLocal() as db:
+        agents = (await db.execute(select(Agent))).scalars().all()
+        for agent in agents:
+            if agent.last_pulse and agent.last_pulse < threshold and agent.status != "offline":
+                agent.status = "offline"
+                flagged.append(agent.name)
+                db.add(Event(
+                    type="agent_offline",
+                    payload={"agent": agent.name, "last_pulse": agent.last_pulse.isoformat()},
+                ))
+        if flagged:
+            await db.commit()
+
+    if flagged:
+        log.warning("Профессор [здоровье]: %d агентов offline: %s", len(flagged), flagged)
+    else:
+        log.info("Профессор [здоровье]: все активны")
+
+    return {"offline": flagged, "checked": len(agents)}
+
+
+async def _process_education_tasks() -> int:
+    """Берёт TechTask-и про обучение агентов — создаёт proposal или выдаёт паспорт."""
+    keywords = ["обучи", "паспорт", "зарегистрируй агент", "создай агент", "train", "agent"]
+    processed = 0
+
+    async with SessionLocal() as db:
+        pending = (await db.execute(
+            select(TechTask).where(TechTask.status == "pending")
+            .order_by(TechTask.created_at.asc()).limit(10)
+        )).scalars().all()
+
+    edu_tasks = [
+        t for t in pending
+        if any(kw in (t.title + " " + (t.description or "")).lower() for kw in keywords)
+    ]
+
+    if not edu_tasks:
+        return 0
+
+    log.info("Профессор [задачи]: %d задач на обучение", len(edu_tasks))
+
+    for task in edu_tasks:
+        try:
+            async with SessionLocal() as db:
+                t = await db.get(TechTask, task.id)
+                if not t:
+                    continue
+                # Создаём proposal на рождение агента из задачи
+                db.add(Proposal(
+                    from_agent="professor_edu",
+                    role_needed=task.title[:200],
+                    reason=task.description[:500] if task.description else task.title,
+                    status="pending",
+                ))
+                t.status = "done"
+                t.result = "Передано Профессору — создан proposal на рождение агента"
+                db.add(Event(
+                    type="edu_task_processed",
+                    payload={"task_id": task.id, "title": task.title},
+                ))
+                await db.commit()
+            processed += 1
+            log.info("Профессор [задачи]: задача #%d → proposal создан", task.id)
+        except Exception as e:
+            log.warning("Профессор [задачи]: ошибка task#%d: %s", task.id, e)
+
+    return processed
+
+
+async def run_professor_check() -> None:
+    await _pulse_professor("active", "полный осмотр мира")
+
+    # 1. Паспорта — всем кто без
+    issued = await _issue_missing_passports()
+
+    # 2. Здоровье агентов
+    health = await _check_agent_health()
+
+    # 3. Задачи обучения из СТРОЙКИ
+    edu_done = await _process_education_tasks()
+
+    # 4. Рождение новых агентов по proposals
     async with SessionLocal() as db:
         const = (await db.execute(select(Constitution).where(Constitution.id == 1))).scalar_one_or_none()
         proposals = (await db.execute(
             select(Proposal).where(Proposal.status == "pending")
-            .order_by(Proposal.created_at.asc()).limit(5)
+            .order_by(Proposal.created_at.asc()).limit(3)
         )).scalars().all()
-
-    if not proposals:
-        await _pulse_professor("idle", "нет заявок")
-        return
 
     constitution = const.text if const else ""
     born, rejected = 0, 0
@@ -253,22 +395,31 @@ async def run_professor_check() -> None:
         except Exception as e:
             log.error("Профессор: ошибка создания '%s': %s", proposal.role_needed, e)
 
-    log.info("Профессор: цикл завершён — рождено %d, отклонено %d", born, rejected)
-    await _pulse_professor("idle", f"рождено: {born} | отклонено: {rejected}")
+    summary = (
+        f"паспорта: +{issued} | "
+        f"offline: {len(health['offline'])} | "
+        f"edu_tasks: +{edu_done} | "
+        f"рождено: {born}"
+    )
+    log.info("Профессор: цикл завершён — %s", summary)
+    await _pulse_professor("idle", summary)
 
 
 async def _register_professor() -> None:
     async with SessionLocal() as db:
         stmt = pg_insert(Agent).values(
             name=PROFESSOR_NAME,
-            role="Рождает новых агентов: proposal → контекст → ДНК → валидация → регистрация → резерв.",
-            level="foreman",
+            role="Старший по агентам: паспорта, здоровье, обучение, целостность мира WYRD.",
+            level="council",
             branch="образование",
             can_propose=False,
             status="idle",
         ).on_conflict_do_update(
             index_elements=["name"],
-            set_={"role": "Рождает новых агентов: proposal → контекст → ДНК → валидация → регистрация → резерв."},
+            set_={
+                "role": "Старший по агентам: паспорта, здоровье, обучение, целостность мира WYRD.",
+                "level": "council",
+            },
         )
         await db.execute(stmt)
         await db.commit()
@@ -281,18 +432,22 @@ async def _register_professor() -> None:
     await persist_dna(PROFESSOR_NAME, full_prompt)
     await issue_passport(
         agent_name=PROFESSOR_NAME,
-        department="Профобразование",
+        department="Штаб HQ",
         boss="Томас",
-        level="foreman",
+        level="council",
         branch="образование",
-        specialization="рождение и обучение новых агентов мира WYRD",
-        connections={"reads": ["proposals", "all_dept_reports", "library", "constitution"], "writes": ["agents", "agent_passports", "events"]},
+        specialization="Старший по агентам: паспорта / здоровье / обучение / ДНК / целостность",
+        connections={
+            "reads": ["proposals", "all_agents", "tech_tasks", "all_dept_reports", "library", "constitution"],
+            "writes": ["agents", "agent_passports", "agent_prompts", "events", "proposals"],
+        },
+        initial_status="active",
     )
-    log.info("Профессор зарегистрирован и готов")
+    log.info("Профессор зарегистрирован в Штабе как council-агент")
 
 
 async def professor_loop() -> None:
-    await asyncio.sleep(270)
+    await asyncio.sleep(60)  # быстрый старт
     await _register_professor()
     while True:
         try:
@@ -300,4 +455,4 @@ async def professor_loop() -> None:
         except Exception as e:
             log.error("Professor loop error: %s", e)
             await _pulse_professor("idle")
-        await asyncio.sleep(2 * 60 * 60)
+        await asyncio.sleep(30 * 60)  # каждые 30 минут
