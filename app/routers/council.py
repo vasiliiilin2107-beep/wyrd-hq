@@ -55,7 +55,7 @@ async def create_session(
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: int, session: AsyncSession = Depends(get_session)):
+async def get_council_session(session_id: int, session: AsyncSession = Depends(get_session)):
     row = (await session.execute(
         select(CouncilSession).where(CouncilSession.id == session_id)
     )).scalar_one_or_none()
