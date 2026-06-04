@@ -37,44 +37,39 @@ SYS_GENERATOR = f"""Ты — Генератор идей мира WYRD. Твоя
 
 Ты читаешь синтезы Библиотеки и замечаешь что работает у других → адаптируешь под то что у нас уже есть.{_FMT}"""
 
-SYS_DETALIZATOR = f"""Ты — Детализатор мира WYRD. Берёшь одну идею из банка и превращаешь в план на 3 дня.
+SYS_DETALIZATOR = """Ты — Детализатор мира WYRD. Получаешь список идей и контекст что есть в мире.
 
-ПРАВИЛО: выбирай только ту идею, которую РЕАЛЬНО запустить за 3 дня с текущей инфраструктурой.
-Если идея требует новый сервер, новый сервис, месяц разработки — пропусти, выбери другую.
+Выбери ОДНУ идею которую можно запустить за 3 дня с тем что уже есть.
+Если в списке только SaaS и Enterprise — игнорируй их, возьми идею из раздела "ЧТО РЕАЛЬНО МОЖНО СДЕЛАТЬ ЗА 3 ДНЯ" в контексте.
 
-Формат плана:
+Ответ строго:
 ИДЕЯ: [название]
-ДЕНЬ 1: [что именно делается, кто, какой файл/пост/код]
-ДЕНЬ 2: [следующий шаг]
-ДЕНЬ 3: [запуск/проверка]
-ПРОВЕРКА: [как поймём что сработало — подписчики/деньги/просмотры]
+ШАГ 1: [конкретное действие — файл/команда/пост — кто делает]
+ШАГ 2: [следующий шаг]
+ШАГ 3: [запуск или публикация]
+ПРОВЕРКА: [цифра или факт через 7 дней — просмотры/заявки/подписчики]
 
-Не больше 150 слов."""
+Не больше 100 слов. Только конкретика."""
 
-SYS_OCENSCHIK = f"""Ты — Оценщик Идей мира WYRD. Твоя задача: убить мусор, поднять живое.
+SYS_OCENSCHIK = """Ты — Оценщик Идей мира WYRD. Смотришь на список идей и ставишь каждой: KEEP или DROP.
 
-КРИТЕРИИ СМЕРТИ (ставь статус DROP):
-- Идея про "продать WYRD", "Enterprise", "SaaS-подписку" — это фантазии без клиентов
-- Дубликаты (та же суть под другим названием)
-- Требует инфраструктуры которой нет (Selenium, новый сервер, 100к бюджет)
-- Уже есть 10+ похожих идей в банке
+DROP если: Enterprise / SaaS / "продать WYRD" / нужен Selenium / нет клиентов / дубликат.
+KEEP если: работает с Telegram/Rulate/сайтом / запускается за 3 дня / есть реальный первый шаг.
 
-КРИТЕРИИ ЖИЗНИ (ставь KEEP):
-- Можно запустить за 3 дня с тем что есть
-- Есть конкретный первый шаг
-- Ведёт к деньгам или реальной аудитории за неделю
+Формат — одна строка на идею:
+[KEEP/DROP] Название — одна причина
 
-Дай список: [KEEP/DROP] Название — причина (одна строка на каждую идею).
-Финальный вывод: какую одну идею запускать прямо сейчас и почему.{_FMT}"""
+Последняя строка:
+ЗАПУСКАТЬ: [название лучшей KEEP-идеи или "все DROP — нужна новая"]
 
-SYS_BRIGADIR = """Ты — Бригадир Идей мира WYRD. Получил три доклада. Шеф просыпается утром — ему нужен один чёткий ответ.
+Не больше 120 слов."""
 
-Формат отчёта:
-ЗАПУСКАЕМ СЕГОДНЯ: [одна конкретная идея с первым шагом]
-УБИТО: [сколько идей убрал Оценщик и почему — одной строкой]
-СЛЕДУЮЩАЯ В ОЧЕРЕДИ: [вторая по готовности идея]
+SYS_BRIGADIR = """Ты — Бригадир Идей мира WYRD. Шеф просыпается утром и читает твой отчёт. Ему нужны решения, не рассуждения.
 
-Не больше 100 слов. Никаких рассуждений — только решения."""
+Отвечай строго в этом формате (три строки):
+ЗАПУСКАЕМ СЕГОДНЯ: [идея] — [первый конкретный шаг прямо сейчас]
+УБИТО: [N идей] — [главная причина одним словом: Enterprise/Дубликат/Нереально]
+СЛЕДУЮЩАЯ: [вторая идея если есть, иначе "нет"]"""
 
 
 async def _pulse(name: str, status: str, task: str | None = None) -> None:
@@ -171,71 +166,105 @@ async def _run_generator() -> str:
     return result
 
 
-async def _run_detalizator() -> str:
+async def _run_detalizator(generator_idea: str = "") -> str:
     await _pulse("Детализатор", "active", "детализация идей")
     async with SessionLocal() as db:
         ideas = (await db.execute(
             select(IncomeIdea).where(IncomeIdea.status == "idea")
             .order_by(desc(IncomeIdea.created_at)).limit(5)
         )).scalars().all()
-    if not ideas:
-        await _pulse("Детализатор", "idle")
-        return "Нет идей со статусом 'idea' для детализации."
-    lines = [_WYRD_FALLBACK, "\n\nИДЕИ ДЛЯ ДЕТАЛИЗАЦИИ (выбери одну реализуемую за 3 дня):"]
-    for i in ideas:
-        lines.append(f"\n[{i.id}] {i.title}\n{(i.description or 'без описания')[:200]}")
+    lines = [_WYRD_FALLBACK]
+    if generator_idea:
+        lines.append(f"\n\n--- СВЕЖАЯ ИДЕЯ ОТ ГЕНЕРАТОРА (приоритет для детализации) ---\n{generator_idea[:400]}")
+    if ideas:
+        lines.append("\n\n--- БАНК ИДЕЙ (если найдёшь реализуемую — бери) ---")
+        for i in ideas:
+            lines.append(f"[{i.id}] {i.title}: {(i.description or '')[:100]}")
     result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Детализатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
 
-async def _run_ocenschik() -> str:
+async def _run_ocenschik() -> tuple[str, list[str]]:
+    """Возвращает (текст отчёта, список title идей помеченных DROP)."""
     await _pulse("Оценщик Идей", "active", "оценка банка идей")
     async with SessionLocal() as db:
         ideas = (await db.execute(
-            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(8)
+            select(IncomeIdea).where(IncomeIdea.status == "idea")
+            .order_by(desc(IncomeIdea.created_at)).limit(15)
         )).scalars().all()
-        experiments = (await db.execute(
-            select(IncomeExperiment).order_by(desc(IncomeExperiment.created_at)).limit(5)
-        )).scalars().all()
-    lines = ["Банк идей:"]
+    if not ideas:
+        await _pulse("Оценщик Идей", "idle")
+        return "Банк пуст.", []
+    lines = ["Банк идей на оценку:"]
+    idea_map = {}
     for i in ideas:
-        lines.append(f"  [{i.status}] {i.title}: {(i.description or '')[:80]}")
-    lines.append("\nЭксперименты:")
-    for e in experiments:
-        lines.append(f"  [{e.status}] {e.title}: {(e.result or 'нет результата')[:80]}")
+        lines.append(f"  [{i.id}] {i.title}")
+        idea_map[i.title.lower()[:40]] = i.id
     result = await _llm(get_trained_prompt("Оценщик Идей", SYS_OCENSCHIK), [{"role": "user", "content": "\n".join(lines)}])
-    await _pulse("Оценщик Идей", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
-    return result
+
+    # Парсим DROP-идеи и убиваем их в БД
+    drop_ids = []
+    for line in result.splitlines():
+        if line.strip().startswith("[DROP]"):
+            for title_key, idea_id in idea_map.items():
+                if any(word in line.lower() for word in title_key.split()[:3]):
+                    drop_ids.append(idea_id)
+                    break
+    if drop_ids:
+        async with SessionLocal() as db:
+            for idea_id in set(drop_ids):
+                idea = (await db.execute(select(IncomeIdea).where(IncomeIdea.id == idea_id))).scalar_one_or_none()
+                if idea:
+                    idea.status = "dropped"
+            await db.commit()
+        log.info("Оценщик убил %d идей из БД", len(set(drop_ids)))
+
+    await _pulse("Оценщик Идей", "idle", f"убито: {len(set(drop_ids))}")
+    return result, list(set(drop_ids))
 
 
 async def run_idea_check() -> None:
     await activate_passport(IDEA_FOREMAN)
     await _pulse(IDEA_FOREMAN, "active", "координация воркеров")
-    gen, det, oce = await asyncio.gather(
-        _run_generator(), _run_detalizator(), _run_ocenschik(),
-        return_exceptions=True,
-    )
+
+    # Генератор первым — его вывод идёт в Детализатор как fallback
+    gen = await _run_generator()
+    if isinstance(gen, Exception):
+        gen = f"[ошибка: {gen}]"
+
+    # Детализатор и Оценщик параллельно, Детализатор знает что сгенерил Генератор
+    det_task = asyncio.create_task(_run_detalizator(generator_idea=gen))
+    oce_task = asyncio.create_task(_run_ocenschik())
+    det = await det_task
+    oce_result = await oce_task
 
     def safe(r) -> str:
-        return r if isinstance(r, str) else f"[ошибка: {r}]"
+        if isinstance(r, Exception):
+            return f"[ошибка: {r}]"
+        if isinstance(r, tuple):
+            return r[0]
+        return r if isinstance(r, str) else str(r)
+
+    oce_text = oce_result[0] if isinstance(oce_result, tuple) else safe(oce_result)
+    dropped_count = len(oce_result[1]) if isinstance(oce_result, tuple) else 0
 
     report_ctx = (
-        f"=== ГЕНЕРАТОР (новые идеи) ===\n{safe(gen)}\n\n"
-        f"=== ДЕТАЛИЗАТОР (шаги реализации) ===\n{safe(det)}\n\n"
-        f"=== ОЦЕНЩИК (приоритеты банка идей) ===\n{safe(oce)}"
+        f"=== ГЕНЕРАТОР (новая идея) ===\n{safe(gen)}\n\n"
+        f"=== ДЕТАЛИЗАТОР (план на 3 дня) ===\n{safe(det)}\n\n"
+        f"=== ОЦЕНЩИК (убито {dropped_count} идей) ===\n{oce_text}"
     )
     analysis = await _llm(get_trained_prompt(IDEA_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}])
 
     async with SessionLocal() as db:
         db.add(IdeaDeptReport(
-            metrics_json={"generator": safe(gen), "detalizator": safe(det), "ocenschik": safe(oce)},
+            metrics_json={"generator": safe(gen), "detalizator": safe(det), "ocenschik": oce_text},
             analysis=analysis,
         ))
         await db.commit()
 
-    log.info("Идейный отдел: отчёт сохранён")
-    await _pulse(IDEA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
+    log.info("Идейный отдел: отчёт сохранён, убито %d идей", dropped_count)
+    await _pulse(IDEA_FOREMAN, "idle", f"отчёт {datetime.utcnow().strftime('%H:%M')}, убито {dropped_count}")
     asyncio.create_task(_push_top_idea_to_council(analysis))
 
 
