@@ -72,7 +72,15 @@ class JournalIn(BaseModel):
 @router.get("/agents")
 async def list_agents(session: AsyncSession = Depends(get_session)):
     rows = (await session.execute(select(Agent).order_by(Agent.level, Agent.name))).scalars().all()
-    return {"agents": [_agent_dict(a) for a in rows]}
+    passport_names = set(
+        r[0] for r in (await session.execute(select(AgentPassport.agent_name))).all()
+    )
+    result = []
+    for a in rows:
+        d = _agent_dict(a)
+        d["has_passport"] = a.name in passport_names
+        result.append(d)
+    return {"agents": result}
 
 
 @router.post("/agents")

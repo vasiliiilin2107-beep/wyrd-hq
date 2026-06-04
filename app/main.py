@@ -92,7 +92,10 @@ if STATIC_DIR.exists():
 
 
 def _html(name: str) -> FileResponse:
-    return FileResponse(str(STATIC_DIR / name))
+    return FileResponse(
+        str(STATIC_DIR / name),
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+    )
 
 
 @app.get("/", include_in_schema=False)

@@ -618,7 +618,22 @@ function closeAgentPanel() {
 function openPassport() {
   if (!_currentAgent) return;
   const name = _currentAgent.db || _currentAgent.id || _currentAgent.name?.toLowerCase().replace(/\s+/g,'_');
-  if (name) window.open(`/agent/${name}`, '_blank');
+  if (!name) return;
+  let modal = document.getElementById('passport-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'passport-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:stretch;justify-content:flex-end';
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="width:min(800px,95vw);background:#0d1117;border-left:1px solid var(--border);display:flex;flex-direction:column;position:relative;animation:slideInRight .2s ease">
+      <button onclick="document.getElementById('passport-modal').remove()"
+              style="position:absolute;top:10px;right:12px;z-index:10;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text-dim);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:.8rem">✕</button>
+      <iframe src="/agent/${encodeURIComponent(name)}" style="flex:1;border:none;width:100%;height:100%"></iframe>
+    </div>`;
+  modal.style.display = 'flex';
 }
 
 async function loadAgentTasks(agent) {
@@ -695,7 +710,7 @@ async function apAction(action) {
       showToast('ТЕХНИК', `Задача создана: ${title}`, '#f59e0b');
       loadAgentTasks(agent);
     } else {
-      const agentId = agent.id || agent.db;
+      const agentId = agent.db || agent.id;
       if (!agentId) { showToast('ОШИБКА', 'ID агента не найден', '#ef4444'); return; }
       const r = await fetch(`/civilization/agents/${agentId}/trigger`, {
         method: 'POST',
