@@ -158,12 +158,14 @@ async def _run_generator() -> str:
     synthesis = await _library_synthesis()
     async with SessionLocal() as db:
         existing = (await db.execute(
-            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(5)
+            select(IncomeIdea).order_by(desc(IncomeIdea.created_at)).limit(8)
         )).scalars().all()
     titles = "\n".join(f"- {i.title}" for i in existing) or "банк пуст"
-    if "пусто" in synthesis or "недоступна" in synthesis:
-        synthesis = _WYRD_FALLBACK
-    ctx = f"{synthesis}\n\nУже есть в банке идей:\n{titles}"
+    # WYRD_FALLBACK всегда первичен — не даём внешнему контенту уводить в enterprise
+    library_extra = ""
+    if synthesis and "пусто" not in synthesis and "недоступна" not in synthesis:
+        library_extra = f"\n\n--- ВНЕШНИЕ ТРЕНДЫ (только как подсказка, не как цель) ---\n{synthesis[:400]}"
+    ctx = f"{_WYRD_FALLBACK}{library_extra}\n\nУЖЕ ЕСТЬ В БАНКЕ (не повторять):\n{titles}"
     result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}])
     await _pulse("Генератор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
@@ -179,7 +181,7 @@ async def _run_detalizator() -> str:
     if not ideas:
         await _pulse("Детализатор", "idle")
         return "Нет идей со статусом 'idea' для детализации."
-    lines = ["Активные идеи:"]
+    lines = [_WYRD_FALLBACK, "\n\nИДЕИ ДЛЯ ДЕТАЛИЗАЦИИ (выбери одну реализуемую за 3 дня):"]
     for i in ideas:
         lines.append(f"\n[{i.id}] {i.title}\n{(i.description or 'без описания')[:200]}")
     result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}])
