@@ -141,11 +141,17 @@ async def _run_decomposer() -> str:
     for c in cards:
         lines.append(f"\n[{c.id}] {c.topic[:80]}\nТЗ: {(c.tz_text or 'нет ТЗ')[:300]}")
     result = await _llm(get_trained_prompt("Декомпозер", SYS_DECOMPOSER), [{"role": "user", "content": "\n".join(lines)}])
-    # Создаём реальные задачи из первой карточки с ТЗ
-    for c in cards:
-        if c.tz_text and len(c.tz_text) > 20:
-            asyncio.create_task(_create_tech_tasks(c.id, c.topic, result))
-            break
+    # Помечаем карточку in_progress СИНХРОННО — до возврата, чтобы следующий цикл не взял её снова
+    target_card = next((c for c in cards if c.tz_text and len(c.tz_text) > 20), None)
+    if target_card:
+        async with SessionLocal() as db:
+            card_row = (await db.execute(
+                select(BuildCard).where(BuildCard.id == target_card.id)
+            )).scalar_one_or_none()
+            if card_row and card_row.status == "waiting":
+                card_row.status = "in_progress"
+                await db.commit()
+        await _create_tech_tasks(target_card.id, target_card.topic, result)
     await _pulse("Декомпозер", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     await _journal("Декомпозер", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — разбивка карточек", result[:400])
     return result
