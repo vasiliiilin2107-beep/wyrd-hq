@@ -6,11 +6,17 @@
   <title>WYRD — ТОМАС</title>
   <link rel="stylesheet" href="/assets/css/wyrd.css">
   <style>
-    .thomas-layout { display:grid; grid-template-columns:56px 1fr 380px; grid-template-rows:52px 1fr; height:100vh; width:100vw; }
-    .chat-panel { border-left:1px solid var(--border); display:flex; flex-direction:column; background:rgba(5,5,15,.4); }
-    .chat-header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; background:rgba(59,130,246,.06); }
-    .chat-header-title { font-size:.68rem; font-weight:600; letter-spacing:.15em; color:var(--blue); }
-    .chat-iframe { flex:1; border:none; background:transparent; }
+    .thomas-layout { display:grid; grid-template-columns:56px 1fr; grid-template-rows:52px 1fr; height:100vh; width:100vw; }
+    /* Плавающий чат */
+    .chat-fab { position:fixed; bottom:24px; right:24px; z-index:999; width:52px; height:52px; border-radius:50%; background:var(--blue); border:none; cursor:pointer; font-size:1.3rem; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 20px rgba(59,130,246,.5); transition:.2s; }
+    .chat-fab:hover { transform:scale(1.08); }
+    .chat-drawer { position:fixed; bottom:90px; right:24px; z-index:998; width:400px; height:560px; background:rgba(8,8,22,.97); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,.6); transform:scale(.95) translateY(10px); opacity:0; pointer-events:none; transition:.2s; }
+    .chat-drawer.open { transform:scale(1) translateY(0); opacity:1; pointer-events:all; }
+    .chat-drawer-header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:rgba(59,130,246,.06); border-radius:12px 12px 0 0; }
+    .chat-drawer-title { font-size:.68rem; font-weight:600; letter-spacing:.15em; color:var(--blue); }
+    .chat-drawer-close { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:1rem; line-height:1; padding:2px 6px; }
+    .chat-drawer-close:hover { color:#fff; }
+    .chat-iframe { flex:1; border:none; background:transparent; border-radius:0 0 12px 12px; }
     /* tabs */
     .tab-nav { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
     .tab-btn { padding:5px 12px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-dim); font-size:.65rem; letter-spacing:.08em; cursor:pointer; text-transform:uppercase; transition:.15s; }
@@ -49,15 +55,23 @@
     .j-title { font-size:.7rem; color:#c8d0e0; }
     .j-body  { font-size:.64rem; color:var(--text-dim); line-height:1.4; margin-top:2px; white-space:pre-wrap; }
     /* tasks */
-    .task-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); }
-    .task-id   { font-size:.6rem; color:var(--text-dim); width:28px; flex-shrink:0; }
+    .task-row { border-bottom:1px solid rgba(255,255,255,.05); cursor:pointer; }
+    .task-row:hover .task-head { background:rgba(255,255,255,.03); }
+    .task-head { display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:4px; transition:.1s; }
+    .task-id   { font-size:.6rem; color:var(--text-dim); width:32px; flex-shrink:0; }
     .task-title{ font-size:.7rem; color:#c8d0e0; flex:1; }
-    .task-who  { font-size:.6rem; color:var(--text-dim); flex-shrink:0; }
+    .task-who  { font-size:.6rem; color:var(--text-dim); flex-shrink:0; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .task-expand { font-size:.65rem; color:var(--text-dim); flex-shrink:0; transition:.2s; }
+    .task-body { display:none; padding:0 8px 10px 42px; }
+    .task-body.open { display:block; }
+    .task-body-desc { font-size:.66rem; color:var(--text-dim); line-height:1.5; margin-bottom:4px; }
+    .task-body-result { font-size:.66rem; color:#a7f3d0; line-height:1.5; background:rgba(16,185,129,.06); border-left:2px solid #34d399; padding:4px 8px; border-radius:0 4px 4px 0; }
     .ts-badge  { font-size:.58rem; padding:1px 7px; border-radius:3px; text-transform:uppercase; font-weight:600; flex-shrink:0; }
     .ts-pending  { background:rgba(251,191,36,.15); color:#fcd34d; }
     .ts-done     { background:rgba(16,185,129,.15); color:#34d399; }
     .ts-failed   { background:rgba(239,68,68,.15);  color:#f87171; }
     .ts-in_progress { background:rgba(59,130,246,.15); color:#60a5fa; }
+    .ts-waiting_approval { background:rgba(139,92,246,.15); color:#a78bfa; }
     /* levers */
     .lever-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
     .lever-card { background:rgba(10,10,30,.7); border:1px solid var(--border); border-radius:6px; padding:14px; }
@@ -243,14 +257,21 @@
 
     </main>
 
-    <!-- Чат -->
-    <div class="chat-panel">
-      <div class="chat-header">
+  </div>
+
+  <!-- Плавающая кнопка чата -->
+  <button class="chat-fab" onclick="toggleChat()" title="Чат с Томасом">💬</button>
+
+  <!-- Выдвижной чат -->
+  <div class="chat-drawer" id="chat-drawer">
+    <div class="chat-drawer-header">
+      <span style="display:flex;align-items:center;gap:8px">
         <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
-        <span class="chat-header-title">ЧАТ С ТОМАСОМ</span>
-      </div>
-      <iframe class="chat-iframe" src="http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        <span class="chat-drawer-title">ЧАТ С ТОМАСОМ</span>
+      </span>
+      <button class="chat-drawer-close" onclick="toggleChat()">✕</button>
     </div>
+    <iframe class="chat-iframe" id="chat-iframe" src="" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
   </div>
 
   <script src="/assets/js/hq.js"></script>
@@ -432,14 +453,33 @@
         const d = await r.json();
         const ts = Array.isArray(d)?d:(d.tasks||[]);
         if(!ts.length) { el.innerHTML='<div class="empty-hint">Задач нет</div>'; return; }
-        el.innerHTML = ts.map(t=>`
-          <div class="task-row">
-            <span class="task-id">#${t.id}</span>
-            <div class="task-title">${t.title||''}<br><span style="color:var(--text-dim);font-size:.6rem">${(t.description||'').slice(0,80)}</span></div>
-            <span class="task-who" style="width:90px">${t.created_by||''}</span>
-            <span class="ts-badge ${tsClass(t.status)}">${t.status}</span>
-          </div>`).join('');
+        el.innerHTML = ts.map((t,i)=>{
+          const desc = (t.description||'').trim();
+          const result = (t.result||'').trim();
+          const hasMore = desc || result;
+          return `<div class="task-row" onclick="toggleTask(${i})">
+            <div class="task-head">
+              <span class="task-id">#${t.id}</span>
+              <span class="task-title">${t.title||''}</span>
+              <span class="task-who">${t.created_by||''}</span>
+              <span class="ts-badge ${tsClass(t.status)}">${t.status}</span>
+              <span class="task-expand" id="texp-${i}">${hasMore?'▸':''}</span>
+            </div>
+            ${hasMore?`<div class="task-body" id="tbody-${i}">
+              ${desc?`<div class="task-body-desc">${desc.slice(0,400)}</div>`:''}
+              ${result?`<div class="task-body-result">✅ ${result.slice(0,400)}</div>`:''}
+            </div>`:''}
+          </div>`;
+        }).join('');
       } catch(e) { el.innerHTML='<div class="empty-hint">Нет данных</div>'; }
+    }
+
+    function toggleTask(i) {
+      const body = document.getElementById('tbody-'+i);
+      const exp  = document.getElementById('texp-'+i);
+      if(!body) return;
+      const open = body.classList.toggle('open');
+      if(exp) exp.textContent = open ? '▾' : '▸';
     }
 
     function setTStatus(btn, s) {
@@ -495,6 +535,17 @@
         sel.value = agent;
         loadJournal();
       }, 300);
+    }
+
+    // ── Chat toggle ───────────────────────────────────────────────────────────
+    let _chatLoaded = false;
+    function toggleChat() {
+      const drawer = document.getElementById('chat-drawer');
+      const open = drawer.classList.toggle('open');
+      if(open && !_chatLoaded) {
+        document.getElementById('chat-iframe').src = 'http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io';
+        _chatLoaded = true;
+      }
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
