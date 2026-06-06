@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
-from .models import Agent, AnalyticsReport, Constitution, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
+from .models import Agent, AgentJournal, AnalyticsReport, Constitution, CouncilSession, CouncilThought, Event, ForemanReport, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,21 @@ async def _pulse_agent(name: str, status: str, task: str | None = None) -> None:
             agent.current_task = task
             agent.last_pulse = datetime.utcnow()
             await db.commit()
+
+
+async def _journal(agent_name: str, title: str, body: str | None = None, entry_type: str = "cycle") -> None:
+    try:
+        async with SessionLocal() as db:
+            db.add(AgentJournal(
+                agent_name=agent_name,
+                entry_type=entry_type,
+                title=title,
+                body=body,
+                created_by=ANALYTICS_FOREMAN,
+            ))
+            await db.commit()
+    except Exception as e:
+        log.warning("journal write error [%s]: %s", agent_name, e)
 
 
 async def _library_synthesis() -> str:
@@ -213,6 +228,13 @@ async def run_analytics_check() -> None:
     def safe(r) -> str:
         return r if isinstance(r, str) else f"[ошибка: {r}]"
 
+    ts = datetime.utcnow().strftime("%d.%m %H:%M")
+
+    # Каждый воркер пишет в журнал
+    await _journal("Счётчик", f"Цикл {ts} — внутренние метрики", safe(schetchik)[:400])
+    await _journal("Разведчик", f"Цикл {ts} — внешние тренды", safe(razvedchik)[:400])
+    await _journal("Критик", f"Цикл {ts} — стресс-тест идей", safe(kritik)[:400])
+
     report_ctx = (
         f"=== СЧЁТЧИК (внутренние метрики) ===\n{safe(schetchik)}\n\n"
         f"=== РАЗВЕДЧИК (внешние тренды) ===\n{safe(razvedchik)}\n\n"
@@ -237,6 +259,7 @@ async def run_analytics_check() -> None:
         ))
         await db.commit()
 
+    await _journal(ANALYTICS_FOREMAN, f"Цикл {ts} завершён", analysis[:400])
     log.info("Analytics: отчёт сохранён")
     await _pulse_agent(ANALYTICS_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
     asyncio.create_task(_trigger_council_from_analytics(analysis))

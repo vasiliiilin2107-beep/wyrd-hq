@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, Constitution, IdeaDeptReport, IncomeExperiment, IncomeIdea
+from .models import Agent, AgentJournal, Constitution, IdeaDeptReport, IncomeExperiment, IncomeIdea
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
@@ -72,6 +72,22 @@ SYS_BRIGADIR = """Ты — Бригадир Идей мира WYRD. Шеф пр�
 СЛЕДУЮЩАЯ: [вторая идея если есть, иначе "нет"]"""
 
 
+async def _journal(agent_name: str, title: str, body: str | None = None, entry_type: str = "cycle") -> None:
+    """Бригадир пишет в журнал агента после каждого шага."""
+    try:
+        async with SessionLocal() as db:
+            db.add(AgentJournal(
+                agent_name=agent_name,
+                entry_type=entry_type,
+                title=title,
+                body=body,
+                created_by=IDEA_FOREMAN,
+            ))
+            await db.commit()
+    except Exception as e:
+        log.warning("journal write error [%s]: %s", agent_name, e)
+
+
 async def _pulse(name: str, status: str, task: str | None = None) -> None:
     async with SessionLocal() as db:
         agent = (await db.execute(select(Agent).where(Agent.name == name))).scalar_one_or_none()
@@ -132,6 +148,9 @@ async def _run_generator() -> str:
     ctx = f"{_WYRD_FALLBACK}{library_extra}\n\nУЖЕ В БАНКЕ (не повторять): {titles[:300]}"
     result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}])
     await _pulse("Генератор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    # Бригадир пишет в журнал что сгенерил
+    short = result[:300] if result else "пустой ответ"
+    await _journal("Генератор", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — идея сгенерирована", short)
     return result
 
 
@@ -151,6 +170,7 @@ async def _run_detalizator(generator_idea: str = "") -> str:
             lines.append(f"[{i.id}] {i.title}: {(i.description or '')[:100]}")
     result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Детализатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    await _journal("Детализатор", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — план на 3 дня", (result or "")[:300])
     return result
 
 
@@ -189,6 +209,10 @@ async def _run_ocenschik() -> tuple[str, list[str]]:
             await db.commit()
         log.info("Оценщик убил %d идей из БД", len(set(drop_ids)))
 
+    entry_type = "drop" if drop_ids else "cycle"
+    await _journal("Оценщик Идей",
+                   f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — убито {len(set(drop_ids))} идей",
+                   (result or "")[:300], entry_type=entry_type)
     await _pulse("Оценщик Идей", "idle", f"убито: {len(set(drop_ids))}")
     return result, list(set(drop_ids))
 
@@ -232,6 +256,10 @@ async def run_idea_check() -> None:
         ))
         await db.commit()
 
+    # Бригадир пишет итог цикла в свой журнал
+    await _journal(IDEA_FOREMAN,
+                   f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} завершён",
+                   f"Убито идей: {dropped_count}\n{analysis[:200]}")
     log.info("Идейный отдел: отчёт сохранён, убито %d идей", dropped_count)
     await _pulse(IDEA_FOREMAN, "idle", f"отчёт {datetime.utcnow().strftime('%H:%M')}, убито {dropped_count}")
     asyncio.create_task(_push_top_idea_to_council(analysis))

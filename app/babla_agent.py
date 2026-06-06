@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, AnalyticsReport, BablaReport, Constitution, IncomeExperiment, IncomeIdea
+from .models import Agent, AgentJournal, AnalyticsReport, BablaReport, Constitution, IncomeExperiment, IncomeIdea
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
@@ -94,6 +94,21 @@ async def _pulse(name: str, status: str, task: str | None = None) -> None:
             agent.current_task = task
             agent.last_pulse = datetime.utcnow()
             await db.commit()
+
+
+async def _journal(agent_name: str, title: str, body: str | None = None, entry_type: str = "cycle") -> None:
+    try:
+        async with SessionLocal() as db:
+            db.add(AgentJournal(
+                agent_name=agent_name,
+                entry_type=entry_type,
+                title=title,
+                body=body,
+                created_by=BABLA_FOREMAN,
+            ))
+            await db.commit()
+    except Exception as e:
+        log.warning("journal write error [%s]: %s", agent_name, e)
 
 
 async def _library_synthesis() -> str:
@@ -263,6 +278,16 @@ async def run_babla_check() -> None:
     def safe(r) -> str:
         return r if isinstance(r, str) else f"[ошибка: {r}]"
 
+    ts = datetime.utcnow().strftime("%d.%m %H:%M")
+
+    # Каждый воркер пишет в журнал
+    await _journal("Следопыт", f"Цикл {ts} — разведка денежных потоков", safe(slepopit)[:400])
+    await _journal("Бот-Разведчик", f"Цикл {ts} — ботовые схемы заработка", safe(bot_razv)[:400])
+    await _journal("Структуролог", f"Цикл {ts} — анализ бизнес-моделей", safe(strukt)[:400])
+    await _journal("Охотник", f"Цикл {ts} — монетизационные окна", safe(hunter)[:400])
+    await _journal("Счетовод", f"Цикл {ts} — аудит экспериментов", safe(schetchik)[:400])
+    await _journal("Приоритизатор", f"Цикл {ts} — расстановка приоритетов", safe(prioritizer)[:400])
+
     report_ctx = (
         f"=== СЛЕДОПЫТ (где люди зарабатывают) ===\n{safe(slepopit)}\n\n"
         f"=== БОТ-РАЗВЕДЧИК (где боты зарабатывают) ===\n{safe(bot_razv)}\n\n"
@@ -290,6 +315,7 @@ async def run_babla_check() -> None:
 
     await _push_idea_to_bank(analysis)
 
+    await _journal(BABLA_FOREMAN, f"Цикл {ts} завершён", analysis[:400])
     log.info("Отдел Бабла: отчёт сохранён, идея отправлена в банк")
     await _pulse(BABLA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
     asyncio.create_task(_trigger_council_from_babla(analysis))
