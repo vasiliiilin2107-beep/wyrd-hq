@@ -3,17 +3,22 @@
 async function loadAudit() {
   setStatus('audit-health', '⏳ Загрузка...');
 
+  const LIBRARY_URL = 'http://at23vp1rnqm4koa2ufqvlm0d.147.45.212.155.sslip.io';
+
   try {
-    const [auditRes, agentsRes, councilRes] = await Promise.all([
+    const [auditRes, agentsRes, councilRes, janitorRes, libStatsRes] = await Promise.all([
       fetch('/audit/status').then(r => r.json()),
       fetch('/civilization/agents').then(r => r.json()),
       fetch('/council/sessions?limit=100').then(r => r.json()),
+      fetch(`${LIBRARY_URL}/janitor/status`).then(r => r.json()).catch(() => null),
+      fetch(`${LIBRARY_URL}/knowledge/stats`).then(r => r.json()).catch(() => null),
     ]);
 
     _renderHealth(auditRes);
     _renderAgents(auditRes, agentsRes.agents || []);
     _renderCouncil(councilRes.sessions || []);
     _renderProfessor(agentsRes.agents || []);
+    _renderLibrary(janitorRes, libStatsRes);
     _renderLog(auditRes);
 
   } catch(e) {
@@ -136,6 +141,53 @@ function _renderProfessor(agents) {
       Статус: ${profStatus}<br>
       Задача: <span style="color:var(--text)">${task}</span>
     </div>`;
+}
+
+function _renderLibrary(janitor, stats) {
+  const el = document.getElementById('audit-library');
+  if (!el) return;
+
+  const total = stats?.total ?? '—';
+  const byCategory = stats?.by_category || [];
+
+  const lastRun = janitor?.last_run
+    ? _ago(janitor.last_run.replace('Z',''))
+    : '—';
+  const s = janitor?.last_stats || {};
+  const ttlDel   = s.ttl_deleted   ?? '—';
+  const dedupDel = s.dedup_deleted  ?? '—';
+  const synthTrim = s.synthesis_trimmed ?? '—';
+
+  const catRows = byCategory.slice(0, 5).map(c =>
+    `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;border-bottom:1px solid var(--border)22">
+      <span style="color:var(--text-dim)">${c.category}</span>
+      <span style="color:var(--text);font-weight:600">${c.count}</span>
+    </div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin-bottom:10px">📚 БИБЛИОТЕКА — МУСОРЩИК</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+      <div style="text-align:center">
+        <div style="font-size:1.3rem;font-weight:800;color:var(--blue)">${total}</div>
+        <div style="font-size:.65rem;color:var(--text-dim)">ЗАПИСЕЙ</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:1.3rem;font-weight:800;color:var(--red)">${ttlDel}</div>
+        <div style="font-size:.65rem;color:var(--text-dim)">TTL УДАЛЕНО</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:1.3rem;font-weight:800;color:var(--amber)">${dedupDel}</div>
+        <div style="font-size:.65rem;color:var(--text-dim)">ДУБЛЕЙ УБРАНО</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:1.3rem;font-weight:800;color:var(--purple)">${synthTrim}</div>
+        <div style="font-size:.65rem;color:var(--text-dim)">СИНТЕЗОВ ОБРЕЗАНО</div>
+      </div>
+    </div>
+    <div style="font-size:.72rem;color:var(--text-dim);margin-bottom:8px">Последний цикл: <b style="color:var(--text)">${lastRun}</b></div>
+    <div style="font-size:.65rem;color:var(--text-dim);margin-bottom:4px">ПО КАТЕГОРИЯМ:</div>
+    ${catRows || '<div style="color:var(--text-dim);font-size:.72rem">Нет данных</div>'}`;
 }
 
 function _renderLog(d) {
