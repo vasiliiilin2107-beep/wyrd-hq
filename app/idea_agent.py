@@ -242,6 +242,16 @@ async def run_idea_check() -> None:
     oce_text = oce_result[0] if isinstance(oce_result, tuple) else safe(oce_result)
     dropped_count = len(oce_result[1]) if isinstance(oce_result, tuple) else 0
 
+    ts = datetime.utcnow().strftime("%d.%m %H:%M")
+
+    # Бригадир фиксирует что принял от воркеров
+    await _journal(IDEA_FOREMAN,
+                   f"← Принял от воркеров — {ts}",
+                   f"Генератор: {safe(gen)[:100]}\n"
+                   f"Детализатор: план готов\n"
+                   f"Оценщик: убито {dropped_count} идей",
+                   entry_type="incoming")
+
     report_ctx = (
         f"=== ГЕНЕРАТОР (новая идея) ===\n{safe(gen)}\n\n"
         f"=== ДЕТАЛИЗАТОР (план на 3 дня) ===\n{safe(det)}\n\n"
@@ -256,9 +266,13 @@ async def run_idea_check() -> None:
         ))
         await db.commit()
 
-    # Бригадир пишет итог цикла в свой журнал
+    # Бригадир фиксирует что передал → отчёт сохранён
     await _journal(IDEA_FOREMAN,
-                   f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} завершён",
+                   f"→ Передал отчёт → IdeaDeptReport — {ts}",
+                   analysis[:200],
+                   entry_type="outgoing")
+    await _journal(IDEA_FOREMAN,
+                   f"Цикл {ts} завершён",
                    f"Убито идей: {dropped_count}\n{analysis[:200]}")
     log.info("Идейный отдел: отчёт сохранён, убито %d идей", dropped_count)
     await _pulse(IDEA_FOREMAN, "idle", f"отчёт {datetime.utcnow().strftime('%H:%M')}, убито {dropped_count}")
@@ -288,6 +302,10 @@ async def _push_top_idea_to_council(analysis: str) -> None:
         await db.refresh(s)
         sid = s.id
     asyncio.create_task(run_council_dialog(sid, topic))
+    await _journal(IDEA_FOREMAN,
+                   f"→ Передал в Совет — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                   f"Сессия #{sid}: {topic}",
+                   entry_type="outgoing")
     log.info("Идейный → Совет: '%s'", topic[:60])
 
 

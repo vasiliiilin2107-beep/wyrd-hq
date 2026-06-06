@@ -260,6 +260,10 @@ async def _push_idea_to_bank(babla_report: str) -> None:
                     status="idea",
                 ))
                 await db.commit()
+                await _journal(BABLA_FOREMAN,
+                               f"→ Передал в банк идей — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                               f"Идея: {title}",
+                               entry_type="outgoing")
                 log.info("Бабла → Идейный отдел: создана идея '%s'", title)
     except Exception as e:
         log.warning("_push_idea_to_bank failed: %s", e)
@@ -279,6 +283,17 @@ async def run_babla_check() -> None:
         return r if isinstance(r, str) else f"[ошибка: {r}]"
 
     ts = datetime.utcnow().strftime("%d.%m %H:%M")
+
+    # Бригадир фиксирует что принял от воркеров
+    await _journal(BABLA_FOREMAN,
+                   f"← Принял от воркеров — {ts}",
+                   f"Следопыт: {safe(slepopit)[:80]}\n"
+                   f"Бот-Разведчик: {safe(bot_razv)[:60]}\n"
+                   f"Структуролог: {safe(strukt)[:60]}\n"
+                   f"Охотник: {safe(hunter)[:60]}\n"
+                   f"Счетовод: {safe(schetchik)[:60]}\n"
+                   f"Приоритизатор: {safe(prioritizer)[:60]}",
+                   entry_type="incoming")
 
     # Каждый воркер пишет в журнал
     await _journal("Следопыт", f"Цикл {ts} — разведка денежных потоков", safe(slepopit)[:400])
@@ -315,6 +330,10 @@ async def run_babla_check() -> None:
 
     await _push_idea_to_bank(analysis)
 
+    await _journal(BABLA_FOREMAN,
+                   f"→ Передал отчёт → BablaReport — {ts}",
+                   analysis[:200],
+                   entry_type="outgoing")
     await _journal(BABLA_FOREMAN, f"Цикл {ts} завершён", analysis[:400])
     log.info("Отдел Бабла: отчёт сохранён, идея отправлена в банк")
     await _pulse(BABLA_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
@@ -344,6 +363,10 @@ async def _trigger_council_from_babla(analysis: str) -> None:
         await db.refresh(s)
         sid = s.id
     asyncio.create_task(run_council_dialog(sid, topic))
+    await _journal(BABLA_FOREMAN,
+                   f"→ Передал в Совет — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                   f"Сессия #{sid}: {topic}",
+                   entry_type="outgoing")
     log.info("Бабло → Совет: '%s'", topic[:60])
 
 

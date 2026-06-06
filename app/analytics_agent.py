@@ -230,6 +230,14 @@ async def run_analytics_check() -> None:
 
     ts = datetime.utcnow().strftime("%d.%m %H:%M")
 
+    # Бригадир фиксирует что принял от воркеров
+    await _journal(ANALYTICS_FOREMAN,
+                   f"← Принял от воркеров — {ts}",
+                   f"Счётчик: {safe(schetchik)[:80]}\n"
+                   f"Разведчик: {safe(razvedchik)[:80]}\n"
+                   f"Критик: {safe(kritik)[:80]}",
+                   entry_type="incoming")
+
     # Каждый воркер пишет в журнал
     await _journal("Счётчик", f"Цикл {ts} — внутренние метрики", safe(schetchik)[:400])
     await _journal("Разведчик", f"Цикл {ts} — внешние тренды", safe(razvedchik)[:400])
@@ -259,6 +267,10 @@ async def run_analytics_check() -> None:
         ))
         await db.commit()
 
+    await _journal(ANALYTICS_FOREMAN,
+                   f"→ Передал отчёт → AnalyticsReport — {ts}",
+                   analysis[:200],
+                   entry_type="outgoing")
     await _journal(ANALYTICS_FOREMAN, f"Цикл {ts} завершён", analysis[:400])
     log.info("Analytics: отчёт сохранён")
     await _pulse_agent(ANALYTICS_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
@@ -288,6 +300,10 @@ async def _trigger_council_from_analytics(analysis: str) -> None:
         await db.refresh(s)
         sid = s.id
     asyncio.create_task(run_council_dialog(sid, topic))
+    await _journal(ANALYTICS_FOREMAN,
+                   f"→ Передал в Совет — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                   f"Сессия #{sid}: {topic}",
+                   entry_type="outgoing")
     log.info("Аналитика → Совет: '%s'", topic[:60])
 
 
