@@ -443,6 +443,14 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
                 body=f"Финальная позиция: {strat2[:300]}",
                 created_by="council",
             ))
+            # Журнал Совета: Архитектор фиксирует техоценку
+            db.add(AgentJournal(
+                agent_name="Архитектор",
+                entry_type="cycle",
+                title=f"Сессия #{session_id} — техоценка",
+                body=f"Тема: {idea[:80]}\n\nОценка реализуемости: {arch1[:300]}",
+                created_by="council",
+            ))
             await db.commit()
 
         log.info("Council session %d done", session_id)

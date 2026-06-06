@@ -92,24 +92,35 @@ async def _create_tech_tasks(card_id: int, card_topic: str, decomposition: str) 
             return 0
         count = 0
         async with SessionLocal() as db:
+            # Проверяем — может уже декомпозировали эту карточку?
+            existing_count = (await db.execute(
+                select(func.count(TechTask.id)).where(
+                    TechTask.created_by == f"decomposer_card_{card_id}"
+                )
+            )).scalar()
+            if existing_count and existing_count > 0:
+                log.info("Декомпозер: build_card #%d уже декомпозирована (%d задач), пропускаем", card_id, existing_count)
+                return 0
             for t in tasks_data[:5]:
                 title = str(t.get("title", ""))[:200].strip()
                 if not title:
                     continue
-                exists = (await db.execute(
-                    select(TechTask).where(TechTask.title == title)
-                )).scalar_one_or_none()
-                if not exists:
-                    db.add(TechTask(
-                        title=title,
-                        description=str(t.get("description", ""))[:500],
-                        status="pending",
-                        created_by=f"decomposer_card_{card_id}",
-                        priority=5,
-                    ))
-                    count += 1
+                db.add(TechTask(
+                    title=title,
+                    description=str(t.get("description", ""))[:500],
+                    status="pending",
+                    created_by=f"decomposer_card_{card_id}",
+                    priority=5,
+                ))
+                count += 1
+            # Переводим build_card в in_progress чтобы не брать снова
+            card_row = (await db.execute(
+                select(BuildCard).where(BuildCard.id == card_id)
+            )).scalar_one_or_none()
+            if card_row:
+                card_row.status = "in_progress"
             await db.commit()
-        log.info("Декомпозер: создано %d задач из build_card #%d", count, card_id)
+        log.info("Декомпозер: создано %d задач из build_card #%d → статус in_progress", count, card_id)
         return count
     except Exception as e:
         log.warning("_create_tech_tasks failed: %s", e)
