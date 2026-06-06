@@ -1,8 +1,8 @@
 import os
 import logging
 import httpx
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import PlainTextResponse, HTMLResponse, Response
 
 log = logging.getLogger(__name__)
 
@@ -12,6 +12,20 @@ THOMAS_URL = os.getenv(
 ).rstrip("/")
 
 router = APIRouter(prefix="/thomas", tags=["thomas"])
+
+
+@router.get("/ui")
+@router.get("/ui/{path:path}")
+async def thomas_ui_proxy(request: Request, path: str = ""):
+    target = f"{THOMAS_URL}/{path}" if path else THOMAS_URL + "/"
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            r = await client.get(target, params=dict(request.query_params))
+        content_type = r.headers.get("content-type", "text/html")
+        return Response(content=r.content, status_code=r.status_code, media_type=content_type)
+    except httpx.RequestError as e:
+        log.warning(f"[thomas_proxy] ui error: {e}")
+        raise HTTPException(status_code=503, detail="Thomas UI недоступен")
 
 
 @router.get("/docs")
