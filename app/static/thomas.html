@@ -110,6 +110,7 @@
       <button class="nav-btn active" title="Рабочий стол" onclick="switchTab('desk')" id="nav-desk">📊</button>
       <button class="nav-btn" title="Журналы" onclick="switchTab('journal')" id="nav-journal">📓</button>
       <button class="nav-btn" title="ТЗ / Задачи" onclick="switchTab('tasks')" id="nav-tasks">🔧</button>
+      <button class="nav-btn" title="Библиотека" onclick="switchTab('library')" id="nav-library">📚</button>
       <button class="nav-btn" title="Рычаги управления" onclick="switchTab('levers')" id="nav-levers">⚙️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="HQ" onclick="window.location='/hq'">🏛️</button>
@@ -206,6 +207,43 @@
         <div id="tasks-list"><div class="empty-hint">Загрузка...</div></div>
       </div>
 
+      <!-- ═══ БИБЛИОТЕКА ═══ -->
+      <div class="tab-panel" id="tab-library">
+
+        <div class="stat-row" id="lib-stat-row">
+          <div class="stat-card">
+            <div class="stat-label">Всего знаний</div>
+            <div class="stat-val" id="lib-total">—</div>
+            <div class="stat-sub">записей в Qdrant</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Читателей</div>
+            <div class="stat-val" id="lib-readers-count">—</div>
+            <div class="stat-sub" id="lib-readers-dead">— молчат</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Топ категория</div>
+            <div class="stat-val" id="lib-top-cat">—</div>
+            <div class="stat-sub" id="lib-top-cnt">записей</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Последний синтез</div>
+            <div class="stat-val" id="lib-synth-cat" style="font-size:.75rem">—</div>
+            <div class="stat-sub" id="lib-synth-ts">—</div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-bottom:8px">КАТЕГОРИИ ЗНАНИЙ</div>
+        <div id="lib-cats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
+
+        <div class="section-title" style="margin-bottom:8px">ЧИТАТЕЛИ</div>
+        <div id="lib-readers-list"><div class="empty-hint">Загрузка...</div></div>
+
+        <div class="section-title" style="margin-top:16px;margin-bottom:8px">ЖУРНАЛ БИБЛИОТЕКИ</div>
+        <div id="lib-journal"><div class="empty-hint">Загрузка...</div></div>
+
+      </div>
+
       <!-- ═══ РЫЧАГИ ═══ -->
       <div class="tab-panel" id="tab-levers">
         <div class="lever-grid">
@@ -290,9 +328,10 @@
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('tab-'+name).classList.add('active');
       document.getElementById('nav-'+name).classList.add('active');
-      if(name==='desk') loadDesk();
+      if(name==='desk')    loadDesk();
       if(name==='journal') { loadAgentOptions(); loadJournal(); }
-      if(name==='tasks') loadTasks();
+      if(name==='tasks')   loadTasks();
+      if(name==='library') loadLibrary();
     }
 
     // ── DESK ──────────────────────────────────────────────────────────────────
@@ -535,6 +574,91 @@
         sel.value = agent;
         loadJournal();
       }, 300);
+    }
+
+    // ── LIBRARY ───────────────────────────────────────────────────────────────
+    async function loadLibrary() {
+      const now_utc = Date.now();
+
+      // Stats
+      try {
+        const r = await fetch('/library/stats');
+        const d = await r.json();
+        document.getElementById('lib-total').textContent = d.total ?? '—';
+        const cats = Array.isArray(d.by_category) ? d.by_category
+          : Object.entries(d.by_category||{}).map(([k,v])=>({category:k,count:v}));
+        if(cats.length) {
+          document.getElementById('lib-top-cat').textContent = cats[0].category;
+          document.getElementById('lib-top-cnt').textContent = cats[0].count + ' записей';
+        }
+        // Cat pills
+        const catsEl = document.getElementById('lib-cats');
+        const colors = {tech:'rgba(59,130,246,.2)',income:'rgba(16,185,129,.2)',world:'rgba(251,191,36,.2)',council:'rgba(139,92,246,.2)',content:'rgba(236,72,153,.2)',analytics:'rgba(249,115,22,.2)',studio:'rgba(20,184,166,.2)',business:'rgba(99,102,241,.2)'};
+        const tcols  = {tech:'#60a5fa',income:'#34d399',world:'#fcd34d',council:'#a78bfa',content:'#f472b6',analytics:'#fb923c',studio:'#2dd4bf',business:'#818cf8'};
+        catsEl.innerHTML = cats.map(c=>`
+          <div style="background:${colors[c.category]||'rgba(255,255,255,.05)'};color:${tcols[c.category]||'#c8d0e0'};border:1px solid ${tcols[c.category]||'var(--border)'};border-radius:20px;padding:4px 12px;font-size:.65rem;font-weight:600">
+            ${c.category} <span style="opacity:.7">${c.count}</span>
+          </div>`).join('');
+      } catch(e) { document.getElementById('lib-total').textContent = 'недоступно'; }
+
+      // Readers
+      try {
+        const r = await fetch('/library/readers');
+        const d = await r.json();
+        const readers = Array.isArray(d) ? d : (d.readers || []);
+        let dead = 0;
+        document.getElementById('lib-readers-count').textContent = readers.length;
+        const el = document.getElementById('lib-readers-list');
+        el.innerHTML = readers.map(rd => {
+          const last = rd.last_run;
+          let agoStr = '—', isAlive = false;
+          if(last) {
+            const diff = (now_utc - new Date(last+'Z').getTime()) / 1000;
+            if(diff < 3600) { agoStr = Math.round(diff/60)+'м назад'; isAlive = true; }
+            else if(diff < 86400) { agoStr = Math.round(diff/3600)+'ч назад'; isAlive = diff < 8*3600; }
+            else agoStr = Math.round(diff/86400)+'д назад';
+          }
+          if(!isAlive) dead++;
+          const dot = isAlive ? '#00ff88' : '#ffaa00';
+          return `<div class="j-entry">
+            <div class="j-entry-top">
+              <span style="width:8px;height:8px;border-radius:50%;background:${dot};box-shadow:0 0 5px ${dot};flex-shrink:0;display:inline-block"></span>
+              <span class="j-agent" style="min-width:160px">${rd.name}</span>
+              <span class="j-badge jb-cycle">${rd.category||'?'}</span>
+              <span style="font-size:.6rem;color:var(--text-dim);margin-left:8px">runs: ${rd.runs||0}</span>
+              <span class="j-time">${agoStr}</span>
+            </div>
+            <div class="j-body" style="padding-left:16px">${(rd.topics||[]).slice(0,3).join(' · ')}</div>
+          </div>`;
+        }).join('') || '<div class="empty-hint">Нет читателей</div>';
+        document.getElementById('lib-readers-dead').textContent = dead + ' молчат';
+      } catch(e) {}
+
+      // Synthesis latest
+      try {
+        const r = await fetch('/library/synthesis');
+        const d = await r.json();
+        const items = Array.isArray(d) ? d : (d.items || []);
+        if(items.length) {
+          document.getElementById('lib-synth-cat').textContent = items[0].category || '—';
+          document.getElementById('lib-synth-ts').textContent = fmt(items[0].created_at);
+        }
+      } catch(e) {}
+
+      // Journal
+      try {
+        const r = await fetch('/civilization/agents/library/journal?limit=20');
+        const raw = await r.json();
+        const entries = Array.isArray(raw) ? raw : (raw.entries || []);
+        const el = document.getElementById('lib-journal');
+        if(!entries.length) { el.innerHTML='<div class="empty-hint">Журнал пуст — первый срез через 2 мин после старта HQ</div>'; return; }
+        el.innerHTML = entries.map(e=>`
+          <div class="j-entry">
+            <div class="j-entry-top">${badge(e.entry_type)}<span class="j-time">${fmt(e.created_at)}</span></div>
+            <div class="j-title">${e.title||''}</div>
+            ${e.body?`<div class="j-body">${e.body.slice(0,300)}</div>`:''}
+          </div>`).join('');
+      } catch(e) {}
     }
 
     // ── Chat toggle ───────────────────────────────────────────────────────────
