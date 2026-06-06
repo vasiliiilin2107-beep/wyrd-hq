@@ -228,6 +228,19 @@ async def add_journal_entry(agent_id: str, body: JournalIn, session: AsyncSessio
     return {"ok": True, "id": j.id}
 
 
+@router.get("/journal")
+async def get_global_journal(entry_type: str | None = None, limit: int = 60,
+                              session: AsyncSession = Depends(get_session)):
+    """Все записи журнала всех агентов — для дашборда Томаса."""
+    q = select(AgentJournal).order_by(AgentJournal.created_at.desc()).limit(limit)
+    if entry_type:
+        q = q.where(AgentJournal.entry_type == entry_type)
+    rows = (await session.execute(q)).scalars().all()
+    return [{"id": r.id, "agent_name": r.agent_name, "entry_type": r.entry_type,
+             "title": r.title, "body": r.body, "created_by": r.created_by,
+             "created_at": r.created_at.isoformat()} for r in rows]
+
+
 # ─── train ────────────────────────────────────────────────
 
 @router.post("/agents/{agent_id}/train")

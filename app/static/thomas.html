@@ -6,148 +6,73 @@
   <title>WYRD — ТОМАС</title>
   <link rel="stylesheet" href="/assets/css/wyrd.css">
   <style>
-    .thomas-layout {
-      display: grid;
-      grid-template-columns: 56px 1fr 420px;
-      grid-template-rows: 52px 1fr;
-      height: 100vh;
-      width: 100vw;
-      position: relative;
-      z-index: 1;
-    }
-    .chat-panel {
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      background: rgba(5,5,15,0.4);
-      overflow: hidden;
-    }
-    .chat-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(59,130,246,0.06);
-    }
-    .chat-header-title {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.15em;
-      color: var(--blue);
-    }
-    .chat-iframe {
-      flex: 1;
-      border: none;
-      background: transparent;
-    }
-
-    /* Статус-карточки */
-    .thomas-stat {
-      background: rgba(10,10,30,0.7);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 160px;
-    }
-    .thomas-stat-label {
-      font-size: 0.6rem;
-      letter-spacing: 0.12em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-    }
-    .thomas-stat-value {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #fff;
-    }
-    .thomas-stat-sub {
-      font-size: 0.65rem;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-    .pulse-dot {
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #555;
-      margin-right: 6px;
-      flex-shrink: 0;
-    }
-    .pulse-dot.alive { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
-    .pulse-dot.warn  { background: #ffaa00; box-shadow: 0 0 6px #ffaa00; }
-
-    /* Лента мыслей */
-    .thought-item {
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .thought-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .thought-type {
-      font-size: 0.58rem;
-      letter-spacing: 0.1em;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .t-patrol  { background: rgba(59,130,246,0.2);  color: #60a5fa; }
-    .t-idea    { background: rgba(16,185,129,0.2);  color: #34d399; }
-    .t-council { background: rgba(139,92,246,0.2);  color: #a78bfa; }
-    .t-risk    { background: rgba(239,68,68,0.2);   color: #f87171; }
-    .t-ok      { background: rgba(16,185,129,0.15); color: #6ee7b7; }
-    .thought-time {
-      font-size: 0.6rem;
-      color: var(--text-dim);
-      margin-left: auto;
-    }
-    .thought-body {
-      font-size: 0.72rem;
-      color: #c8d0e0;
-      line-height: 1.5;
-    }
-    .thought-body strong { color: #fff; }
-
-    /* Council sessions */
-    .council-item {
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .council-topic {
-      font-size: 0.72rem;
-      color: #c8d0e0;
-      margin-bottom: 4px;
-    }
-    .council-verdict {
-      font-size: 0.65rem;
-      color: var(--text-dim);
-      line-height: 1.4;
-    }
-    .status-badge {
-      font-size: 0.6rem;
-      padding: 1px 6px;
-      border-radius: 3px;
-      display: inline-block;
-    }
-    .sb-verdict  { background: rgba(139,92,246,0.2); color: #a78bfa; }
-    .sb-thinking { background: rgba(251,191,36,0.2);  color: #fcd34d; }
-    .sb-error    { background: rgba(239,68,68,0.2);   color: #f87171; }
-
-    .empty-hint {
-      color: var(--text-dim);
-      font-size: 0.65rem;
-      padding: 12px 0;
-    }
+    .thomas-layout { display:grid; grid-template-columns:56px 1fr 380px; grid-template-rows:52px 1fr; height:100vh; width:100vw; }
+    .chat-panel { border-left:1px solid var(--border); display:flex; flex-direction:column; background:rgba(5,5,15,.4); }
+    .chat-header { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; background:rgba(59,130,246,.06); }
+    .chat-header-title { font-size:.68rem; font-weight:600; letter-spacing:.15em; color:var(--blue); }
+    .chat-iframe { flex:1; border:none; background:transparent; }
+    /* tabs */
+    .tab-nav { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+    .tab-btn { padding:5px 12px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text-dim); font-size:.65rem; letter-spacing:.08em; cursor:pointer; text-transform:uppercase; transition:.15s; }
+    .tab-btn:hover { color:#fff; border-color:var(--blue); }
+    .tab-btn.active { background:rgba(59,130,246,.15); color:var(--blue); border-color:var(--blue); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    /* stat cards */
+    .stat-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .stat-card { background:rgba(10,10,30,.7); border:1px solid var(--border); border-radius:6px; padding:10px 14px; min-width:130px; }
+    .stat-label { font-size:.58rem; letter-spacing:.1em; color:var(--text-dim); text-transform:uppercase; }
+    .stat-val { font-size:.9rem; font-weight:600; color:#fff; margin-top:2px; display:flex; align-items:center; gap:6px; }
+    .stat-sub { font-size:.62rem; color:var(--text-dim); margin-top:2px; }
+    .pdot { width:8px; height:8px; border-radius:50%; background:#555; flex-shrink:0; }
+    .pdot.alive { background:#00ff88; box-shadow:0 0 6px #00ff88; }
+    .pdot.warn  { background:#ffaa00; box-shadow:0 0 6px #ffaa00; }
+    /* report cards */
+    .report-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+    .report-card { background:rgba(10,10,30,.6); border:1px solid var(--border); border-radius:6px; padding:12px; }
+    .report-card-title { font-size:.62rem; letter-spacing:.1em; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; }
+    .report-card-body { font-size:.68rem; color:#c8d0e0; line-height:1.5; }
+    /* journal */
+    .j-filters { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+    .j-filter { padding:3px 9px; border:1px solid var(--border); border-radius:12px; font-size:.6rem; cursor:pointer; background:transparent; color:var(--text-dim); letter-spacing:.06em; }
+    .j-filter.active { background:rgba(59,130,246,.15); color:var(--blue); border-color:var(--blue); }
+    .j-entry { padding:9px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .j-entry-top { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+    .j-badge { font-size:.58rem; padding:1px 6px; border-radius:3px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+    .jb-incoming { background:rgba(59,130,246,.2); color:#60a5fa; }
+    .jb-outgoing { background:rgba(16,185,129,.2); color:#34d399; }
+    .jb-cycle    { background:rgba(139,92,246,.2); color:#a78bfa; }
+    .jb-drop     { background:rgba(239,68,68,.2);  color:#f87171; }
+    .jb-update   { background:rgba(251,191,36,.2); color:#fcd34d; }
+    .j-agent { font-size:.6rem; color:var(--text-dim); font-weight:600; }
+    .j-time  { font-size:.58rem; color:var(--text-dim); margin-left:auto; }
+    .j-title { font-size:.7rem; color:#c8d0e0; }
+    .j-body  { font-size:.64rem; color:var(--text-dim); line-height:1.4; margin-top:2px; white-space:pre-wrap; }
+    /* tasks */
+    .task-row { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .task-id   { font-size:.6rem; color:var(--text-dim); width:28px; flex-shrink:0; }
+    .task-title{ font-size:.7rem; color:#c8d0e0; flex:1; }
+    .task-who  { font-size:.6rem; color:var(--text-dim); flex-shrink:0; }
+    .ts-badge  { font-size:.58rem; padding:1px 7px; border-radius:3px; text-transform:uppercase; font-weight:600; flex-shrink:0; }
+    .ts-pending  { background:rgba(251,191,36,.15); color:#fcd34d; }
+    .ts-done     { background:rgba(16,185,129,.15); color:#34d399; }
+    .ts-failed   { background:rgba(239,68,68,.15);  color:#f87171; }
+    .ts-in_progress { background:rgba(59,130,246,.15); color:#60a5fa; }
+    /* levers */
+    .lever-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .lever-card { background:rgba(10,10,30,.7); border:1px solid var(--border); border-radius:6px; padding:14px; }
+    .lever-title { font-size:.65rem; letter-spacing:.08em; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+    .lever-btn { width:100%; padding:7px 0; border:1px solid var(--border); border-radius:4px; background:transparent; color:#c8d0e0; font-size:.68rem; cursor:pointer; margin-bottom:6px; transition:.15s; letter-spacing:.05em; }
+    .lever-btn:hover { border-color:var(--blue); color:var(--blue); background:rgba(59,130,246,.08); }
+    .lever-btn.danger:hover { border-color:#f87171; color:#f87171; background:rgba(239,68,68,.08); }
+    .lever-btn.success:hover { border-color:#34d399; color:#34d399; background:rgba(16,185,129,.08); }
+    .lever-result { font-size:.62rem; color:#34d399; min-height:16px; margin-top:4px; }
+    /* agent select */
+    .agent-select { background:rgba(10,10,30,.8); border:1px solid var(--border); color:#c8d0e0; font-size:.68rem; padding:4px 8px; border-radius:4px; margin-bottom:10px; width:260px; }
+    .empty-hint { color:var(--text-dim); font-size:.65rem; padding:12px 0; }
+    .flag-row { display:flex; gap:8px; align-items:flex-start; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .flag-anchor { font-size:.6rem; color:var(--text-dim); width:140px; flex-shrink:0; font-family:monospace; }
+    .flag-body { font-size:.68rem; color:#c8d0e0; flex:1; }
   </style>
 </head>
 <body>
@@ -157,7 +82,7 @@
     <!-- Топбар -->
     <header class="topbar">
       <a href="/" class="topbar-logo">WYRD</a>
-      <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ ТОМАС</span>
+      <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.15em">/ РАБОЧИЙ СТОЛ ТОМАСА</span>
       <div class="topbar-sep"></div>
       <div class="topbar-status" id="topbar-status">
         <span class="dot" style="background:#555"></span>
@@ -168,7 +93,10 @@
 
     <!-- Сайдбар -->
     <nav class="sidebar">
-      <button class="nav-btn active" title="Обзор">📋</button>
+      <button class="nav-btn active" title="Рабочий стол" onclick="switchTab('desk')" id="nav-desk">📊</button>
+      <button class="nav-btn" title="Журналы" onclick="switchTab('journal')" id="nav-journal">📓</button>
+      <button class="nav-btn" title="ТЗ / Задачи" onclick="switchTab('tasks')" id="nav-tasks">🔧</button>
+      <button class="nav-btn" title="Рычаги управления" onclick="switchTab('levers')" id="nav-levers">⚙️</button>
       <div style="flex:1"></div>
       <button class="nav-btn" title="HQ" onclick="window.location='/hq'">🏛️</button>
       <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
@@ -177,225 +105,403 @@
     <!-- Главная область -->
     <main class="main-area" style="overflow-y:auto">
 
-      <!-- Статус строка -->
-      <div>
-        <div class="section-title">СТАТУС ТОМАСА</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap" id="status-cards">
-          <div class="thomas-stat">
-            <div class="thomas-stat-label">Пульс</div>
-            <div class="thomas-stat-value" id="stat-pulse" style="display:flex;align-items:center">
-              <span class="pulse-dot" id="pulse-dot"></span>
-              <span id="pulse-ago">—</span>
-            </div>
-            <div class="thomas-stat-sub" id="stat-task">—</div>
+      <!-- ═══ СТОЛ ═══ -->
+      <div class="tab-panel active" id="tab-desk">
+
+        <div class="stat-row" id="stat-row">
+          <div class="stat-card">
+            <div class="stat-label">Томас</div>
+            <div class="stat-val"><span class="pdot" id="pdot"></span><span id="st-pulse">—</span></div>
+            <div class="stat-sub" id="st-task">—</div>
           </div>
-          <div class="thomas-stat">
-            <div class="thomas-stat-label">Патрули (последний)</div>
-            <div class="thomas-stat-value" id="stat-patrol-time">—</div>
-            <div class="thomas-stat-sub" id="stat-patrol-count">0 за всё время</div>
+          <div class="stat-card">
+            <div class="stat-label">Активных рисков</div>
+            <div class="stat-val" id="st-flags">—</div>
+            <div class="stat-sub">открытых флагов</div>
           </div>
-          <div class="thomas-stat">
-            <div class="thomas-stat-label">Сессии Совета</div>
-            <div class="thomas-stat-value" id="stat-council">—</div>
-            <div class="thomas-stat-sub" id="stat-council-sub">всего запущено</div>
+          <div class="stat-card">
+            <div class="stat-label">ТЗ в очереди</div>
+            <div class="stat-val" id="st-tasks-pending">—</div>
+            <div class="stat-sub" id="st-tasks-failed">— упало</div>
           </div>
-          <div class="thomas-stat">
-            <div class="thomas-stat-label">Идеи сегодня</div>
-            <div class="thomas-stat-value" id="stat-ideas">—</div>
-            <div class="thomas-stat-sub">thomas_think</div>
+          <div class="stat-card">
+            <div class="stat-label">Книга / Глав</div>
+            <div class="stat-val" id="st-book">—</div>
+            <div class="stat-sub" id="st-book-sub">опубликовано</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Сессий Совета</div>
+            <div class="stat-val" id="st-council">—</div>
+            <div class="stat-sub">всего запущено</div>
           </div>
         </div>
-      </div>
 
-      <!-- Мысли Томаса -->
-      <div style="margin-top:20px">
-        <div class="section-title">МЫСЛИ И ДЕЙСТВИЯ</div>
-        <div id="thoughts-feed">
-          <div class="empty-hint">Загрузка...</div>
+        <!-- Отчёты отделов -->
+        <div class="section-title" style="margin-bottom:8px">ПОСЛЕДНИЕ ОТЧЁТЫ ОТДЕЛОВ</div>
+        <div class="report-grid">
+          <div class="report-card">
+            <div class="report-card-title"><span>💡 Идеи</span><span id="rep-ideas-ts" style="font-size:.58rem">—</span></div>
+            <div class="report-card-body" id="rep-ideas">Загрузка...</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-title"><span>💰 Бабло</span><span id="rep-babla-ts" style="font-size:.58rem">—</span></div>
+            <div class="report-card-body" id="rep-babla">Загрузка...</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-title"><span>📊 Аналитика</span><span id="rep-analytics-ts" style="font-size:.58rem">—</span></div>
+            <div class="report-card-body" id="rep-analytics">Загрузка...</div>
+          </div>
         </div>
+
+        <!-- Активные флаги -->
+        <div class="section-title" style="margin-bottom:8px">АКТИВНЫЕ РИСКИ</div>
+        <div id="flags-list"><div class="empty-hint">Загрузка...</div></div>
+
+        <!-- Последние вердикты -->
+        <div class="section-title" style="margin-top:16px;margin-bottom:8px">ПОСЛЕДНИЕ ВЕРДИКТЫ СОВЕТА</div>
+        <div id="council-list"><div class="empty-hint">Загрузка...</div></div>
+
       </div>
 
-      <!-- Сессии Совета -->
-      <div style="margin-top:20px">
-        <div class="section-title">ПОСЛЕДНИЕ СЕССИИ СОВЕТА</div>
-        <div id="council-feed">
-          <div class="empty-hint">Загрузка...</div>
+      <!-- ═══ ЖУРНАЛЫ ═══ -->
+      <div class="tab-panel" id="tab-journal">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <select class="agent-select" id="j-agent-select" onchange="loadJournal()">
+            <option value="">Все агенты</option>
+          </select>
+          <div class="j-filters">
+            <button class="j-filter active" data-type="" onclick="setJType(this,'')">ВСЕ</button>
+            <button class="j-filter" data-type="incoming" onclick="setJType(this,'incoming')">← ВХОДЯЩИЕ</button>
+            <button class="j-filter" data-type="outgoing" onclick="setJType(this,'outgoing')">→ ИСХОДЯЩИЕ</button>
+            <button class="j-filter" data-type="cycle" onclick="setJType(this,'cycle')">ЦИКЛ</button>
+            <button class="j-filter" data-type="drop" onclick="setJType(this,'drop')">УБИТО</button>
+          </div>
+        </div>
+        <div id="journal-feed"><div class="empty-hint">Выберите агента или посмотрите все</div></div>
+      </div>
+
+      <!-- ═══ ТЗ ═══ -->
+      <div class="tab-panel" id="tab-tasks">
+        <div class="j-filters" style="margin-bottom:10px">
+          <button class="j-filter active" data-ts="" onclick="setTStatus(this,'')">ВСЕ</button>
+          <button class="j-filter" data-ts="pending" onclick="setTStatus(this,'pending')">ОЖИДАЮТ</button>
+          <button class="j-filter" data-ts="in_progress" onclick="setTStatus(this,'in_progress')">В РАБОТЕ</button>
+          <button class="j-filter" data-ts="done" onclick="setTStatus(this,'done')">ГОТОВО</button>
+          <button class="j-filter" data-ts="failed" onclick="setTStatus(this,'failed')">УПАЛО</button>
+        </div>
+        <div id="tasks-list"><div class="empty-hint">Загрузка...</div></div>
+      </div>
+
+      <!-- ═══ РЫЧАГИ ═══ -->
+      <div class="tab-panel" id="tab-levers">
+        <div class="lever-grid">
+
+          <div class="lever-card">
+            <div class="lever-title">🤖 Томас</div>
+            <button class="lever-btn success" onclick="triggerAgent('thomas','patrol')">▶ Запустить патруль</button>
+            <button class="lever-btn success" onclick="triggerAgent('thomas','digest')">📋 Запросить дайджест</button>
+            <div class="lever-result" id="res-thomas"></div>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-title">💡 Идейный отдел</div>
+            <button class="lever-btn" onclick="triggerAgent('Бригадир Идей','run')">▶ Форсировать цикл</button>
+            <button class="lever-btn" onclick="openJournalFor('Бригадир Идей')">📓 Открыть журнал</button>
+            <div class="lever-result" id="res-ideas"></div>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-title">💰 Отдел Бабла</div>
+            <button class="lever-btn" onclick="triggerAgent('Бригадир Бабла','run')">▶ Форсировать цикл</button>
+            <button class="lever-btn" onclick="openJournalFor('Бригадир Бабла')">📓 Открыть журнал</button>
+            <div class="lever-result" id="res-babla"></div>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-title">📊 Отдел Аналитики</div>
+            <button class="lever-btn" onclick="triggerAgent('Бригадир Аналитики','run')">▶ Форсировать цикл</button>
+            <button class="lever-btn" onclick="openJournalFor('Бригадир Аналитики')">📓 Открыть журнал</button>
+            <div class="lever-result" id="res-analytics"></div>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-title">🔧 Быстрое ТЗ Технику</div>
+            <input id="quick-task-title" placeholder="Название задачи..." style="width:100%;background:rgba(10,10,30,.8);border:1px solid var(--border);color:#c8d0e0;font-size:.68rem;padding:5px 8px;border-radius:4px;margin-bottom:6px">
+            <button class="lever-btn success" onclick="createQuickTask()">➕ Создать задачу</button>
+            <div class="lever-result" id="res-task"></div>
+          </div>
+
+          <div class="lever-card">
+            <div class="lever-title">🚩 Флаги рисков</div>
+            <button class="lever-btn" onclick="switchTab('desk')">👁 Смотреть активные</button>
+            <button class="lever-btn danger" onclick="resolveAllFlags()">✅ Закрыть все риски</button>
+            <div class="lever-result" id="res-flags"></div>
+          </div>
+
         </div>
       </div>
 
     </main>
 
-    <!-- Чат Томаса -->
+    <!-- Чат -->
     <div class="chat-panel">
       <div class="chat-header">
         <span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>
         <span class="chat-header-title">ЧАТ С ТОМАСОМ</span>
       </div>
-      <iframe
-        class="chat-iframe"
-        src="http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io"
-        title="Томас веб-чат"
-        sandbox="allow-scripts allow-same-origin allow-forms"
-      ></iframe>
+      <iframe class="chat-iframe" src="http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
     </div>
   </div>
 
   <script src="/assets/js/hq.js"></script>
   <script>
+    // ── State ──────────────────────────────────────────────────────────────────
+    let _jType = '', _tStatus = '', _allAgents = [];
+
     // ── Helpers ────────────────────────────────────────────────────────────────
+    const fmt = iso => { if(!iso) return '—'; const d = new Date(iso); const t = d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); const today = new Date(); return d.toDateString()===today.toDateString() ? t : d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+' '+t; };
+    const badge = t => { const m = {incoming:'jb-incoming ← вход',outgoing:'jb-outgoing → выход',cycle:'jb-cycle цикл',drop:'jb-drop убито',update:'jb-update правка'}; const s = (m[t]||'jb-cycle '+t).split(' '); return `<span class="j-badge ${s[0]}">${s.slice(1).join(' ')}</span>`; };
+    const tsClass = s => ({pending:'ts-pending',done:'ts-done',failed:'ts-failed',in_progress:'ts-in_progress'}[s]||'ts-pending');
 
-    function fmtTime(iso) {
-      if (!iso) return '—';
-      const d = new Date(iso);
-      return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-'+name).classList.add('active');
+      document.getElementById('nav-'+name).classList.add('active');
+      if(name==='desk') loadDesk();
+      if(name==='journal') { loadAgentOptions(); loadJournal(); }
+      if(name==='tasks') loadTasks();
     }
 
-    function fmtDate(iso) {
-      if (!iso) return '—';
-      const d = new Date(iso);
-      const today = new Date();
-      if (d.toDateString() === today.toDateString()) return 'сегодня ' + fmtTime(iso);
-      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ' ' + fmtTime(iso);
+    // ── DESK ──────────────────────────────────────────────────────────────────
+    async function loadDesk() {
+      await Promise.all([loadPulse(), loadFlags(), loadReports(), loadCouncil(), loadTaskStats(), loadBook()]);
     }
-
-    // ── Пульс ─────────────────────────────────────────────────────────────────
 
     async function loadPulse() {
       try {
         const r = await fetch('/civilization/agents');
-        const data = await r.json();
-        const thomas = (data.agents || []).find(a => a.name === 'thomas');
-        if (!thomas) return;
-
-        const dot = document.getElementById('pulse-dot');
-        const ago = document.getElementById('pulse-ago');
-        const task = document.getElementById('stat-task');
-        const topbar = document.getElementById('topbar-status');
-
-        const pAgo = thomas.pulse_ago;
-        const isAlive = thomas.last_pulse && (Date.now() - new Date(thomas.last_pulse + 'Z').getTime()) < 20 * 60 * 1000;
-
-        dot.className = 'pulse-dot ' + (isAlive ? 'alive' : 'warn');
-        ago.textContent = pAgo || 'нет данных';
-        task.textContent = thomas.current_task || 'задача не указана';
-
-        topbar.innerHTML = isAlive
+        const {agents=[]} = await r.json();
+        _allAgents = agents;
+        const th = agents.find(a=>a.name==='thomas') || {};
+        const alive = th.last_pulse && (Date.now()-new Date(th.last_pulse+'Z').getTime()) < 20*60*1000;
+        document.getElementById('pdot').className = 'pdot '+(alive?'alive':'warn');
+        document.getElementById('st-pulse').textContent = th.pulse_ago || '—';
+        document.getElementById('st-task').textContent = th.current_task || '—';
+        document.getElementById('topbar-status').innerHTML = alive
           ? '<span class="dot" style="background:#00ff88;box-shadow:0 0 6px #00ff88"></span><span style="color:#00ff88">СТРАЖ АКТИВЕН</span>'
           : '<span class="dot" style="background:#ffaa00;box-shadow:0 0 6px #ffaa00"></span><span style="color:#ffaa00">СТРАЖ МОЛЧИТ</span>';
+        document.getElementById('st-council').textContent = '—';
       } catch(e) {}
     }
 
-    // ── События Томаса ────────────────────────────────────────────────────────
-
-    const TYPE_MAP = {
-      'thomas_patrol': { cls: 't-patrol', label: 'Патруль', key: 'summary' },
-      'thomas_idea':   { cls: 't-idea',   label: 'Идея',    key: 'title'   },
-      'thomas_risk':   { cls: 't-risk',   label: 'Риск',    key: 'title'   },
-      'thomas_ok':     { cls: 't-ok',     label: 'ОК',      key: 'summary' },
-    };
-
-    async function loadThoughts() {
-      const feed = document.getElementById('thoughts-feed');
+    async function loadFlags() {
       try {
-        const r = await fetch('/events?limit=200');
-        const data = await r.json();
-        const all = Array.isArray(data) ? data : (data.events || []);
-
-        // Фильтр — только события Томаса
-        const thomas_events = all.filter(e => e.type && e.type.startsWith('thomas_'));
-
-        // Статистика патрулей
-        const patrols = thomas_events.filter(e => e.type === 'thomas_patrol');
-        document.getElementById('stat-patrol-count').textContent = patrols.length + ' патрулей';
-        if (patrols.length) {
-          document.getElementById('stat-patrol-time').textContent = fmtDate(patrols[0].created_at);
-        }
-
-        // Идеи
-        const ideas = thomas_events.filter(e => e.type === 'thomas_idea');
-        const today = new Date().toDateString();
-        const ideasToday = ideas.filter(e => new Date(e.created_at).toDateString() === today);
-        document.getElementById('stat-ideas').textContent = ideasToday.length || ideas.length;
-
-        feed.innerHTML = '';
-        if (!thomas_events.length) {
-          feed.innerHTML = '<div class="empty-hint">Томас ещё не записал ни одной мысли</div>';
-          return;
-        }
-
-        thomas_events.forEach(e => {
-          const meta = TYPE_MAP[e.type] || { cls: 't-patrol', label: e.type, key: 'summary' };
-          const p = e.payload || {};
-          const text = p[meta.key] || p.summary || p.title || p.body || JSON.stringify(p).slice(0, 200);
-
-          const item = document.createElement('div');
-          item.className = 'thought-item';
-          item.innerHTML = `
-            <div class="thought-meta">
-              <span class="thought-type ${meta.cls}">${meta.label}</span>
-              <span class="thought-time">${fmtDate(e.created_at)}</span>
-            </div>
-            <div class="thought-body">${text}</div>
-          `;
-          feed.appendChild(item);
-        });
-      } catch(e) {
-        feed.innerHTML = '<div class="empty-hint">Нет данных</div>';
-      }
+        const r = await fetch('/flags?type=risk&status=active');
+        const flags = await r.json();
+        document.getElementById('st-flags').textContent = flags.length || '0';
+        const el = document.getElementById('flags-list');
+        if(!flags.length) { el.innerHTML='<div class="empty-hint">✅ Активных рисков нет</div>'; return; }
+        el.innerHTML = flags.map(f=>`
+          <div class="flag-row">
+            <span class="flag-anchor">${f.anchor||f.component||'—'}</span>
+            <div class="flag-body"><strong style="color:#f87171">${f.title}</strong><br><span style="color:var(--text-dim);font-size:.62rem">${(f.body||'').slice(0,120)}</span></div>
+            <span style="font-size:.58rem;color:var(--text-dim);flex-shrink:0">${fmt(f.created_at)}</span>
+          </div>`).join('');
+      } catch(e) {}
     }
 
-    // ── Сессии Совета ─────────────────────────────────────────────────────────
+    async function loadReports() {
+      // Идеи
+      try {
+        const r = await fetch('/ideas-dept/reports/latest');
+        const d = await r.json();
+        const rep = d.report || d;
+        document.getElementById('rep-ideas').textContent = (rep.analysis||'нет данных').slice(0,240);
+        document.getElementById('rep-ideas-ts').textContent = fmt(rep.checked_at||rep.created_at);
+      } catch(e) { document.getElementById('rep-ideas').textContent = 'недоступно'; }
+      // Бабло
+      try {
+        const r = await fetch('/babla/reports?limit=1');
+        const d = await r.json();
+        const rep = (d.reports||d)[0] || {};
+        document.getElementById('rep-babla').textContent = (rep.analysis||'нет данных').slice(0,240);
+        document.getElementById('rep-babla-ts').textContent = fmt(rep.checked_at||rep.created_at);
+      } catch(e) { document.getElementById('rep-babla').textContent = 'недоступно'; }
+      // Аналитика
+      try {
+        const r = await fetch('/analytics/reports?limit=1');
+        const d = await r.json();
+        const rep = (d.reports||d)[0] || {};
+        document.getElementById('rep-analytics').textContent = (rep.analysis||'нет данных').slice(0,240);
+        document.getElementById('rep-analytics-ts').textContent = fmt(rep.checked_at||rep.created_at);
+      } catch(e) { document.getElementById('rep-analytics').textContent = 'недоступно'; }
+    }
 
     async function loadCouncil() {
-      const feed = document.getElementById('council-feed');
-      const stat = document.getElementById('stat-council');
       try {
-        const r = await fetch('/council/sessions?limit=10');
-        const data = await r.json();
-        const sessions = data.sessions || data || [];
-        stat.textContent = sessions.length;
+        const r = await fetch('/council/sessions?limit=5');
+        const d = await r.json();
+        const ss = d.sessions||d||[];
+        document.getElementById('st-council').textContent = ss.length;
+        const el = document.getElementById('council-list');
+        el.innerHTML = ss.map(s => {
+          const v = s.verdict||{};
+          const text = (v.thomas_brief||v.summary||'').slice(0,180);
+          const stCls = {verdict:'jb-cycle',thinking:'jb-update',error:'jb-drop'}[s.status]||'jb-update';
+          const stLbl = {verdict:'Вердикт',thinking:'Думает',error:'Ошибка'}[s.status]||s.status;
+          return `<div class="j-entry">
+            <div class="j-entry-top"><span class="j-badge ${stCls}">${stLbl}</span><span class="j-agent">${(s.source||'').replace('_dept','')}</span><span class="j-time">${fmt(s.created_at)}</span></div>
+            <div class="j-title">${(s.idea_text||'').slice(0,120)}</div>
+            ${text?`<div class="j-body">${text}</div>`:''}
+          </div>`;
+        }).join('') || '<div class="empty-hint">Совет ещё не собирался</div>';
+      } catch(e) {}
+    }
 
-        feed.innerHTML = '';
-        if (!sessions.length) {
-          feed.innerHTML = '<div class="empty-hint">Совет ещё не собирался</div>';
-          return;
+    async function loadTaskStats() {
+      try {
+        const r = await fetch('/tech/tasks?limit=200');
+        const d = await r.json();
+        const ts = Array.isArray(d)?d:(d.tasks||[]);
+        const pending = ts.filter(t=>t.status==='pending'||t.status==='in_progress').length;
+        const failed  = ts.filter(t=>t.status==='failed').length;
+        document.getElementById('st-tasks-pending').textContent = pending;
+        document.getElementById('st-tasks-failed').textContent = failed+' упало';
+      } catch(e) {}
+    }
+
+    async function loadBook() {
+      try {
+        const r = await fetch('/bs/stats');
+        const d = await r.json();
+        const books = d.books||[];
+        if(!books.length) return;
+        const b = books[0];
+        document.getElementById('st-book').textContent = b.chapters_count||'—';
+        document.getElementById('st-book-sub').textContent = (b.chapters_published||0)+' опубликовано';
+      } catch(e) {}
+    }
+
+    // ── JOURNAL ───────────────────────────────────────────────────────────────
+    async function loadAgentOptions() {
+      const sel = document.getElementById('j-agent-select');
+      if(sel.options.length > 1) return;
+      try {
+        const r = await fetch('/civilization/agents');
+        const {agents=[]} = await r.json();
+        agents.forEach(a => { const o = document.createElement('option'); o.value=a.name; o.textContent=a.name; sel.appendChild(o); });
+      } catch(e) {}
+    }
+
+    async function loadJournal() {
+      const agent = document.getElementById('j-agent-select').value;
+      const feed = document.getElementById('journal-feed');
+      feed.innerHTML = '<div class="empty-hint">Загрузка...</div>';
+      try {
+        let url = agent ? `/civilization/agents/${encodeURIComponent(agent)}/journal?limit=60` : '/civilization/journal?limit=60';
+        const r = await fetch(url);
+        if(!r.ok) throw new Error(r.status);
+        const raw = await r.json();
+        let entries = Array.isArray(raw) ? raw : (raw.entries || []);
+        if(_jType) entries = entries.filter(e=>e.entry_type===_jType);
+        if(!entries.length) { feed.innerHTML='<div class="empty-hint">Записей нет</div>'; return; }
+        feed.innerHTML = entries.map(e=>`
+          <div class="j-entry">
+            <div class="j-entry-top">${badge(e.entry_type)}<span class="j-agent">${e.agent_name}</span><span class="j-time">${fmt(e.created_at)}</span></div>
+            <div class="j-title">${e.title||''}</div>
+            ${e.body?`<div class="j-body">${e.body.slice(0,300)}</div>`:''}
+          </div>`).join('');
+      } catch(e) { feed.innerHTML='<div class="empty-hint">Нет данных ('+e+')</div>'; }
+    }
+
+    function setJType(btn, type) {
+      _jType = type;
+      document.querySelectorAll('.j-filter').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadJournal();
+    }
+
+    // ── TASKS ─────────────────────────────────────────────────────────────────
+    async function loadTasks() {
+      const el = document.getElementById('tasks-list');
+      try {
+        const url = _tStatus ? `/tech/tasks?status=${_tStatus}&limit=100` : '/tech/tasks?limit=100';
+        const r = await fetch(url);
+        const d = await r.json();
+        const ts = Array.isArray(d)?d:(d.tasks||[]);
+        if(!ts.length) { el.innerHTML='<div class="empty-hint">Задач нет</div>'; return; }
+        el.innerHTML = ts.map(t=>`
+          <div class="task-row">
+            <span class="task-id">#${t.id}</span>
+            <div class="task-title">${t.title||''}<br><span style="color:var(--text-dim);font-size:.6rem">${(t.description||'').slice(0,80)}</span></div>
+            <span class="task-who" style="width:90px">${t.created_by||''}</span>
+            <span class="ts-badge ${tsClass(t.status)}">${t.status}</span>
+          </div>`).join('');
+      } catch(e) { el.innerHTML='<div class="empty-hint">Нет данных</div>'; }
+    }
+
+    function setTStatus(btn, s) {
+      _tStatus = s;
+      document.querySelectorAll('[data-ts]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      loadTasks();
+    }
+
+    // ── LEVERS ────────────────────────────────────────────────────────────────
+    async function triggerAgent(name, action) {
+      const resId = {thomas:'res-thomas','Бригадир Идей':'res-ideas','Бригадир Бабла':'res-babla','Бригадир Аналитики':'res-analytics'}[name]||'res-task';
+      const el = document.getElementById(resId);
+      el.textContent = '...';
+      try {
+        const r = await fetch(`/civilization/agents/${encodeURIComponent(name)}/trigger`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})});
+        const d = await r.json();
+        el.textContent = d.ok ? `✅ ТЗ #${d.task_id} создано` : '❌ ошибка';
+      } catch(e) { el.textContent = '❌ '+e; }
+    }
+
+    async function createQuickTask() {
+      const title = document.getElementById('quick-task-title').value.trim();
+      if(!title) return;
+      const el = document.getElementById('res-task');
+      try {
+        const r = await fetch('/tech/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title, description:'Создано вручную из дашборда', created_by:'hq_panel', priority:6})});
+        const d = await r.json();
+        el.textContent = `✅ Задача #${d.id} создана`;
+        document.getElementById('quick-task-title').value = '';
+      } catch(e) { el.textContent = '❌ '+e; }
+    }
+
+    async function resolveAllFlags() {
+      const el = document.getElementById('res-flags');
+      try {
+        const r = await fetch('/flags?type=risk&status=active');
+        const flags = await r.json();
+        let closed = 0;
+        for(const f of flags) {
+          await fetch(`/flags/${f.id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'done'})});
+          closed++;
         }
+        el.textContent = `✅ Закрыто ${closed} флагов`;
+        loadFlags();
+      } catch(e) { el.textContent = '❌ '+e; }
+    }
 
-        sessions.forEach(s => {
-          const statusMap = {
-            verdict: { cls: 'sb-verdict', label: 'Вердикт' },
-            thinking: { cls: 'sb-thinking', label: 'Думает' },
-            error: { cls: 'sb-error', label: 'Ошибка' },
-          };
-          const st = statusMap[s.status] || { cls: 'sb-thinking', label: s.status };
-          const verdict = s.verdict ? (s.verdict.thomas_brief || s.verdict.summary || '') : '';
-          const briefSnippet = verdict.slice(0, 220);
-
-          const item = document.createElement('div');
-          item.className = 'council-item';
-          item.innerHTML = `
-            <div class="thought-meta" style="margin-bottom:6px">
-              <span class="status-badge ${st.cls}">${st.label}</span>
-              <span class="thought-time">${fmtDate(s.created_at)}</span>
-            </div>
-            <div class="council-topic">${(s.idea_text || '').slice(0, 120)}</div>
-            ${briefSnippet ? `<div class="council-verdict">${briefSnippet}${verdict.length > 220 ? '…' : ''}</div>` : ''}
-          `;
-          feed.appendChild(item);
-        });
-      } catch(e) {
-        feed.innerHTML = '<div class="empty-hint">Нет данных</div>';
-      }
+    function openJournalFor(agent) {
+      switchTab('journal');
+      setTimeout(() => {
+        const sel = document.getElementById('j-agent-select');
+        sel.value = agent;
+        loadJournal();
+      }, 300);
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
-
-    async function refresh() {
-      await Promise.all([loadPulse(), loadThoughts(), loadCouncil()]);
-    }
-
-    document.addEventListener('DOMContentLoaded', refresh);
-    setInterval(refresh, 20000);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDesk();
+      setInterval(loadDesk, 30000);
+    });
   </script>
 </body>
 </html>
