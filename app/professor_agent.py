@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .council_agent import _llm
 from .database import SessionLocal
 from .models import (
-    Agent, AgentPassport, AgentReport, AnalyticsReport, BablaReport,
+    Agent, AgentJournal, AgentPassport, AgentReport, AnalyticsReport, BablaReport,
     Constitution, Event, IdeaDeptReport, ProjectDeptReport, Proposal, TechTask,
 )
 from .routers.education import get_trained_prompt, issue_passport, train_agent, persist_dna
@@ -403,6 +403,15 @@ async def run_professor_check() -> None:
     )
     log.info("Профессор: цикл завершён — %s", summary)
     await _pulse_professor("idle", summary)
+    async with SessionLocal() as db:
+        db.add(AgentJournal(
+            agent_name=PROFESSOR_NAME,
+            entry_type="cycle",
+            title=f"Осмотр мира — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+            body=summary,
+            created_by="professor",
+        ))
+        await db.commit()
 
 
 async def _register_professor() -> None:
