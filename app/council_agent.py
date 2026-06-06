@@ -2,12 +2,13 @@ import asyncio
 import logging
 import os
 import re
+from datetime import datetime
 
 import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AnalyticsReport, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
+from .models import Agent, AgentJournal, AnalyticsReport, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
 
@@ -426,6 +427,22 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             s.verdict_json = verdict
             thought_text = f"[{idea[:60]}] → {carto[:180]}"
             db.add(CouncilThought(text=thought_text, source="council", tags=["verdict"]))
+            # Журнал Совета: Картограф фиксирует вердикт
+            db.add(AgentJournal(
+                agent_name="Картограф",
+                entry_type="outgoing",
+                title=f"→ Вердикт сессии #{session_id} — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                body=f"Тема: {idea[:120]}\n\nВердикт: {carto[:300]}",
+                created_by="council",
+            ))
+            # Журнал Совета: Стратег фиксирует позицию
+            db.add(AgentJournal(
+                agent_name="Стратег",
+                entry_type="cycle",
+                title=f"Сессия #{session_id} — {idea[:80]}",
+                body=f"Финальная позиция: {strat2[:300]}",
+                created_by="council",
+            ))
             await db.commit()
 
         log.info("Council session %d done", session_id)

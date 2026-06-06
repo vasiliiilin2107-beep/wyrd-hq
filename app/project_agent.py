@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from .council_agent import _llm
 from .database import SessionLocal
-from .models import Agent, BuildCard, Constitution, ProjectDeptReport, TechTask
+from .models import Agent, AgentJournal, BuildCard, Constitution, ProjectDeptReport, TechTask
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 
 log = logging.getLogger(__name__)
@@ -47,6 +47,18 @@ SYS_BRIGADIR_PROJ = """Ты — Бригадир Проектов мира WYRD.
 3. Оценка очереди: сколько build_cards и их суммарная сложность
 
 Конкретно. Не больше 200 слов."""
+
+
+async def _journal(agent_name: str, title: str, body: str | None = None, entry_type: str = "cycle") -> None:
+    try:
+        async with SessionLocal() as db:
+            db.add(AgentJournal(
+                agent_name=agent_name, entry_type=entry_type,
+                title=title, body=body, created_by=PROJECT_FOREMAN,
+            ))
+            await db.commit()
+    except Exception as e:
+        log.warning("journal write error [%s]: %s", agent_name, e)
 
 
 async def _pulse(name: str, status: str, task: str | None = None) -> None:
@@ -124,6 +136,7 @@ async def _run_decomposer() -> str:
             asyncio.create_task(_create_tech_tasks(c.id, c.topic, result))
             break
     await _pulse("Декомпозер", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    await _journal("Декомпозер", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — разбивка карточек", result[:400])
     return result
 
 
@@ -147,6 +160,7 @@ async def _run_synchronizer() -> str:
         lines.append("  очередь пуста")
     result = await _llm(get_trained_prompt("Синхронизатор", SYS_SYNCHRONIZER), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Синхронизатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    await _journal("Синхронизатор", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — проверка конфликтов", result[:400])
     return result
 
 
@@ -167,6 +181,7 @@ async def _run_ocenschik_proj() -> str:
         lines.append(f"  {status}: {cnt}")
     result = await _llm(get_trained_prompt("Оценщик Проектов", SYS_OCENSCHIK_PROJ), [{"role": "user", "content": "\n".join(lines)}])
     await _pulse("Оценщик Проектов", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
+    await _journal("Оценщик Проектов", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — оценка сложности и рисков", result[:400])
     return result
 
 
@@ -180,6 +195,13 @@ async def run_project_check() -> None:
 
     def safe(r) -> str:
         return r if isinstance(r, str) else f"[ошибка: {r}]"
+
+    ts = datetime.utcnow().strftime("%d.%m %H:%M")
+
+    await _journal(PROJECT_FOREMAN,
+                   f"← Принял от воркеров — {ts}",
+                   f"Декомпозер: {safe(dec)[:80]}\nСинхронизатор: {safe(syn)[:80]}\nОценщик: {safe(oce)[:80]}",
+                   entry_type="incoming")
 
     report_ctx = (
         f"=== ДЕКОМПОЗЕР (разбивка задач) ===\n{safe(dec)}\n\n"
@@ -195,6 +217,10 @@ async def run_project_check() -> None:
         ))
         await db.commit()
 
+    await _journal(PROJECT_FOREMAN,
+                   f"→ Передал отчёт → ProjectDeptReport — {ts}",
+                   analysis[:300], entry_type="outgoing")
+    await _journal(PROJECT_FOREMAN, f"Цикл {ts} завершён", analysis[:400])
     log.info("Проектный отдел: отчёт сохранён")
     await _pulse(PROJECT_FOREMAN, "idle", f"последний отчёт: {datetime.utcnow().strftime('%H:%M')}")
 
