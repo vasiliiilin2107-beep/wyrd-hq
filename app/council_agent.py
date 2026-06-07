@@ -13,6 +13,16 @@ from .models import Agent, AgentJournal, AnalyticsReport, CouncilMessage, Counci
 log = logging.getLogger(__name__)
 
 POLZA_URL = "https://polza.ai/api/v1/chat/completions"
+
+
+async def _pulse_council(name: str, task: str | None = None) -> None:
+    async with SessionLocal() as db:
+        agent = (await db.execute(select(Agent).where(Agent.name == name))).scalar_one_or_none()
+        if agent:
+            agent.status = "idle"
+            agent.current_task = task
+            agent.last_pulse = datetime.utcnow()
+            await db.commit()
 POLZA_KEY = os.environ.get("POLZA_API_KEY", "")
 MODEL = "deepseek/deepseek-v4-flash"
 
@@ -453,6 +463,9 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             ))
             await db.commit()
 
+        await _pulse_council("Стратег", f"сессия #{session_id}: {idea[:50]}")
+        await _pulse_council("Архитектор", f"техоценка #{session_id}: {idea[:50]}")
+        await _pulse_council("Картограф", f"вердикт #{session_id}: {idea[:50]}")
         log.info("Council session %d done", session_id)
 
     except Exception as e:
