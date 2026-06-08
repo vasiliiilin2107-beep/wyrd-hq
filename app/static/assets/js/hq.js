@@ -59,6 +59,7 @@ function startClock() {
 
 /* ─── TAB SWITCHING ─────────────────────────────────── */
 const TAB_LABELS = {
+  home:         'ГЛАВНАЯ',
   map:          'КАРТА МИРА',
   notes:        'ЗАМЕТКИ',
   tasks:        'ДОСКА ЗАДАЧ',
@@ -69,22 +70,68 @@ const TAB_LABELS = {
   library:      'БИБЛИОТЕКА',
   constitution: 'КОНСТИТУЦИЯ',
   scribe:       'SCRIBE',
+  civilization: 'ЦИВИЛИЗАЦИЯ',
+  world:        'ПАСПОРТА',
+  education:    'ОБРАЗОВАНИЕ',
+  bookstudio:   'BOOK STUDIO',
+  audit:        'АУДИТ',
 };
 
+let _currentTab = 'home';
+
 function setTab(name, btn) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-  document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
-  const panel = document.getElementById('tab-' + name);
-  if (panel) panel.style.display = 'flex';
+  if (_currentTab === name) return;
+  const current = document.getElementById('tab-' + _currentTab);
+  const next = document.getElementById('tab-' + name);
+  if (!next) return;
+
+  if (current) {
+    current.style.transition = 'opacity 0.14s ease, transform 0.14s ease';
+    current.style.opacity = '0';
+    current.style.transform = 'translateY(3px)';
+    setTimeout(() => {
+      current.style.display = 'none';
+      current.style.transition = '';
+      current.style.opacity = '';
+      current.style.transform = '';
+    }, 150);
+  }
+
+  const delay = current ? 120 : 0;
+  setTimeout(() => {
+    next.style.display = 'flex';
+    next.style.opacity = '0';
+    next.style.transform = 'translateY(3px)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      next.style.transition = 'opacity 0.16s ease, transform 0.16s ease';
+      next.style.opacity = '1';
+      next.style.transform = 'translateY(0)';
+    }));
+  }, delay);
+
+  _currentTab = name;
+
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   const label = document.getElementById('tab-label');
-  if (label) label.textContent = TAB_LABELS[name] || name.toUpperCase();
+  if (label) label.textContent = (btn?.querySelector('.sb-label')?.textContent) || TAB_LABELS[name] || name.toUpperCase();
 
   if (name === 'map')     initMap();
   if (name === 'notes')   loadNotes();
   if (name === 'tasks')   loadTasks();
   if (name === 'technik') loadTechTasks();
   if (name === 'ideas')   loadIdeas();
+  if (name === 'home')    { loadHome(); startHomeUpdates(); }
+  if (name !== 'home')    stopHomeUpdates();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('sb-toggle');
+  if (!sb) return;
+  const collapsed = sb.classList.toggle('collapsed');
+  if (btn) btn.textContent = collapsed ? '›' : '‹';
+  try { localStorage.setItem('sb-collapsed', collapsed ? '1' : '0'); } catch {}
 }
 
 /* ─── BRANCH COLORS ─────────────────────────────────── */
@@ -457,10 +504,12 @@ async function loadTopbarStats() {
       const live = agents.filter(a => {
         if (!a.last_pulse) return false;
         const ms = now - new Date(a.last_pulse.endsWith('Z') ? a.last_pulse : a.last_pulse+'Z').getTime();
-        return ms < 1200000; // 20 мин
+        return ms < 1200000;
       }).length;
       const el = document.getElementById('stat-live');
       if (el) el.textContent = live;
+      const sbLive = document.getElementById('sb-badge-live');
+      if (sbLive) sbLive.textContent = live;
     }
   } catch {}
   try {
@@ -470,6 +519,8 @@ async function loadTopbarStats() {
       const tasks = Array.isArray(d) ? d : (d.tasks || []);
       const el = document.getElementById('stat-tasks');
       if (el) el.textContent = tasks.length;
+      const sbTasks = document.getElementById('sb-badge-tasks');
+      if (sbTasks) sbTasks.textContent = tasks.length;
     }
   } catch {}
   try {
@@ -763,10 +814,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('starfield');
   if (canvas) initStars(canvas);
 
+  // Restore sidebar collapse state
+  try {
+    if (localStorage.getItem('sb-collapsed') === '1') {
+      const sb = document.getElementById('sidebar');
+      const btn = document.getElementById('sb-toggle');
+      if (sb) sb.classList.add('collapsed');
+      if (btn) btn.textContent = '›';
+    }
+  } catch {}
+
   startClock();
-  initMap();
   initWSToasts();
   loadTopbarStats();
+  loadHome();
+  startHomeUpdates();
 
   setInterval(loadTopbarStats, 30000);
 });

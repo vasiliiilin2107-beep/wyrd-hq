@@ -11,7 +11,7 @@
   .main-area { grid-column: 1 !important; grid-row: 3 !important; padding: 12px !important; overflow-y: auto !important; }
   .feed { display: none !important; }
 
-  /* ── САЙДБАР ГОРИЗОНТАЛЬНЫЙ ── */
+  /* ── САЙДБАР ГОРИЗОНТАЛЬНЫЙ (legacy) ── */
   .sidebar {
     flex-direction: row !important;
     align-items: center !important;
@@ -26,6 +26,12 @@
   }
   .sidebar > div[style*="flex:1"] { display: none !important; }
   .nav-btn { width: 44px !important; height: 44px !important; flex-shrink: 0 !important; font-size: 1.2rem !important; }
+  /* ── SIDEBAR V2 НА МОБИЛКЕ — иконки ── */
+  .sidebar-v2 { width: 48px !important; padding: 0 4px 4px !important; }
+  .sidebar-v2 .sb-label, .sidebar-v2 .sb-section-title, .sidebar-v2 .sb-badge,
+  .sidebar-v2 .sb-bottom-row, .sidebar-v2 .sb-logo-slash, .sidebar-v2 .sb-collapse-btn { display: none !important; }
+  .sidebar-v2 .sb-header { justify-content: center !important; padding: 10px 0 !important; }
+  .sidebar-v2 .sb-item { justify-content: center !important; padding: 7px 0 !important; }
 
   /* ── ЧИТАЕМОСТЬ ТОПБАРА ── */
   .topbar { background: rgba(0,0,0,.48) !important; }

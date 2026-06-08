@@ -54,33 +54,127 @@
       <div class="topbar-time" id="clock">--:--:-- МСК</div>
     </header>
 
-    <!-- ─── САЙДБАР ─────────────────────────────────────── -->
-    <nav class="sidebar">
-      <button class="nav-btn active" title="Карта мира"     data-tab="map"          onclick="setTab('map',this)">🗺️</button>
-      <button class="nav-btn"        title="Техник"         data-tab="technik"      onclick="setTab('technik',this)">🔧</button>
-      <button class="nav-btn"        title="Библиотека"     data-tab="library"      onclick="setTab('library',this);loadLibrary()">📚</button>
-      <button class="nav-btn"        title="Идеи"           data-tab="ideas"        onclick="setTab('ideas',this)">💡</button>
-      <button class="nav-btn"        title="Цивилизация"    data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">🏛️</button>
-      <button class="nav-btn"        title="Стройка"        data-tab="build"        onclick="setTab('build',this);loadBuild()">🏗️</button>
-      <button class="nav-btn"        title="Заметки"        data-tab="notes"        onclick="setTab('notes',this)">📝</button>
-      <button class="nav-btn"        title="Файлы Томаса"   data-tab="files"        onclick="setTab('files',this);loadFilesList()">📁</button>
-      <button class="nav-btn"        title="Scribe"         data-tab="scribe"       onclick="setTab('scribe',this);loadScribe()">📺</button>
-      <button class="nav-btn"        title="Конституция"    data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">📜</button>
-      <button class="nav-btn"        title="Профобразование" data-tab="education"   onclick="setTab('education',this);loadEducation()">👔</button>
-      <button class="nav-btn"        title="Мир — паспорта" data-tab="world"        onclick="setTab('world',this);loadWorld()">🌍</button>
-      <button class="nav-btn"        title="Book Studio"    data-tab="bookstudio"   onclick="setTab('bookstudio',this);loadBookStudio()">📖</button>
-      <button class="nav-btn"        title="Аудит мира"     data-tab="audit"        onclick="setTab('audit',this);loadAudit()">🔍</button>
-      <button class="nav-btn"        title="Томас"          onclick="window.location='/thomas'">👁️</button>
-      <div style="flex:1"></div>
-      <button class="nav-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)">⚡</button>
-      <button class="nav-btn" title="На главную" onclick="window.location='/'">🪐</button>
+    <!-- ─── САЙДБАР V2 ───────────────────────────────────── -->
+    <nav class="sidebar-v2" id="sidebar">
+      <div class="sb-header">
+        <span class="sb-logo-text">WYRD</span>
+        <span class="sb-logo-slash">HQ</span>
+        <button class="sb-collapse-btn" id="sb-toggle" onclick="toggleSidebar()">‹</button>
+      </div>
+
+      <div class="sb-section">
+        <button class="sb-item active" data-tab="home" onclick="setTab('home',this)">
+          <span class="sb-icon">🏠</span><span class="sb-label">Главная</span>
+        </button>
+      </div>
+
+      <div class="sb-section-title">СТУДИЯ</div>
+      <div class="sb-section">
+        <button class="sb-item" data-tab="bookstudio" onclick="setTab('bookstudio',this);loadBookStudio()">
+          <span class="sb-icon">📖</span><span class="sb-label">Book Studio</span>
+          <span class="sb-badge" id="sb-badge-books">—</span>
+        </button>
+        <button class="sb-item" data-tab="library" onclick="setTab('library',this);loadLibrary()">
+          <span class="sb-icon">📚</span><span class="sb-label">Библиотека</span>
+          <span class="sb-badge green" id="sb-badge-lib">—</span>
+        </button>
+        <button class="sb-item" data-tab="ideas" onclick="setTab('ideas',this)">
+          <span class="sb-icon">💡</span><span class="sb-label">Идеи</span>
+        </button>
+      </div>
+
+      <div class="sb-section-title">АГЕНТЫ</div>
+      <div class="sb-section">
+        <button class="sb-item" data-tab="civilization" onclick="setTab('civilization',this);loadCivilization()">
+          <span class="sb-icon">🏛️</span><span class="sb-label">Цивилизация</span>
+          <span class="sb-badge amber" id="sb-badge-live">—</span>
+        </button>
+        <button class="sb-item" data-tab="world" onclick="setTab('world',this);loadWorld()">
+          <span class="sb-icon">🌍</span><span class="sb-label">Паспорта</span>
+        </button>
+        <button class="sb-item" data-tab="education" onclick="setTab('education',this);loadEducation()">
+          <span class="sb-icon">👔</span><span class="sb-label">Образование</span>
+        </button>
+      </div>
+
+      <div class="sb-section-title">ОПЕРАЦИИ</div>
+      <div class="sb-section">
+        <button class="sb-item" data-tab="technik" onclick="setTab('technik',this)">
+          <span class="sb-icon">🔧</span><span class="sb-label">Техник</span>
+          <span class="sb-badge" id="sb-badge-tasks">—</span>
+        </button>
+        <button class="sb-item" data-tab="build" onclick="setTab('build',this);loadBuild()">
+          <span class="sb-icon">🏗️</span><span class="sb-label">Стройка</span>
+        </button>
+        <button class="sb-item" data-tab="notes" onclick="setTab('notes',this)">
+          <span class="sb-icon">📝</span><span class="sb-label">Заметки</span>
+        </button>
+      </div>
+
+      <div class="sb-section-title">СИСТЕМА</div>
+      <div class="sb-section">
+        <button class="sb-item" data-tab="map" onclick="setTab('map',this)">
+          <span class="sb-icon">🗺️</span><span class="sb-label">Карта мира</span>
+        </button>
+        <button class="sb-item" data-tab="audit" onclick="setTab('audit',this);loadAudit()">
+          <span class="sb-icon">🔍</span><span class="sb-label">Аудит</span>
+        </button>
+        <button class="sb-item" data-tab="constitution" onclick="setTab('constitution',this);loadConstitution()">
+          <span class="sb-icon">📜</span><span class="sb-label">Конституция</span>
+        </button>
+        <button class="sb-item" data-tab="files" onclick="setTab('files',this);loadFilesList()">
+          <span class="sb-icon">📁</span><span class="sb-label">Файлы</span>
+        </button>
+        <button class="sb-item" data-tab="scribe" onclick="setTab('scribe',this);loadScribe()">
+          <span class="sb-icon">📺</span><span class="sb-label">Scribe</span>
+        </button>
+      </div>
+
+      <div class="sb-spacer"></div>
+      <div class="sb-bottom">
+        <button class="sb-item sb-bottom-btn" onclick="window.location='/thomas'">
+          <span class="sb-icon">👁️</span><span class="sb-label">Томас</span>
+        </button>
+        <div class="sb-bottom-row">
+          <button class="sb-icon-btn" id="trigger-btn" title="Запустить все циклы" onclick="triggerAll(this)">⚡</button>
+          <button class="sb-icon-btn" title="На главную" onclick="window.location='/'">🪐</button>
+        </div>
+      </div>
     </nav>
 
     <!-- ─── ГЛАВНАЯ ОБЛАСТЬ ─────────────────────────────── -->
     <main class="main-area">
 
+      <!-- TAB: HOME -->
+      <div id="tab-home" class="tab-panel">
+        <div class="home-header">
+          <div class="home-greeting">ДОБРО ПОЖАЛОВАТЬ, ШЕФ</div>
+          <div class="home-date" id="home-date">—</div>
+        </div>
+        <div id="home-stats" class="home-stats-row"></div>
+        <div class="home-grid">
+          <div>
+            <div class="home-col-title">ПОСЛЕДНИЕ СОБЫТИЯ <span class="home-auto-tag">авто</span></div>
+            <div id="home-feed" class="home-feed"><div style="color:var(--text-dim);font-size:.75rem">Загрузка...</div></div>
+          </div>
+          <div>
+            <div class="home-col-title">БЫСТРЫЕ ДЕЙСТВИЯ</div>
+            <div class="home-actions">
+              <button class="home-action-btn" onclick="setTab('technik',document.querySelector('[data-tab=technik]'))">⚡ Техник</button>
+              <button class="home-action-btn" onclick="setTab('bookstudio',document.querySelector('[data-tab=bookstudio]'));loadBookStudio()">📖 Book Studio</button>
+              <button class="home-action-btn" onclick="setTab('civilization',document.querySelector('[data-tab=civilization]'));loadCivilization();setTimeout(()=>{try{showCouncilForm()}catch{}},600)">🧠 Совет</button>
+              <button class="home-action-btn" onclick="window.location='/thomas'">👁️ Томас</button>
+            </div>
+            <div class="home-col-title" style="margin-top:16px">BOOK STUDIO</div>
+            <div id="home-bs-mini" class="home-mini-widget">Загрузка...</div>
+            <div class="home-col-title" style="margin-top:14px">АГЕНТЫ ОНЛАЙН</div>
+            <div id="home-agents-mini" class="home-mini-widget">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB: MAP -->
-      <div id="tab-map" class="tab-panel" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 56px)">
+      <div id="tab-map" class="tab-panel" style="display:none;padding:0;overflow:hidden;flex-direction:column;height:calc(100vh - 56px)">
         <div id="map-subnav">
           <button class="map-sv"        onclick="setMapView(this,'/world/WYRD_LIVE.html')" style="color:#4aff88;border-color:#4aff8855">⚡ ОНЛАЙН</button>
           <button class="map-sv active" onclick="setMapView(this,'/world/WYRD_HYBRID.html')">⬡ ГИБРИД</button>
@@ -400,6 +494,18 @@
 
   </div>
 
+  <!-- ─── COMMAND PALETTE ─────────────────────────────── -->
+  <div id="cmd-overlay" class="cmd-overlay" style="display:none" onclick="closeCmdPalette()">
+    <div class="cmd-box" onclick="event.stopPropagation()">
+      <div class="cmd-search-row">
+        <span class="cmd-search-icon">⌘</span>
+        <input id="cmd-input" class="cmd-input" placeholder="Перейти, найти, создать..." oninput="cmdFilter(this.value)" onkeydown="cmdKeyDown(event)">
+      </div>
+      <div id="cmd-list" class="cmd-list"></div>
+      <div class="cmd-hint">↑↓ навигация · Enter выбор · Esc закрыть</div>
+    </div>
+  </div>
+
   <!-- ─── ТОСТЫ ─────────────────────────────────────── -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -423,7 +529,9 @@
 
   <script src="/assets/js/book_studio.js?v=1"></script>
   <script src="/assets/js/build.js?v=2"></script>
-  <script src="/assets/js/hq.js?v=2"></script>
+  <script src="/assets/js/hq.js?v=3"></script>
+  <script src="/assets/js/home.js?v=1"></script>
+  <script src="/assets/js/command_palette.js?v=1"></script>
   <script src="/assets/js/map.js?v=2"></script>
   <script src="/assets/js/technik.js?v=2"></script>
   <script src="/assets/js/ideas.js?v=2"></script>
