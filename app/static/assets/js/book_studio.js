@@ -1,6 +1,6 @@
 /* WYRD Book Studio — Dashboard JS */
 
-let _bsSlug = null;
+let _bsSlug = null, _bsFilter = 'all', _bsChapters = [];
 const _BS_GOOD = 7.5, _BS_OK = 6.5;
 
 async function _bsFetch(path) {
@@ -78,30 +78,62 @@ async function loadBsChapters(slug) {
   if (!el) return;
   el.innerHTML = '<div style="color:var(--text-dim);font-size:.78rem">Загрузка глав...</div>';
   try {
-    const chs = await _bsFetch(`/bs/books/${slug}/chapters`);
-    const scores = chs.map(c => c.score || 0);
-    const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
-    const trend = _scoreTrend(scores);
-    const trendColor = trend === '↑' ? 'var(--green)' : trend === '↓' ? 'var(--red)' : 'var(--text-dim)';
-    const sparkline = _sparkline(scores.slice(-10));
-    const rows = [...chs].reverse().map(c => _chapterRow(slug, c)).join('');
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div>
-          <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.08em">ГЛАВЫ</span>
-          <span style="font-size:.75rem;color:var(--text);margin-left:8px"><b style="color:var(--amber)">${chs.length}</b> шт</span>
-          <span style="font-size:.75rem;color:var(--text-dim);margin-left:8px">ср. <b style="color:var(--amber)">${avg}</b>/10</span>
-          <span style="font-size:.9rem;color:${trendColor};margin-left:8px;font-weight:700">${trend}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${sparkline}
-          <button class="wyrd-btn wyrd-btn-sm" onclick="bsGenerate('${slug}')">＋ Глава</button>
-        </div>
-      </div>
-      <div style="max-height:360px;overflow-y:auto;margin:0 -14px;padding:0 14px">${rows}</div>`;
+    _bsChapters = await _bsFetch(`/bs/books/${slug}/chapters`);
+    _bsRenderChapterList(slug);
   } catch (e) {
     el.innerHTML = `<div style="color:var(--red);font-size:.75rem">${e.message}</div>`;
   }
+}
+
+function _bsRenderChapterList(slug) {
+  const s = slug || _bsSlug;
+  const el = document.getElementById('bs-chapters');
+  if (!el) return;
+  const chs = _bsChapters;
+  const scores = chs.map(c => c.score || 0);
+  const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+  const trend = _scoreTrend(scores);
+  const trendColor = trend === '↑' ? 'var(--green)' : trend === '↓' ? 'var(--red)' : 'var(--text-dim)';
+  const sparkline = _sparkline(scores.slice(-10));
+  const toPublish = chs.filter(c => !c.published && (c.score || 0) >= _BS_OK);
+  const filtered = _bsApplyFilter(chs);
+  const rows = [...filtered].reverse().map(c => _chapterRow(s, c)).join('');
+  const filters = [
+    ['all','Все'], ['pub','RULATE'], ['draft','Черн.'],
+    ['good','≥7.5'], ['ok','6.5–7.5']
+  ].map(([f, lbl]) =>
+    `<button class="wyrd-btn wyrd-btn-sm${_bsFilter === f ? '' : ' wyrd-btn-ghost'}" onclick="bsSetFilter('${f}')" style="padding:3px 8px">${lbl}</button>`
+  ).join('');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+      <div>
+        <span style="font-size:.7rem;color:var(--text-dim);letter-spacing:.08em">ГЛАВЫ</span>
+        <span style="font-size:.75rem;color:var(--text);margin-left:8px"><b style="color:var(--amber)">${chs.length}</b> шт</span>
+        <span style="font-size:.75rem;color:var(--text-dim);margin-left:8px">ср. <b style="color:var(--amber)">${avg}</b>/10</span>
+        <span style="font-size:.9rem;color:${trendColor};margin-left:8px;font-weight:700">${trend}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${sparkline}
+        <button class="wyrd-btn wyrd-btn-sm" onclick="bsGenerate('${s}')">＋ Глава</button>
+        ${toPublish.length ? `<button class="wyrd-btn wyrd-btn-sm" onclick="bsPublishAll('${s}')" title="${toPublish.length} глав ≥${_BS_OK}">📤 Все (${toPublish.length})</button>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${filters}</div>
+    ${filtered.length < chs.length ? `<div style="font-size:.65rem;color:var(--text-dim);margin-bottom:6px">${filtered.length} из ${chs.length}</div>` : ''}
+    <div style="max-height:320px;overflow-y:auto;margin:0 -14px;padding:0 14px">${rows}</div>`;
+}
+
+function _bsApplyFilter(chs) {
+  if (_bsFilter === 'pub') return chs.filter(c => c.published);
+  if (_bsFilter === 'draft') return chs.filter(c => !c.published);
+  if (_bsFilter === 'good') return chs.filter(c => (c.score || 0) >= _BS_GOOD);
+  if (_bsFilter === 'ok') return chs.filter(c => (c.score || 0) >= _BS_OK && (c.score || 0) < _BS_GOOD);
+  return chs;
+}
+
+function bsSetFilter(f) {
+  _bsFilter = f;
+  _bsRenderChapterList();
 }
 
 function _chapterRow(slug, c) {
@@ -231,6 +263,19 @@ async function loadBsArc(slug) {
   try {
     const arc = await _bsFetch(`/bs/books/${slug}/arc`);
     const goals = arc.chapter_goals || [];
+    const written = _bsChapters.length;
+    const arcTotal = goals.length;
+    const pct = arcTotal ? Math.min(100, Math.round(written / arcTotal * 100)) : 0;
+    const progressBar = arcTotal ? `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:.62rem;color:var(--text-dim);letter-spacing:.06em">ПРОГРЕСС АРКИ</span>
+          <span style="font-size:.65rem;color:var(--amber);font-weight:700">${written}/${arcTotal} · ${pct}%</span>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:4px;height:8px">
+          <div style="width:${pct}%;height:100%;background:var(--amber);border-radius:4px;transition:width .5s;box-shadow:0 0 8px rgba(255,176,32,.4)"></div>
+        </div>
+      </div>` : '';
     const rows = goals.slice(0, 12).map(g => {
       const fn = (g.arc_function || '').toLowerCase();
       const col = _ARC_COLORS[fn] || 'var(--text-dim)';
@@ -251,6 +296,7 @@ async function loadBsArc(slug) {
           <span style="margin-left:8px;font-size:.72rem;color:var(--amber);font-weight:700">${goals.length} глав</span>
         </div>
       </div>
+      ${progressBar}
       <div style="font-size:.73rem;color:var(--text-dim);margin-bottom:12px;line-height:1.55;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid var(--amber)">${arc.arc_summary || ''}</div>
       <div>${rows}</div>${more}`;
   } catch (e) {
@@ -322,6 +368,27 @@ async function loadBsNextBook(slug) {
   } catch (e) {
     el.innerHTML = `<div style="color:var(--red);font-size:.75rem">${e.message}</div>`;
   }
+}
+
+// ── Публикация всех ────────────────────────────────────────────
+async function bsPublishAll(slug) {
+  const s = slug || _bsSlug;
+  const toPublish = _bsChapters
+    .filter(c => !c.published && (c.score || 0) >= _BS_OK)
+    .sort((a, b) => a.number - b.number);
+  if (!toPublish.length) { showToast('Нет глав для публикации'); return; }
+  if (!confirm(`Опубликовать ${toPublish.length} глав (score ≥ ${_BS_OK})?`)) return;
+  let ok = 0, err = 0;
+  for (const c of toPublish) {
+    try {
+      const r = await fetch(`/bs/books/${s}/publish/${c.number}`, {method: 'POST'});
+      const d = await r.json();
+      if (d.ok) ok++; else err++;
+    } catch { err++; }
+    await new Promise(res => setTimeout(res, 600));
+  }
+  showToast(`✅ Опубликовано: ${ok}${err ? ' | ❌ Ошибок: ' + err : ''}`);
+  await loadBsChapters(s);
 }
 
 // ── Генерация ──────────────────────────────────────────────────
