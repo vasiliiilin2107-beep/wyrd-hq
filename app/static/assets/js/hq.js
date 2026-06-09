@@ -545,7 +545,7 @@ async function loadTopbarStats() {
     }
   } catch {}
   try {
-    const r = await fetch('/library-proxy/knowledge/stats');
+    const r = await fetch('/library/stats');
     if (r.ok) {
       const d = await r.json();
       const total = d.total || Object.values(d.by_category || {}).reduce((s, n) => s + n, 0);
