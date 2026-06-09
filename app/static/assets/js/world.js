@@ -1,163 +1,145 @@
-/* world.js — вкладка 🌍 Мир: отделы, агенты, паспорта */
+/* world.js v2 — вкладка 🌍 Мир */
 
-let _worldDepts = [];
-let _worldActiveDept = null;
-let _worldActiveAgent = null;
-
-async function loadWorld() {
-  try {
-    const r = await fetch('/api/world/departments');
-    const data = await r.json();
-    _worldDepts = data.departments || [];
-    _renderWorldDepts();
-    if (_worldDepts.length) selectWorldDept(_worldDepts[0].id);
-  } catch(e) {
-    document.getElementById('world-dept-list').innerHTML =
-      '<div style="color:var(--text-dim);font-size:.65rem;padding:8px">Ошибка загрузки</div>';
+const World = (() => {
+  function _e(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
-}
 
-function _renderWorldDepts() {
-  const el = document.getElementById('world-dept-list');
-  if (!el) return;
-  el.innerHTML = _worldDepts.map(d => `
-    <div id="world-dept-btn-${d.id}"
-         onclick="selectWorldDept('${d.id}')"
-         style="padding:10px 12px;cursor:pointer;border-radius:8px;margin-bottom:4px;
-                display:flex;align-items:center;gap:8px;transition:background .15s;
-                font-size:.68rem;font-weight:600;letter-spacing:.05em">
-      <span>${d.icon}</span>
-      <span>${d.name}</span>
-      <span style="margin-left:auto;font-size:.55rem;color:var(--text-dim)">${d.agents.length} агент${d.agents.length===1?'':'ов'}</span>
-    </div>
-  `).join('');
-}
+  function _timeAgo(iso) {
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60)  return diff + 'с';
+    if (diff < 3600) return Math.floor(diff/60) + 'м';
+    if (diff < 86400) return Math.floor(diff/3600) + 'ч';
+    return Math.floor(diff/86400) + 'д';
+  }
 
-async function selectWorldDept(deptId) {
-  _worldActiveDept = deptId;
-  _worldActiveAgent = null;
+  function _renderServices(services) {
+    const el = document.getElementById('world-services-grid');
+    if (!el) return;
+    if (!services.length) { el.innerHTML = '<div class="world-empty">Нет данных</div>'; return; }
 
-  // Подсветить активный
-  document.querySelectorAll('[id^="world-dept-btn-"]').forEach(el => {
-    el.style.background = el.id === `world-dept-btn-${deptId}` ? 'rgba(255,255,255,.07)' : '';
-  });
+    const statusColor = { online: 'var(--status-alive)', error: 'var(--status-dead)', offline: 'var(--status-dead)' };
+    const statusLabel = { online: 'online', error: 'ошибка', offline: 'offline' };
 
-  const dept = _worldDepts.find(d => d.id === deptId);
-  if (!dept) return;
+    el.innerHTML = services.map(s => `
+      <div class="world-svc-card">
+        <span class="status-dot" style="background:${statusColor[s.status] || 'var(--status-paused)'}"></span>
+        <span class="world-svc-name">${_e(s.name)}</span>
+        <span class="world-svc-status ${s.status === 'online' ? 'text-alive' : 'text-dead'}">${statusLabel[s.status] || s.status}</span>
+        <span class="world-svc-ms">${s.ms}мс</span>
+      </div>
+    `).join('') + `
+      <div class="world-svc-card world-svc-pause">
+        <span class="status-dot" style="background:var(--status-paused)"></span>
+        <span class="world-svc-name">Нейроцех</span>
+        <span class="world-svc-status" style="color:var(--status-paused)">пауза</span>
+        <span class="world-svc-ms">~июль</span>
+      </div>`;
+  }
 
-  // Рендер агентов
-  const agentsEl = document.getElementById('world-agents-list');
-  if (agentsEl) {
-    agentsEl.innerHTML = dept.agents.map(a => `
-      <div onclick="selectWorldAgent('${a.id}')"
-           id="world-agent-btn-${a.id}"
-           style="padding:8px 10px;cursor:pointer;border-radius:6px;margin-bottom:3px;
-                  display:flex;align-items:center;gap:7px;font-size:.65rem;transition:background .15s">
-        <span>${a.icon}</span>
-        <span style="font-weight:600">${a.name}</span>
+  function _renderBrief(events) {
+    const el = document.getElementById('world-brief-list');
+    if (!el) return;
+    if (!events.length) { el.innerHTML = '<div class="world-empty">Нет событий</div>'; return; }
+    el.innerHTML = events.map(ev => `
+      <div class="world-brief-row">
+        <span class="world-brief-agent">${_e(ev.agent)}</span>
+        <span class="world-brief-type badge">${_e(ev.type)}</span>
+        <span class="world-brief-text">${_e(ev.summary || '—')}</span>
+        <span class="world-brief-time">${_timeAgo(ev.time)}</span>
       </div>
     `).join('');
   }
 
-  // Загрузить файл отдела
-  await _loadWorldContent(`/api/world/departments/${encodeURIComponent(deptId)}`);
-}
+  function _renderAnalytics(report) {
+    const el = document.getElementById('world-analytics-block');
+    if (!el) return;
+    if (!report) { el.innerHTML = '<div class="world-empty">Отчёт не найден — запусти аналитику</div>'; return; }
 
-async function selectWorldAgent(agentId) {
-  _worldActiveAgent = agentId;
+    const date = new Date(report.checked_at).toLocaleDateString('ru', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const analysis = report.analysis || '';
 
-  document.querySelectorAll('[id^="world-agent-btn-"]').forEach(el => {
-    el.style.background = el.id === `world-agent-btn-${agentId}` ? 'rgba(255,255,255,.1)' : '';
-  });
-
-  await _loadWorldContent(`/api/world/agents/${encodeURIComponent(agentId)}`);
-}
-
-async function _loadWorldContent(url) {
-  const el = document.getElementById('world-content');
-  if (!el) return;
-  el.innerHTML = '<div style="color:var(--text-dim);font-size:.65rem;padding:16px">Загрузка...</div>';
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(r.status);
-    const text = await r.text();
-    el.innerHTML = _renderMd(text);
-  } catch(e) {
-    el.innerHTML = `<div style="color:#ef4444;font-size:.65rem;padding:16px">Ошибка загрузки: ${e.message}</div>`;
-  }
-}
-
-// Минимальный markdown-рендерер
-function _renderMd(text) {
-  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const lines = text.split('\n');
-  let html = '';
-  let inCode = false, inTable = false;
-
-  for (let line of lines) {
-    if (line.startsWith('```')) {
-      if (!inCode) {
-        if (inTable) { html += '</table>'; inTable = false; }
-        html += '<pre style="background:rgba(0,0,0,.4);border-radius:6px;padding:10px;font-size:.6rem;overflow-x:auto;margin:8px 0">';
-        inCode = true;
-      } else {
-        html += '</pre>'; inCode = false;
-      }
-      continue;
+    const sections = { observation: '', conclusion: '', proposal: '' };
+    const lines = analysis.split('\n');
+    let cur = '';
+    for (const line of lines) {
+      const l = line.toLowerCase();
+      if (l.includes('наблюден') || l.includes('observation')) { cur = 'observation'; continue; }
+      if (l.includes('вывод') || l.includes('conclusion'))     { cur = 'conclusion';  continue; }
+      if (l.includes('предложен') || l.includes('proposal'))   { cur = 'proposal';    continue; }
+      if (cur && line.trim()) sections[cur] += line.trim() + ' ';
     }
-    if (inCode) { html += esc(line) + '\n'; continue; }
-
-    if (line.startsWith('| ')) {
-      if (!inTable) { html += '<table style="border-collapse:collapse;width:100%;font-size:.62rem;margin:8px 0">'; inTable = true; }
-      const cells = line.split('|').filter((_,i,a)=>i>0&&i<a.length-1);
-      const isDiv = cells.every(c=>/^[-: ]+$/.test(c.trim()));
-      if (!isDiv) {
-        html += '<tr>' + cells.map(c=>`<td style="border:1px solid var(--border);padding:4px 8px">${_inlineMd(c.trim())}</td>`).join('') + '</tr>';
-      }
-      continue;
+    if (!sections.observation && !sections.conclusion && !sections.proposal) {
+      sections.observation = analysis.slice(0, 300);
     }
-    if (inTable) { html += '</table>'; inTable = false; }
 
-    if (!line.trim()) { html += '<div style="height:6px"></div>'; continue; }
-    if (line.startsWith('# '))  { html += `<div style="font-size:.85rem;font-weight:700;margin:12px 0 6px;color:#f8fafc">${esc(line.slice(2))}</div>`; continue; }
-    if (line.startsWith('## ')) { html += `<div style="font-size:.75rem;font-weight:700;margin:10px 0 5px;color:#e2e8f0;border-bottom:1px solid var(--border);padding-bottom:3px">${esc(line.slice(3))}</div>`; continue; }
-    if (line.startsWith('### ')){ html += `<div style="font-size:.68rem;font-weight:700;margin:8px 0 4px;color:#cbd5e1">${esc(line.slice(4))}</div>`; continue; }
-    if (line.startsWith('> '))  { html += `<div style="border-left:3px solid #4a9eff;padding:4px 10px;color:#94a3b8;font-size:.62rem;margin:4px 0">${_inlineMd(line.slice(2))}</div>`; continue; }
-    if (line.startsWith('- '))  { html += `<div style="font-size:.63rem;padding:1px 0 1px 12px;color:#f1f5f9">• ${_inlineMd(line.slice(2))}</div>`; continue; }
-
-    html += `<div style="font-size:.63rem;line-height:1.6;color:#f1f5f9;margin:2px 0">${_inlineMd(line)}</div>`;
+    el.innerHTML = `
+      <div class="world-analytics-date">Отчёт от ${_e(date)}</div>
+      ${sections.observation ? `<div class="world-analytics-section"><span class="world-analytics-label">НАБЛЮДЕНИЕ</span><p>${_e(sections.observation)}</p></div>` : ''}
+      ${sections.conclusion  ? `<div class="world-analytics-section"><span class="world-analytics-label">ВЫВОД</span><p>${_e(sections.conclusion)}</p></div>` : ''}
+      ${sections.proposal    ? `<div class="world-analytics-section"><span class="world-analytics-label">ПРЕДЛОЖЕНИЕ</span><p>${_e(sections.proposal)}</p></div>` : ''}
+    `;
   }
-  if (inCode) html += '</pre>';
-  if (inTable) html += '</table>';
-  return html;
-}
 
-function _inlineMd(s) {
-  const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return esc(s)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,.3);border-radius:3px;padding:1px 4px;font-size:.9em">$1</code>');
-}
-
-// Универсальный модал для промптов и длинных текстов
-function showWorldModal(title, text) {
-  let modal = document.getElementById('world-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'world-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
-    modal.onclick = e => { if(e.target===modal) modal.remove(); };
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML = `
-    <div style="background:#1e293b;border:1px solid var(--border);border-radius:12px;
-                width:100%;max-width:700px;padding:20px;margin:auto;position:relative">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:.75rem;font-weight:700;color:#f8fafc">${title}</div>
-        <button onclick="document.getElementById('world-modal').remove()"
-                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.2rem">✕</button>
+  function _renderDispatchers() {
+    const el = document.getElementById('world-dispatchers');
+    if (!el) return;
+    const items = [
+      { name: 'Book Studio',   desc: 'Диспетчер книг',       status: 'future' },
+      { name: 'HQ',            desc: 'Диспетчер штаба',      status: 'future' },
+      { name: 'Библиотека',    desc: 'Диспетчер знаний',     status: 'future' },
+      { name: 'Нейроцех',      desc: 'Диспетчер контента',   status: 'future' },
+    ];
+    el.innerHTML = items.map(d => `
+      <div class="world-disp-card">
+        <span class="status-dot" style="background:var(--status-paused)"></span>
+        <div>
+          <div class="world-disp-name">${_e(d.name)}</div>
+          <div class="world-disp-desc">${_e(d.desc)}</div>
+        </div>
+        <span class="badge" style="margin-left:auto;color:var(--text-muted)">план</span>
       </div>
-      <div style="font-size:.6rem;line-height:1.8;color:#cbd5e1;white-space:pre-wrap;
-                  max-height:70vh;overflow-y:auto;font-family:monospace">${text.replace(/</g,'&lt;')}</div>
-    </div>`;
-}
+    `).join('');
+  }
+
+  async function load() {
+    const svcEl = document.getElementById('world-services-grid');
+    const briefEl = document.getElementById('world-brief-list');
+    const analytEl = document.getElementById('world-analytics-block');
+    if (svcEl)   svcEl.innerHTML   = '<div class="world-empty">Пингую сервисы...</div>';
+    if (briefEl) briefEl.innerHTML = '<div class="world-empty">Загрузка...</div>';
+    if (analytEl) analytEl.innerHTML = '<div class="world-empty">Загрузка...</div>';
+
+    _renderDispatchers();
+
+    const [health, brief, analytics] = await Promise.allSettled([
+      fetch('/hq-world/health').then(r => r.json()),
+      fetch('/hq-world/brief').then(r => r.json()),
+      fetch('/analytics/reports/latest').then(r => r.json()),
+    ]);
+
+    _renderServices(health.status === 'fulfilled' ? (health.value.services || []) : []);
+    _renderBrief(brief.status === 'fulfilled' ? (brief.value.events || []) : []);
+    _renderAnalytics(analytics.status === 'fulfilled' ? (analytics.value.report || null) : null);
+  }
+
+  async function runAnalytics(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    try {
+      await fetch('/analytics/run', { method: 'POST' });
+      setTimeout(() => load(), 3000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Запустить'; }
+    }
+  }
+
+  return { load, runAnalytics };
+})();
+
+function loadWorld() { World.load(); }
+function worldRunAnalytics(btn) { World.runAnalytics(btn); }
+
+// Совместимость с паспортами — старые функции-заглушки
+function selectWorldDept() {}
+function selectWorldAgent() {}
+function showWorldModal() {}

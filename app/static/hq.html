@@ -113,6 +113,10 @@
         <button class="sb-item" data-tab="dispatcher" onclick="setTab('dispatcher',this);Dispatcher.load()">
           <span class="sb-icon">🏠</span><span class="sb-label">Диспетчер</span>
         </button>
+        <button class="sb-item" data-tab="neiro" onclick="setTab('neiro',this)">
+          <span class="sb-icon">🎬</span><span class="sb-label">Нейроцех</span>
+          <span class="sb-badge" style="color:var(--status-paused);background:rgba(107,114,128,.1)">пауза</span>
+        </button>
       </div>
 
       <div class="sb-section-title">ОПЕРАЦИИ</div>
@@ -458,16 +462,58 @@
       </div>
 
       <!-- TAB: WORLD -->
-      <div id="tab-world" class="tab-panel" style="display:none;padding:0;height:calc(100vh - 56px);overflow:hidden">
-        <div style="display:flex;height:100%;gap:0">
-          <div style="width:210px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:12px 8px;background:rgba(8,8,17,.9)">
-            <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin-bottom:10px;padding:0 4px">ОТДЕЛЫ</div>
-            <div id="world-dept-list"></div>
-            <div style="font-size:.65rem;color:var(--text-dim);letter-spacing:.15em;margin:14px 0 8px;padding:0 4px">АГЕНТЫ</div>
-            <div id="world-agents-list"></div>
+      <div id="tab-world" class="tab-panel" style="display:none;overflow-y:auto;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="section-title" style="margin:0">🌍 МИР</div>
+          <button class="wmap-refresh" onclick="loadWorld()">↻</button>
+        </div>
+        <div class="world-block">
+          <div class="world-block-title">СЕРВИСЫ</div>
+          <div id="world-services-grid" class="world-services-grid">
+            <div class="world-empty">Загрузка...</div>
           </div>
-          <div id="world-content" style="flex:1;overflow-y:auto;padding:18px 22px;background:rgba(8,8,17,.9)">
-            <div style="color:var(--text-dim);font-size:.8rem">Выбери отдел или агента слева</div>
+        </div>
+        <div class="world-block">
+          <div class="world-block-title">ТОМАС — БРИФ МИРА</div>
+          <div id="world-brief-list" class="world-brief-list">
+            <div class="world-empty">Загрузка...</div>
+          </div>
+        </div>
+        <div class="world-block">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div class="world-block-title" style="margin:0">АНАЛИТИКА</div>
+            <button class="btn-ghost" style="font-size:.7rem;padding:3px 10px" onclick="worldRunAnalytics(this)">▶ Запустить</button>
+          </div>
+          <div id="world-analytics-block"><div class="world-empty">Загрузка...</div></div>
+        </div>
+        <div class="world-block">
+          <div class="world-block-title">ДИСПЕТЧЕРЫ — БУДУЩЕЕ</div>
+          <div id="world-dispatchers" class="world-dispatchers-grid"></div>
+        </div>
+      </div>
+
+      <!-- TAB: НЕЙРОЦЕХ -->
+      <div id="tab-neiro" class="tab-panel" style="display:none">
+        <div class="neiro-sleeping">
+          <div class="neiro-icon">🎬</div>
+          <div class="neiro-title">НЕЙРОЦЕХ</div>
+          <div class="neiro-subtitle">Контент-студия. Боря. Видео. Карусели.<br>4o генерация фото. Instagram автопостинг.</div>
+          <div class="neiro-status-row">
+            <span class="status-dot" style="background:var(--status-paused);animation:none"></span>
+            <span class="neiro-status-text">ПАУЗА</span>
+            <span class="neiro-status-reason">Instagram разморозка ~6 июля 2026</span>
+          </div>
+          <div class="neiro-progress-wrap">
+            <div class="neiro-progress-fill" style="width:40%"></div>
+          </div>
+          <div class="neiro-progress-label">Готовность 40%</div>
+          <div class="neiro-checklist">
+            <div class="neiro-check done">✓ Боря — персонаж создан</div>
+            <div class="neiro-check done">✓ 4o photo флоу работает</div>
+            <div class="neiro-check done">✓ Studio API задеплоена</div>
+            <div class="neiro-check wait">⏳ @wooden_house72 разморозка (~6 июля)</div>
+            <div class="neiro-check wait">⏳ Instagram DM-воронка</div>
+            <div class="neiro-check wait">⏳ Нейроцех 2.0 — карусели + аналитика</div>
           </div>
         </div>
       </div>

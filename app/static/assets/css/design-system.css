@@ -488,6 +488,80 @@
 }
 .butler-send-btn:hover { background: rgba(255,176,32,0.2); }
 
+/* ─── МИР ROOM ────────────────────────────────────────── */
+.world-block { margin-bottom: 20px; }
+.world-block-title {
+  font-size: .6rem; font-weight: 700; letter-spacing: .12em;
+  color: var(--text-muted); text-transform: uppercase;
+  margin-bottom: 8px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.world-empty { color: var(--text-secondary); font-size: .75rem; padding: 6px 0; }
+.world-services-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.world-svc-card {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border-dim);
+  border-radius: var(--radius-md); padding: 8px 10px;
+}
+.world-svc-name  { font-size: .78rem; font-weight: 600; flex: 1; }
+.world-svc-status { font-size: .68rem; }
+.world-svc-ms    { font-size: .63rem; color: var(--text-muted); margin-left: auto; }
+.text-alive { color: var(--status-alive); }
+.text-dead  { color: var(--status-dead); }
+.world-brief-list { display: flex; flex-direction: column; gap: 4px; }
+.world-brief-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: var(--radius-sm);
+  background: var(--bg-surface); font-size: .72rem;
+}
+.world-brief-agent { font-weight: 600; color: var(--gold); min-width: 80px; }
+.world-brief-type  { font-size: .58rem; }
+.world-brief-text  { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-brief-time  { color: var(--text-muted); font-size: .63rem; flex-shrink: 0; }
+.world-analytics-date { font-size: .65rem; color: var(--text-muted); margin-bottom: 8px; }
+.world-analytics-section { margin-bottom: 8px; }
+.world-analytics-label {
+  font-size: .58rem; font-weight: 700; letter-spacing: .1em;
+  color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 3px;
+}
+.world-analytics-section p { font-size: .72rem; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+.world-dispatchers-grid { display: flex; flex-direction: column; gap: 6px; }
+.world-disp-card {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border-dim);
+  border-radius: var(--radius-md); padding: 8px 10px;
+}
+.world-disp-name  { font-size: .75rem; font-weight: 600; }
+.world-disp-desc  { font-size: .63rem; color: var(--text-muted); }
+
+/* ─── НЕЙРОЦЕХ SLEEPING ───────────────────────────────── */
+.neiro-sleeping {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 70vh; gap: 12px;
+  text-align: center; padding: 32px;
+}
+.neiro-icon   { font-size: 3rem; line-height: 1; opacity: .6; }
+.neiro-title  { font-size: 1.4rem; font-weight: 700; letter-spacing: .15em; color: var(--color-neiro); }
+.neiro-subtitle { font-size: .8rem; color: var(--text-secondary); line-height: 1.6; max-width: 420px; }
+.neiro-status-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.neiro-status-text { font-size: .78rem; font-weight: 700; color: var(--status-paused); }
+.neiro-status-reason { font-size: .7rem; color: var(--text-muted); }
+.neiro-progress-wrap {
+  width: 280px; height: 6px; background: var(--bg-raised);
+  border-radius: var(--radius-full); overflow: hidden; margin-top: 4px;
+}
+.neiro-progress-fill {
+  height: 100%; background: var(--color-neiro);
+  border-radius: var(--radius-full); opacity: .6;
+}
+.neiro-progress-label { font-size: .65rem; color: var(--text-muted); }
+.neiro-checklist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; text-align: left; }
+.neiro-check { font-size: .75rem; padding: 4px 0; }
+.neiro-check.done { color: var(--status-alive); }
+.neiro-check.wait { color: var(--text-muted); }
+
 /* ─── БИБЛИОТЕКА ROOM ─────────────────────────────────── */
 .lib-room-hdr {
   display: flex; align-items: center; gap: 10px;
