@@ -101,6 +101,60 @@ async def bs_scout_latest():
     return await _bs_get("/scout/latest")
 
 
+@router.get("/scout/all")
+async def bs_scout_all():
+    return await _bs_get("/scout/all")
+
+
+@router.get("/books/{slug}/panels")
+async def bs_panels(slug: str):
+    return await _bs_get(f"/books/{slug}/panels")
+
+
+@router.get("/books/{slug}/conductor")
+async def bs_conductor_get(slug: str):
+    try:
+        return await _bs_get(f"/books/{slug}/conductor")
+    except HTTPException:
+        return {"directives": [], "summary": None}
+
+
+@router.post("/books/{slug}/conductor")
+async def bs_conductor_post(slug: str):
+    return await _bs_post(f"/books/{slug}/conductor", timeout=90)
+
+
+@router.get("/analyst/ideas")
+async def bs_analyst_ideas():
+    try:
+        return await _bs_get("/analyst/ideas")
+    except HTTPException:
+        return []
+
+
+@router.get("/books/{slug}/rulate_metrics")
+async def bs_rulate_metrics(slug: str):
+    return await _bs_get(f"/books/{slug}/rulate_metrics")
+
+
+@router.get("/books/{slug}/school")
+async def bs_school_get(slug: str):
+    try:
+        return await _bs_get(f"/books/{slug}/school")
+    except HTTPException:
+        return {"rules": []}
+
+
+@router.post("/books/{slug}/school")
+async def bs_school_post(slug: str):
+    return await _bs_post(f"/books/{slug}/school", timeout=120)
+
+
+@router.get("/books/{slug}/protestant/reviews")
+async def bs_protestant_reviews(slug: str):
+    return await _bs_get(f"/books/{slug}/protestant/reviews")
+
+
 @router.post("/books/{slug}/next-book")
 async def bs_next_book(slug: str):
     """Анализирует рынок Rulate + книгу → предлагает 3 концепции следующей книги."""
