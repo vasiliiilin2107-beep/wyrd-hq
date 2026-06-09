@@ -568,3 +568,9 @@
   border: 1px solid rgba(239,68,68,0.2); border-radius: var(--r-md);
   color: var(--status-dead); font-size: 0.78rem;
 }
+
+/* ─── CIVILIZATION GRAPH ──────────────────────────────── */
+.civ-view-toggle { display: flex; gap: 4px; }
+.civ-view-btn { padding: 3px 11px; font-size: .66rem; letter-spacing: .1em; font-weight: 600; border-radius: var(--radius-sm); border: 1px solid var(--border-base); background: transparent; color: var(--text-secondary); cursor: pointer; transition: all var(--ease-base); }
+.civ-view-btn.active, .civ-view-btn:hover { background: var(--gold-dim); color: var(--gold); border-color: var(--gold); }
+#civ-tooltip { position: absolute; pointer-events: none; z-index: 100; background: var(--bg-overlay); border: 1px solid var(--border-active); border-radius: var(--radius-sm); padding: 6px 10px; font-size: .72rem; color: var(--text-primary); line-height: 1.5; max-width: 200px; }

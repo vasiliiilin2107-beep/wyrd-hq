@@ -13,8 +13,9 @@
   <link rel="stylesheet" href="/assets/css/wyrd.css?v=2">
   <link rel="stylesheet" href="/assets/css/wyrd-components.css?v=2">
   <link rel="stylesheet" href="/assets/css/mobile.css?v=2">
-  <link rel="stylesheet" href="/assets/css/design-system.css?v=2">
+  <link rel="stylesheet" href="/assets/css/design-system.css?v=3">
   <link rel="stylesheet" href="/assets/css/sidebar.css?v=1">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
@@ -298,13 +299,23 @@
       </div>
 
       <!-- TAB: CIVILIZATION -->
-      <div id="tab-civilization" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:14px">🏛️ ЦИВИЛИЗАЦИЯ АГЕНТОВ</div>
-        <div class="civ-section">
-          <div class="civ-section-title">
-            <span>РЕЕСТР АГЕНТОВ <span id="civ-agents-count" style="opacity:.6"></span></span>
-            <button class="wmap-refresh" onclick="loadAgents()">↻</button>
+      <div id="tab-civilization" class="tab-panel" style="display:none;overflow-y:auto">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <span class="section-title" style="margin:0">🏛️ ЦИВИЛИЗАЦИЯ</span>
+          <span id="civ-agents-count" style="font-size:.7rem;color:var(--text-secondary);opacity:.7"></span>
+          <div class="civ-view-toggle">
+            <button class="civ-view-btn active" id="civ-btn-graph" onclick="setCivView('graph')">ГРАФ</button>
+            <button class="civ-view-btn" id="civ-btn-list" onclick="setCivView('list')">СПИСОК</button>
           </div>
+          <button class="wmap-refresh" style="margin-left:auto" onclick="loadAgents()">↻</button>
+        </div>
+        <div id="civ-graph-view">
+          <div id="civ-graph-container" style="width:100%;height:440px;background:var(--bg-surface);border-radius:8px;border:1px solid var(--border-dim);position:relative;overflow:hidden">
+            <svg id="civ-svg" style="width:100%;height:100%"></svg>
+            <div id="civ-tooltip" style="display:none"></div>
+          </div>
+        </div>
+        <div id="civ-list-view" style="display:none">
           <div id="civ-agents-list" class="civ-agents-grid"><div style="color:var(--text-dim);font-size:.8rem">Загрузка...</div></div>
         </div>
         <div class="civ-section" style="margin-top:22px">
@@ -562,7 +573,7 @@
   <script src="/assets/js/library.js?v=3"></script>
   <script src="/assets/js/constitution.js?v=2"></script>
   <script src="/assets/js/scribe.js?v=2"></script>
-  <script src="/assets/js/civilization.js?v=2"></script>
+  <script src="/assets/js/civilization.js?v=3"></script>
   <script src="/assets/js/education.js?v=2"></script>
   <script src="/assets/js/world.js?v=2"></script>
   <script src="/assets/js/audit.js?v=2"></script>
