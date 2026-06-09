@@ -100,3 +100,16 @@ async def library_stats():
     except httpx.RequestError as e:
         log.warning("[library_proxy] stats error: %s", e)
         raise HTTPException(status_code=503, detail="Library недоступна")
+
+
+@router.post("/readers/run-all")
+async def run_all_readers():
+    try:
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.post(f"{LIBRARY_URL}/readers/run-all", headers=_headers())
+        if r.status_code not in (200, 202, 204):
+            raise HTTPException(status_code=r.status_code, detail=f"Library: {r.text[:200]}")
+        return r.json() if r.content else {"status": "ok"}
+    except httpx.RequestError as e:
+        log.warning("[library_proxy] run-all error: %s", e)
+        raise HTTPException(status_code=503, detail="Library недоступна")
