@@ -210,7 +210,7 @@ async function bsRunScout() {
 // ── ПЛАН ──────────────────────────────────────────────────────
 function _buildPlanTab() {
   const goals = _bsArc?.chapter_goals || [];
-  if (!goals.length) return `<div class="bs-empty"><div style="font-size:3rem">📋</div><div>Сценарий не построен</div>
+  if (!goals.length || !_bsChapters.length) return `<div class="bs-empty"><div style="font-size:3rem">📋</div><div>Сценарий появится когда конвейер напишет первую главу</div>
     <button class="wyrd-btn" onclick="bsBuildArc('${_bsSlug}')">📐 Построить арку</button></div>`;
   const chMap = Object.fromEntries(_bsChapters.map(c => [c.number, c]));
   const written = _bsChapters.length, total = goals.length, pct = Math.min(100, Math.round(written/total*100));
