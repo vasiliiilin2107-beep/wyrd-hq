@@ -558,6 +558,21 @@
   <script src="/assets/js/education.js?v=2"></script>
   <script src="/assets/js/world.js?v=2"></script>
   <script src="/assets/js/audit.js?v=2"></script>
+  <!-- ─── BUTLER ORB + PANEL ──────────────────────────── -->
+  <div class="butler-orb idle" id="butler-orb" onclick="Butler.togglePanel()" title="Дворецкий">◈</div>
+  <div class="butler-panel" id="butler-panel">
+    <div class="butler-panel-hdr">
+      <span class="butler-panel-title">ДВОРЕЦКИЙ</span>
+      <button class="butler-close-btn" onclick="Butler.togglePanel()">✕</button>
+    </div>
+    <div class="butler-msgs" id="butler-msgs"></div>
+    <div class="butler-input-row">
+      <input class="butler-text-input" id="butler-input" placeholder="Спросить..." onkeydown="Butler.inputKey(event)">
+      <button class="butler-send-btn" onclick="Butler.send(document.getElementById('butler-input').value)">→</button>
+    </div>
+  </div>
+
+  <script src="/assets/js/butler.js?v=1"></script>
   <script>
   /* Паспорт агента — боковая панель (inline, не кэшируется) */
   function openPassport() {
