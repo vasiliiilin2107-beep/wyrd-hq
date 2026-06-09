@@ -21,6 +21,15 @@ const CMD_ITEMS = [
   { icon:'📖', label:'Генерировать главу',  cat:'ДЕЙСТВИЕ', action:()=>{ setTab('bookstudio',document.querySelector('[data-tab=bookstudio]')); loadBookStudio(); } },
   { icon:'⚡', label:'Запустить все циклы', cat:'ДЕЙСТВИЕ', action:()=>triggerAll(document.getElementById('trigger-btn')) },
   { icon:'👁️', label:'Открыть Томаса',     cat:'ДЕЙСТВИЕ', action:()=>window.location='/thomas' },
+  { icon:'◈',  label:'Дворецкий',          cat:'ДЕЙСТВИЕ', action:()=>Butler.togglePanel() },
+  { icon:'📡', label:'Запустить разведку',  cat:'ДЕЙСТВИЕ', action:async()=>{
+    try {
+      const r = await fetch('/bs/books/tolstyak/scout/all', {method:'POST'});
+      showToast('РАЗВЕДКА', r.ok ? 'Все разведчики запущены' : 'Ошибка запуска', r.ok ? '#10b981' : '#ef4444');
+    } catch { showToast('РАЗВЕДКА', 'Нет связи с API', '#ef4444'); }
+  }},
+  { icon:'💰', label:'Бабло',              cat:'ПЕРЕХОД',  action:()=>{ setTab('babla',document.querySelector('[data-tab=babla]')); try{Babla.load()}catch{} } },
+  { icon:'🏠', label:'Диспетчер',          cat:'ПЕРЕХОД',  action:()=>{ setTab('dispatcher',document.querySelector('[data-tab=dispatcher]')); try{Dispatcher.load()}catch{} } },
 ];
 
 let _cmdSelected = 0;

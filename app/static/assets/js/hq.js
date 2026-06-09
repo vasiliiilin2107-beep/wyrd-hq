@@ -535,6 +535,24 @@ async function loadTopbarStats() {
       if (wrap) wrap.style.color = count > 0 ? 'var(--red)' : '';
     }
   } catch {}
+  try {
+    const r = await fetch('/bs/stats');
+    if (r.ok) {
+      const d = await r.json();
+      const total = (d.books || []).reduce((s, b) => s + (b.chapter_count || 0), 0);
+      const el = document.getElementById('sb-badge-books');
+      if (el) el.textContent = total || '—';
+    }
+  } catch {}
+  try {
+    const r = await fetch('/library-proxy/knowledge/stats');
+    if (r.ok) {
+      const d = await r.json();
+      const total = d.total || Object.values(d.by_category || {}).reduce((s, n) => s + n, 0);
+      const el = document.getElementById('sb-badge-lib');
+      if (el) el.textContent = total || '—';
+    }
+  } catch {}
 }
 
 /* ─── TOAST ─────────────────────────────────────────── */

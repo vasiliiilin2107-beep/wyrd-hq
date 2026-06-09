@@ -18,8 +18,23 @@ function _hTime(iso) {
 function _e(s)   { return (typeof escHtml === 'function' ? escHtml : _hEsc)(s); }
 function _t(iso) { return (typeof timeAgo === 'function' ? timeAgo : _hTime)(iso); }
 
+function _skHtml(lines) {
+  return `<div class="sk-block">${lines.map(w=>`<div class="sk-line ${w}"></div>`).join('')}</div>`;
+}
+
+function _errHtml(msg, retryFn) {
+  const id = 'err-' + Math.random().toString(36).slice(2);
+  window[id] = retryFn;
+  return `<div class="err-block"><span class="err-block-msg">⚠ ${_e(msg)}</span><button class="err-retry" onclick="window['${id}']&&window['${id}']()">Повторить</button></div>`;
+}
+
 async function loadHome() {
   _renderClock();
+  const sk = _skHtml(['h20 w80','w60','w40','w60']);
+  ['home-agent-grid','home-events-block','home-production'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = sk;
+  });
   const [agRes, evRes, bsRes, coRes] = await Promise.allSettled([
     fetch('/civilization/agents').then(r => r.ok ? r.json() : null),
     fetch('/events?limit=20').then(r => r.ok ? r.json() : null),
@@ -33,9 +48,15 @@ async function loadHome() {
   const council = coRes.value || null;
 
   _renderPulseStats(agents, bsStats);
-  _renderAgentGrid(agents);
+  if (agRes.status === 'rejected') {
+    const el = document.getElementById('home-agent-grid');
+    if (el) el.innerHTML = _errHtml('Нет связи с API агентов', loadHome);
+  } else { _renderAgentGrid(agents); }
   _renderEventsBlock(events, council);
-  _renderProduction(bsStats);
+  if (bsRes.status === 'rejected') {
+    const el = document.getElementById('home-production');
+    if (el) el.innerHTML = _errHtml('Нет связи с Book Studio', loadHome);
+  } else { _renderProduction(bsStats); }
 }
 
 function _renderClock() {

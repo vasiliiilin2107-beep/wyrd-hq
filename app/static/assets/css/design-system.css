@@ -718,3 +718,15 @@
 .disp-future-cards { display: flex; gap: 8px; flex-wrap: wrap; }
 .disp-future-card { padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-dim); background: var(--bg-raised); font-size: .73rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
 .disp-future-card .dot-off { width: 7px; height: 7px; border-radius: 50%; background: var(--status-paused); }
+
+/* ─── SKELETON LOADING ────────────────────────────────── */
+.sk-block { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.sk-line { height: 11px; background: var(--bg-raised); border-radius: var(--radius-sm); animation: sk-pulse 1.6s ease-in-out infinite; }
+.sk-line.w40 { width: 40%; } .sk-line.w60 { width: 60%; } .sk-line.w80 { width: 80%; }
+.sk-line.h20 { height: 20px; } .sk-line.h32 { height: 32px; }
+@keyframes sk-pulse { 0%,100% { opacity: .3; } 50% { opacity: .7; } }
+
+/* ─── ERROR BLOCK ─────────────────────────────────────── */
+.err-block { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: var(--radius-md); font-size: .78rem; }
+.err-block-msg { flex: 1; color: var(--status-dead); }
+.err-retry { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: var(--status-dead); border-radius: var(--radius-sm); padding: 2px 10px; font-size: .7rem; cursor: pointer; flex-shrink: 0; }
