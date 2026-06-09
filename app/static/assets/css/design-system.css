@@ -1,6 +1,11 @@
 /* WYRD Design System v1 — основа всей вселенной */
 /* Подключать ПОСЛЕ wyrd.css. Не дублирует — расширяет. */
 
+/* Разрешаем выделение текста в контентных зонах */
+.tab-panel, .butler-msgs, .lib-knowledge-row, .lib-k-answer-full,
+.home-ev-text, .stat-card-value, .bs-chapter-title,
+.butler-msg, .lib-reader-info { user-select: text; -webkit-user-select: text; }
+
 /* ─── CSS ПЕРЕМЕННЫЕ ─────────────────────────────────── */
 :root {
   /* Фон */
@@ -579,8 +584,14 @@
 .lib-panel {
   background: var(--bg-surface); border: 1px solid var(--border-dim);
   border-top: 2px solid var(--color-library);
-  border-radius: var(--r-lg); padding: 14px; overflow: hidden;
+  border-radius: var(--r-lg); padding: 14px; overflow: visible;
 }
+.lib-reader-clickable {
+  cursor: pointer; transition: background var(--ease-fast), opacity var(--ease-fast);
+}
+.lib-reader-clickable:hover { background: var(--bg-raised); border-radius: var(--r-sm); }
+.lib-reader-clickable:active { opacity: 0.6; }
+
 .lib-filter-input {
   width: 100%; box-sizing: border-box;
   background: var(--bg-raised); border: 1px solid var(--border-dim);

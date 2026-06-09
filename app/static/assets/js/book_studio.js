@@ -201,7 +201,7 @@ async function bsRunConductor(slug) {
 async function bsRunScout() {
   showToast('Разведка запущена...');
   try {
-    await fetch('/bs/scout/all',{signal:AbortSignal.timeout(90000)}).catch(()=>{});
+    await fetch('/bs/scout/all',{method:'POST',signal:AbortSignal.timeout(90000)}).catch(()=>{});
     _bsIdeas = await _bsFetch('/bs/analyst/ideas').catch(()=>null);
     _renderBookBody(); showToast('✅ Разведка завершена');
   } catch(e) { showToast('Разведка: '+e.message); }

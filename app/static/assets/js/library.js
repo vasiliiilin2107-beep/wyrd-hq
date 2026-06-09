@@ -83,7 +83,8 @@ function _renderReaders(readers) {
     const extra = r.topics?.length > 3 ? ` +${r.topics.length - 3}` : '';
     const lastRun = r.last_run ? _libAgo(r.last_run) : 'никогда';
     const dotClass = r.enabled ? 'status-dot alive' : 'status-dot paused';
-    return `<div class="lib-reader-row">
+    const rid = _eH(r.id || r.name);
+    return `<div class="lib-reader-row lib-reader-clickable" onclick="libRunReader(this,'${rid}')" title="Запустить ${_eH(r.name)}">
       <span class="${dotClass}" style="flex-shrink:0"></span>
       <div class="lib-reader-info">
         <div class="lib-reader-name">${_eH(r.name)}</div>
@@ -95,6 +96,24 @@ function _renderReaders(readers) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function libRunReader(el, readerId) {
+  const row = el.closest ? el : el;
+  const orig = row.style.opacity;
+  row.style.opacity = '0.5';
+  row.style.pointerEvents = 'none';
+  try {
+    const r = await fetch(`/library/readers/${encodeURIComponent(readerId)}/run`, { method: 'POST' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (typeof showToast === 'function') showToast('✅ Читатель запущен', readerId, 'var(--color-library)');
+    setTimeout(loadLibReaders, 2000);
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('❌ Ошибка', e.message, 'var(--status-dead)');
+  } finally {
+    row.style.opacity = orig;
+    row.style.pointerEvents = '';
+  }
 }
 
 function libReadersFilter(val) {

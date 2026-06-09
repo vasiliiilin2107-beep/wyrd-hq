@@ -50,24 +50,30 @@ const Butler = (() => {
     rec.lang = 'ru-RU';
     rec.interimResults = false;
     rec.maxAlternatives = 1;
+    let _resultFired = false;
     rec.onresult = (e) => {
+      _resultFired = true;
       _orbState('idle');
       send(e.results[0][0].transcript);
     };
-    rec.onerror = () => _orbState('idle');
-    rec.onend = () => { /* send() уже вызван в onresult */ };
-    rec.start();
+    rec.onerror = () => { _orbState('idle'); };
+    rec.onend = () => { if (!_resultFired) _orbState('idle'); };
+    try { rec.start(); } catch { _orbState('idle'); }
   }
 
   /* ── TTS (SaluteSpeech через бэкенд) ─────────────── */
   async function _speak(text) {
+    const timeout = new Promise(res => setTimeout(res, 12000));
     try {
-      const r = await fetch('/butler/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      if (!r.ok || r.status === 204) { _orbState('idle'); return; }
+      const r = await Promise.race([
+        fetch('/butler/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        }),
+        timeout.then(() => ({ ok: false, _timeout: true })),
+      ]);
+      if (!r.ok || r._timeout) { _orbState('idle'); return; }
       const blob = await r.blob();
       if (!blob.size) { _orbState('idle'); return; }
       const url = URL.createObjectURL(blob);
@@ -88,7 +94,7 @@ const Butler = (() => {
       const d = await r.json();
       _replaceLastMsg('butler', d.speech);
       _history.push({ role: 'assistant', content: d.speech });
-      if (d.action === 'navigate' && d.tab) _navigate(d.tab);
+      // Не навигируем автоматически при бриф — только отвечаем текстом+голосом
       if (d.action === 'run' && d.endpoint) _runEndpoint(d.endpoint, d.method);
       _speak(d.speech);
     } catch (e) {

@@ -110,6 +110,7 @@ function setTab(name, btn) {
   }, delay);
 
   _currentTab = name;
+  try { localStorage.setItem('wyrd_active_tab', name); } catch {}
 
   document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -827,8 +828,23 @@ document.addEventListener('DOMContentLoaded', () => {
   startClock();
   initWSToasts();
   loadTopbarStats();
-  loadHome();
-  startHomeUpdates();
+
+  // Restore last active tab
+  try {
+    const saved = localStorage.getItem('wyrd_active_tab');
+    if (saved && saved !== 'home') {
+      const btn = document.querySelector(`[data-tab="${saved}"]`);
+      if (document.getElementById('tab-' + saved)) {
+        setTab(saved, btn || null);
+      } else {
+        loadHome(); startHomeUpdates();
+      }
+    } else {
+      loadHome(); startHomeUpdates();
+    }
+  } catch {
+    loadHome(); startHomeUpdates();
+  }
 
   setInterval(loadTopbarStats, 30000);
 });

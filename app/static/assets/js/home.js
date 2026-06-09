@@ -88,19 +88,38 @@ function _renderAgentGrid(agents) {
     return;
   }
 
-  const liveCount = agents.filter(a => _agentAge(a) < 1200000).length;
-  if (countEl) countEl.textContent = liveCount + '/' + agents.length + ' live';
+  const live = agents.filter(a => _agentAge(a) < 1200000);
+  const idle = agents.filter(a => { const age = _agentAge(a); return age >= 1200000 && age < 3600000; });
+  const dead = agents.filter(a => _agentAge(a) >= 3600000);
 
-  el.innerHTML = agents.map(a => {
-    const age   = _agentAge(a);
-    const color = _agentColor(age);
-    const name  = _e(a.name || a.id || '?');
-    const role  = _e(a.role || '');
-    const task  = _e(a.current_task || a.description || '');
-    const tip   = name + (role ? ' · ' + role : '') + (task ? '\n' + task : '');
-    const cls   = age < 1200000 ? 'agent-dot alive' : (age < 3600000 ? 'agent-dot idle' : 'agent-dot dead');
-    return `<span class="${cls}" style="background:${color}" title="${tip}"></span>`;
-  }).join('');
+  if (countEl) countEl.textContent = live.length + '/' + agents.length + ' live';
+
+  // Топ-4 активных агента
+  const topAgents = live.slice(0, 4).map(a =>
+    `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-dim)">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--status-alive);flex-shrink:0;box-shadow:0 0 4px var(--status-alive)"></span>
+      <span style="font-size:.72rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_e(a.name||'?')}</span>
+      <span style="font-size:.65rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px">${_e(a.role||'')}</span>
+    </div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+      <div style="text-align:center;padding:8px 4px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:var(--r-md)">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--status-alive);font-family:var(--mono)">${live.length}</div>
+        <div style="font-size:.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em">ЖИВЫЕ</div>
+      </div>
+      <div style="text-align:center;padding:8px 4px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2);border-radius:var(--r-md)">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--status-idle);font-family:var(--mono)">${idle.length}</div>
+        <div style="font-size:.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em">ЖДУТ</div>
+      </div>
+      <div style="text-align:center;padding:8px 4px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:var(--r-md)">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--status-dead);font-family:var(--mono)">${dead.length}</div>
+        <div style="font-size:.6rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em">ТИХО</div>
+      </div>
+    </div>
+    ${topAgents || '<div style="font-size:.72rem;color:var(--text-secondary)">Нет активных агентов</div>'}
+  `;
 }
 
 function _renderEventsBlock(events, council) {
