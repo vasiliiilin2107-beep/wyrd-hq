@@ -40,6 +40,44 @@ const Butler = (() => {
     }
   }
 
+  /* ── STT (Web Speech API) ─────────────────────────── */
+  function listen() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { _appendMsg('butler', 'Браузер не поддерживает голос, Шеф.'); return; }
+    if (!_open) togglePanel();
+    _orbState('listening');
+    const rec = new SR();
+    rec.lang = 'ru-RU';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      _orbState('idle');
+      send(e.results[0][0].transcript);
+    };
+    rec.onerror = () => _orbState('idle');
+    rec.onend = () => { /* send() уже вызван в onresult */ };
+    rec.start();
+  }
+
+  /* ── TTS (SaluteSpeech через бэкенд) ─────────────── */
+  async function _speak(text) {
+    try {
+      const r = await fetch('/butler/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!r.ok || r.status === 204) { _orbState('idle'); return; }
+      const blob = await r.blob();
+      if (!blob.size) { _orbState('idle'); return; }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => { URL.revokeObjectURL(url); _orbState('idle'); };
+      audio.onerror = () => { URL.revokeObjectURL(url); _orbState('idle'); };
+      await audio.play();
+    } catch { _orbState('idle'); }
+  }
+
   /* ── AUTOBRIEF ─────────────────────────────────────── */
   async function _autobrief() {
     _orbState('speaking');
@@ -52,10 +90,11 @@ const Butler = (() => {
       _history.push({ role: 'assistant', content: d.speech });
       if (d.action === 'navigate' && d.tab) _navigate(d.tab);
       if (d.action === 'run' && d.endpoint) _runEndpoint(d.endpoint, d.method);
+      _speak(d.speech);
     } catch (e) {
       _replaceLastMsg('butler', 'Нет связи, Шеф.');
+      _orbState('idle');
     }
-    _orbState('idle');
   }
 
   /* ── SEND ──────────────────────────────────────────── */
@@ -87,10 +126,11 @@ const Butler = (() => {
       if (d.action === 'run' && d.endpoint) {
         _runEndpoint(d.endpoint, d.method);
       }
+      _speak(d.speech);
     } catch (e) {
       _replaceLastMsg('butler', 'Ошибка связи, Шеф.');
+      _orbState('idle');
     }
-    _orbState('idle');
   }
 
   /* ── NAVIGATE ──────────────────────────────────────── */
@@ -170,7 +210,7 @@ const Butler = (() => {
     }, 800);
   }
 
-  return { init, togglePanel, send, inputKey };
+  return { init, togglePanel, send, inputKey, listen };
 })();
 
 document.addEventListener('DOMContentLoaded', () => Butler.init());

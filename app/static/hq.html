@@ -682,11 +682,12 @@
     <div class="butler-msgs" id="butler-msgs"></div>
     <div class="butler-input-row">
       <input class="butler-text-input" id="butler-input" placeholder="Спросить..." onkeydown="Butler.inputKey(event)">
+      <button class="butler-mic-btn" onclick="Butler.listen()" title="Голосовой ввод">🎤</button>
       <button class="butler-send-btn" onclick="Butler.send(document.getElementById('butler-input').value)">→</button>
     </div>
   </div>
 
-  <script src="/assets/js/butler.js?v=1"></script>
+  <script src="/assets/js/butler.js?v=2"></script>
   <script>
   /* Паспорт агента — боковая панель (inline, не кэшируется) */
   function openPassport() {
