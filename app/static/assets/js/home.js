@@ -3,6 +3,21 @@
 let _homeTimer = null;
 let _homeClockTimer = null;
 
+// Fallback-хелперы на случай если hq.js ещё не выполнился
+function _hEsc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function _hTime(iso) {
+  if (!iso) return '';
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (d < 60)    return 'только что';
+  if (d < 3600)  return Math.floor(d/60) + ' мин';
+  if (d < 86400) return Math.floor(d/3600) + ' ч';
+  return Math.floor(d/86400) + ' д';
+}
+function _e(s)   { return (typeof escHtml === 'function' ? escHtml : _hEsc)(s); }
+function _t(iso) { return (typeof timeAgo === 'function' ? timeAgo : _hTime)(iso); }
+
 async function loadHome() {
   _renderClock();
   const [agRes, evRes, bsRes, coRes] = await Promise.allSettled([
@@ -79,9 +94,9 @@ function _renderAgentGrid(agents) {
   el.innerHTML = agents.map(a => {
     const age   = _agentAge(a);
     const color = _agentColor(age);
-    const name  = escHtml(a.name || a.id || '?');
-    const role  = escHtml(a.role || '');
-    const task  = escHtml(a.current_task || a.description || '');
+    const name  = _e(a.name || a.id || '?');
+    const role  = _e(a.role || '');
+    const task  = _e(a.current_task || a.description || '');
     const tip   = name + (role ? ' · ' + role : '') + (task ? '\n' + task : '');
     const cls   = age < 1200000 ? 'agent-dot alive' : (age < 3600000 ? 'agent-dot idle' : 'agent-dot dead');
     return `<span class="${cls}" style="background:${color}" title="${tip}"></span>`;
@@ -102,24 +117,24 @@ function _renderEventsBlock(events, council) {
   const filtered = events.filter(e => SHOW_TYPES.includes(e.type)).slice(0, 4);
   const evHTML = filtered.length
     ? filtered.map(e => {
-        const p = e.payload || {};
+        const p    = e.payload || {};
         const text = p.summary || p.name || p.agent || e.type;
         return `<div class="home-ev-row">
           <span class="home-ev-icon">${ICONS[e.type] || '•'}</span>
-          <span class="home-ev-text">${escHtml(String(text))}</span>
-          <span class="home-ev-time">${e.created_at ? timeAgo(e.created_at) : ''}</span>
+          <span class="home-ev-text">${_e(String(text))}</span>
+          <span class="home-ev-time">${_t(e.created_at)}</span>
         </div>`;
       }).join('')
     : '<div class="home-ev-empty">Активности нет</div>';
 
   let councilHTML = '';
   if (council?.sessions?.length) {
-    const s = council.sessions[0];
+    const s    = council.sessions[0];
     const idea = s.idea || '';
     if (idea) {
       councilHTML = `<div class="home-council-block">
         <div class="home-section-label">СОВЕТ</div>
-        <div class="home-council-text">${escHtml(idea.slice(0, 100))}${idea.length > 100 ? '…' : ''}</div>
+        <div class="home-council-text">${_e(idea.slice(0, 100))}${idea.length > 100 ? '…' : ''}</div>
       </div>`;
     }
   }
@@ -137,13 +152,13 @@ function _renderProduction(bsStats) {
   }
 
   const booksHTML = bsStats.books.map(b => {
-    const score  = b.avg_score ? b.avg_score.toFixed(1) : '—';
-    const pct    = Math.min(100, ((b.avg_score || 0) / 10) * 100);
-    const pipe   = b.pipeline_enabled !== false
+    const score = b.avg_score ? b.avg_score.toFixed(1) : '—';
+    const pct   = Math.min(100, ((b.avg_score || 0) / 10) * 100);
+    const pipe  = b.pipeline_enabled !== false
       ? '<span style="color:var(--status-alive)">▶ живёт</span>'
       : '<span style="color:var(--status-paused)">⏸ пауза</span>';
     return `<div class="home-book-card">
-      <div class="home-book-title">${escHtml(b.title || '—')}</div>
+      <div class="home-book-title">${_e(b.title || '—')}</div>
       <div class="home-book-nums">
         <span class="ds-mono" style="color:var(--text-primary)">${b.chapter_count || 0}</span>
         <span class="home-book-label">гл</span>
