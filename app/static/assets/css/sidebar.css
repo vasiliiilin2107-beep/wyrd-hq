@@ -1,0 +1,72 @@
+/* Sidebar v2 — refinements on top of wyrd-components.css */
+/* Использует токены design-system.css */
+
+/* ─── ЗОЛОТАЯ ЧЕРТА АКТИВНОГО ПУНКТА ─────────────────── */
+.sb-item.active {
+  box-shadow: inset 2px 0 0 var(--gold-bright, #FFB020);
+}
+.sb-item.active .sb-icon {
+  filter: drop-shadow(0 0 6px var(--gold-bright, #FFB020));
+}
+
+/* ─── ИКОНКИ: ЦВЕТ ПО БЛОКУ ──────────────────────────── */
+.sb-item[data-tab="bookstudio"] .sb-icon { color: var(--color-studio,  #F59E0B); }
+.sb-item[data-tab="library"]    .sb-icon { color: var(--color-library, #3B82F6); }
+.sb-item[data-tab="civilization"] .sb-icon { color: var(--color-agents, #8B5CF6); }
+.sb-item[data-tab="build"]      .sb-icon { color: var(--color-money,  #10B981); }
+.sb-item[data-tab="notes"]      .sb-icon { color: var(--color-neiro,  #EC4899); }
+.sb-item[data-tab="home"]       .sb-icon { color: var(--color-house,  #F97316); }
+
+/* Hover: подсвечиваем иконку */
+.sb-item:hover .sb-icon { filter: drop-shadow(0 0 4px currentColor); }
+
+/* ─── ЖИВЫЕ СЧЁТЧИКИ (sb-counter) ────────────────────── */
+/* Используется вместо или вместе с sb-badge */
+.sb-counter {
+  font-size: 0.58rem; font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-weight: 600; padding: 1px 6px;
+  border-radius: var(--r-full, 9999px);
+  margin-left: auto; flex-shrink: 0; letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+.sb-counter.books  { background: rgba(245,158,11,0.15);  color: var(--color-studio,  #F59E0B); border-color: rgba(245,158,11,0.2); }
+.sb-counter.lib    { background: rgba(59,130,246,0.15);  color: var(--color-library, #3B82F6); border-color: rgba(59,130,246,0.2); }
+.sb-counter.agents { background: rgba(139,92,246,0.15);  color: var(--color-agents,  #8B5CF6); border-color: rgba(139,92,246,0.2); }
+.sb-counter.tasks  { background: rgba(239,68,68,0.12);   color: var(--status-dead,   #EF4444); border-color: rgba(239,68,68,0.2); }
+.sb-counter.house  { background: rgba(249,115,22,0.12);  color: var(--color-house,   #F97316); border-color: rgba(249,115,22,0.2); }
+.sb-counter.money  { background: rgba(16,185,129,0.12);  color: var(--color-money,   #10B981); border-color: rgba(16,185,129,0.2); }
+
+/* Скрывать счётчики в свёрнутом состоянии (уже есть для sb-badge, дублируем) */
+.sidebar-v2.collapsed .sb-counter { display: none; }
+
+/* ─── ПУЛЬС МИРА (блок под логотипом) ────────────────── */
+.sb-world-pulse {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 8px; margin: 0 2px 6px;
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.12);
+  border-radius: var(--r-sm, 4px);
+  flex-shrink: 0;
+  cursor: default;
+}
+.sidebar-v2.collapsed .sb-world-pulse { display: none; }
+
+.sb-world-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--status-alive, #22C55E);
+  animation: ds-status-pulse 2.5s ease-in-out infinite;
+}
+.sb-world-text {
+  font-size: 0.6rem; letter-spacing: 0.08em;
+  color: var(--status-alive, #22C55E); line-height: 1;
+}
+
+/* ─── АНИМАЦИЯ ВХОДА ──────────────────────────────────── */
+.sidebar-v2 {
+  animation: ds-slide-in 0.3s var(--ease-enter, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+/* ─── МОБАЙЛ: убрать анимацию чтоб не моргало ─────────── */
+@media (max-width: 768px) {
+  .sidebar-v2 { animation: none; }
+}
