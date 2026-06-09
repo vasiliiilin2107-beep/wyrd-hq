@@ -154,29 +154,43 @@
 
       <!-- TAB: HOME -->
       <div id="tab-home" class="tab-panel">
-        <div class="home-header">
-          <div class="home-greeting">ДОБРО ПОЖАЛОВАТЬ, ШЕФ</div>
-          <div class="home-date" id="home-date">—</div>
+        <!-- ПУЛЬС МИРА -->
+        <div class="home-pulse-hdr">
+          <span class="home-pulse-title">ПУЛЬС МИРА</span>
+          <span id="home-pulse-meta" class="home-pulse-meta"></span>
+          <span id="home-clock" class="home-clock">--:-- МСК</span>
         </div>
-        <div id="home-stats" class="home-stats-row"></div>
-        <div class="home-grid">
-          <div>
-            <div class="home-col-title">ПОСЛЕДНИЕ СОБЫТИЯ <span class="home-auto-tag">авто</span></div>
-            <div id="home-feed" class="home-feed"><div style="color:var(--text-dim);font-size:.75rem">Загрузка...</div></div>
-          </div>
-          <div>
-            <div class="home-col-title">БЫСТРЫЕ ДЕЙСТВИЯ</div>
-            <div class="home-actions">
-              <button class="home-action-btn" onclick="setTab('technik',document.querySelector('[data-tab=technik]'))">⚡ Техник</button>
-              <button class="home-action-btn" onclick="setTab('bookstudio',document.querySelector('[data-tab=bookstudio]'));loadBookStudio()">📖 Book Studio</button>
-              <button class="home-action-btn" onclick="setTab('civilization',document.querySelector('[data-tab=civilization]'));loadCivilization();setTimeout(()=>{try{showCouncilForm()}catch{}},600)">🧠 Совет</button>
-              <button class="home-action-btn" onclick="window.location='/thomas'">👁️ Томас</button>
+
+        <!-- 3 КОЛОНКИ -->
+        <div class="home-3col">
+          <div class="home-col-card">
+            <div class="home-col-hdr">
+              <span>АГЕНТЫ</span>
+              <span id="home-agents-count" class="home-col-meta">—</span>
+              <button class="wmap-refresh" style="margin-left:auto" onclick="loadHome()">↻</button>
             </div>
-            <div class="home-col-title" style="margin-top:16px">BOOK STUDIO</div>
-            <div id="home-bs-mini" class="home-mini-widget">Загрузка...</div>
-            <div class="home-col-title" style="margin-top:14px">АГЕНТЫ ОНЛАЙН</div>
-            <div id="home-agents-mini" class="home-mini-widget">Загрузка...</div>
+            <div id="home-agent-grid" class="home-agent-grid"></div>
           </div>
+          <div class="home-col-card">
+            <div class="home-col-hdr"><span>СОБЫТИЯ</span></div>
+            <div id="home-events-block" class="home-events-block">
+              <div style="color:var(--text-secondary);font-size:.75rem">Загрузка...</div>
+            </div>
+          </div>
+          <div class="home-col-card">
+            <div class="home-col-hdr"><span>ПРОИЗВОДСТВО</span></div>
+            <div id="home-production" class="home-production">
+              <div style="color:var(--text-secondary);font-size:.75rem">Загрузка...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- БЫСТРЫЕ ДЕЙСТВИЯ -->
+        <div class="home-quick-row">
+          <button class="home-quick-btn" onclick="setTab('civilization',document.querySelector('[data-tab=civilization]'));loadCivilization();setTimeout(()=>{try{showCouncilForm()}catch{}},600)">🧠 Совет</button>
+          <button class="home-quick-btn" onclick="homeRunScout(this)">📡 Разведка</button>
+          <button class="home-quick-btn" onclick="homeRunConductor(this)">🏃 Дирижёр</button>
+          <button class="home-quick-btn" onclick="setTab('library',document.querySelector('[data-tab=library]'));loadLibrary()">📖 Библиотека</button>
         </div>
       </div>
 
@@ -531,7 +545,7 @@
   <script src="/assets/js/book_studio.js?v=4"></script>
   <script src="/assets/js/build.js?v=2"></script>
   <script src="/assets/js/hq.js?v=3"></script>
-  <script src="/assets/js/home.js?v=1"></script>
+  <script src="/assets/js/home.js?v=2"></script>
   <script src="/assets/js/command_palette.js?v=1"></script>
   <script src="/assets/js/map.js?v=2"></script>
   <script src="/assets/js/technik.js?v=2"></script>
