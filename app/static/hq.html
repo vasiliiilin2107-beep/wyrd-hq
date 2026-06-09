@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/assets/css/wyrd.css?v=2">
   <link rel="stylesheet" href="/assets/css/wyrd-components.css?v=2">
   <link rel="stylesheet" href="/assets/css/mobile.css?v=2">
-  <link rel="stylesheet" href="/assets/css/design-system.css?v=3">
+  <link rel="stylesheet" href="/assets/css/design-system.css?v=4">
   <link rel="stylesheet" href="/assets/css/sidebar.css?v=1">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
@@ -102,6 +102,16 @@
         </button>
         <button class="sb-item" data-tab="education" onclick="setTab('education',this);loadEducation()">
           <span class="sb-icon">👔</span><span class="sb-label">Образование</span>
+        </button>
+      </div>
+
+      <div class="sb-section-title">БИЗНЕС</div>
+      <div class="sb-section">
+        <button class="sb-item" data-tab="babla" onclick="setTab('babla',this);Babla.load()">
+          <span class="sb-icon">💰</span><span class="sb-label">Бабло</span>
+        </button>
+        <button class="sb-item" data-tab="dispatcher" onclick="setTab('dispatcher',this);Dispatcher.load()">
+          <span class="sb-icon">🏠</span><span class="sb-label">Диспетчер</span>
         </button>
       </div>
 
@@ -473,6 +483,89 @@
         <div id="bs-book-body"></div>
       </div>
 
+      <!-- TAB: BABLA -->
+      <div id="tab-babla" class="tab-panel babla-room" style="display:none">
+        <div class="babla-room-hdr">
+          <span class="babla-room-title">💰 БАБЛО</span>
+          <button class="wmap-refresh" onclick="Babla.load()">↻</button>
+        </div>
+
+        <!-- Отчёт -->
+        <div class="babla-panel" style="margin-bottom:12px">
+          <div class="babla-panel-title">
+            <span>ПОСЛЕДНИЙ ОТЧЁТ</span>
+            <button class="btn-primary" style="padding:4px 12px;font-size:.68rem" onclick="Babla.run(this)">▶ Запустить</button>
+          </div>
+          <div id="babla-report"><div class="babla-empty">Загрузка...</div></div>
+        </div>
+
+        <!-- 2 колонки: Банк идей + Эксперименты -->
+        <div class="babla-2col">
+
+          <!-- Банк идей -->
+          <div class="babla-panel">
+            <div class="babla-panel-title">
+              <span>БАНК ИДЕЙ <span id="babla-ideas-count" style="font-size:.62rem;color:var(--text-secondary);font-weight:400;letter-spacing:0"></span></span>
+            </div>
+            <div class="babla-ideas-filters">
+              <button class="babla-filter-btn active" onclick="Babla.filterIdeas(this,'all')">ВСЕ</button>
+              <button class="babla-filter-btn" onclick="Babla.filterIdeas(this,'idea')">НОВЫЕ</button>
+              <button class="babla-filter-btn" onclick="Babla.filterIdeas(this,'testing')">В РАБОТЕ</button>
+              <button class="babla-filter-btn" onclick="Babla.filterIdeas(this,'done')">ГОТОВО</button>
+            </div>
+            <div id="babla-ideas-list"><div class="babla-empty">Загрузка...</div></div>
+          </div>
+
+          <!-- Эксперименты -->
+          <div class="babla-panel">
+            <div class="babla-panel-title">
+              <span>ЭКСПЕРИМЕНТЫ <span id="babla-exp-count" style="font-size:.62rem;color:var(--text-secondary);font-weight:400;letter-spacing:0"></span></span>
+            </div>
+            <div class="babla-exp-cols">
+              <div>
+                <div class="babla-exp-col-hdr" style="color:var(--status-idle)">🔬 В РАБОТЕ</div>
+                <div id="babla-exp-testing"></div>
+              </div>
+              <div>
+                <div class="babla-exp-col-hdr" style="color:var(--status-alive)">✅ ГОТОВО</div>
+                <div id="babla-exp-done"></div>
+              </div>
+              <div>
+                <div class="babla-exp-col-hdr" style="color:var(--status-dead)">❌ ПРОВАЛ</div>
+                <div id="babla-exp-failed"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: DISPATCHER -->
+      <div id="tab-dispatcher" class="tab-panel disp-room" style="display:none">
+        <div class="disp-room-hdr">
+          <span id="disp-status-dot" class="disp-status-dot"></span>
+          <span class="disp-room-title">🏠 ДИСПЕТЧЕР</span>
+          <a href="https://wooden-house72.ru" target="_blank" class="disp-site-link">wooden-house72.ru ↗</a>
+          <button class="wmap-refresh" style="margin-left:auto" onclick="Dispatcher.load()">↻</button>
+        </div>
+
+        <!-- Клиенты -->
+        <div class="babla-panel" style="margin-bottom:12px">
+          <div class="babla-panel-title"><span>КЛИЕНТЫ</span></div>
+          <div id="disp-clients-list"><div class="disp-empty">Загрузка...</div></div>
+        </div>
+
+        <!-- Будущие блоки -->
+        <div class="disp-future-block">
+          <div class="disp-future-title">БУДУЩИЕ БЛОКИ</div>
+          <div class="disp-future-cards">
+            <div class="disp-future-card"><span class="dot-off"></span> Диспетчер Book Studio</div>
+            <div class="disp-future-card"><span class="dot-off"></span> Диспетчер Library</div>
+            <div class="disp-future-card"><span class="dot-off"></span> Саня Окна (подключить)</div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB: AUDIT -->
       <div id="tab-audit" class="tab-panel" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -577,6 +670,8 @@
   <script src="/assets/js/education.js?v=2"></script>
   <script src="/assets/js/world.js?v=2"></script>
   <script src="/assets/js/audit.js?v=2"></script>
+  <script src="/assets/js/babla.js?v=1"></script>
+  <script src="/assets/js/dispatcher.js?v=1"></script>
   <!-- ─── BUTLER ORB + PANEL ──────────────────────────── -->
   <div class="butler-orb idle" id="butler-orb" onclick="Butler.togglePanel()" title="Дворецкий">◈</div>
   <div class="butler-panel" id="butler-panel">
