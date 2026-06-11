@@ -21,7 +21,7 @@ async function loadBookStudio() {
     _renderBsStats(d);
     const books = d.books || [];
     if (!books.length) return;
-    if (!_bsSlug) _bsSlug = books[0].slug;
+    if (!_bsSlug) _bsSlug = (books.find(b => (b.chapters_total||0) > 0) || books[0]).slug;
     const [chs, arc] = await Promise.all([
       _bsFetch(`/bs/books/${_bsSlug}/chapters`),
       _bsFetch(`/bs/books/${_bsSlug}/arc`).catch(() => null)
@@ -50,7 +50,8 @@ async function _loadTeamData() {
 // ── Stats header ──────────────────────────────────────────────
 function _renderBsStats(d) {
   const books = d.books || [];
-  const avg = books.length ? (books.reduce((s,b) => s+(b.avg_score||0), 0)/books.length).toFixed(1) : '—';
+  const booksWithScore = books.filter(b => (b.avg_score||0) > 0);
+  const avg = booksWithScore.length ? (booksWithScore.reduce((s,b) => s+(b.avg_score||0), 0)/booksWithScore.length).toFixed(1) : '—';
   const sEl = document.getElementById('bs-stats');
   if (sEl) sEl.innerHTML =
     _bsCard(d.total_chapters||0,'НАПИСАНО','var(--color-studio)','✍️') +
