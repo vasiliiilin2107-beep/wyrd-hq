@@ -7,6 +7,8 @@ const _BS_OFFICE_AGENTS = [
   {id: 'conductor', icon: '🎯', name: 'Дирижёр',     desc: 'Анализ книги → директивы', slug: true},
   {id: 'school',    icon: '🎓', name: 'Школа',       desc: 'Разбор глав → правила агентам', slug: true},
   {id: 'readtops',  icon: '📖', name: 'Читка рынка', desc: 'Читатели читают топ-книги рынка', slug: false},
+  {id: 'thomas',    icon: '🦉', name: 'Томас',       desc: 'Цикл мышления → ответ в Telegram', slug: false},
+  {id: 'library',   icon: '📚', name: 'Библиотека',  desc: 'Читатели идут по источникам знаний', slug: false},
 ];
 
 let _bsOfficeTimer = null;

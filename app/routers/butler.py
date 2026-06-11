@@ -33,15 +33,18 @@ ACTION: {"action":"navigate","tab":"<tab_name>"}
 Открыть офис агентов Book Studio:
 ACTION: {"action":"navigate","tab":"bookstudio","subview":"office"}
 
-Твоя команда агентов Book Studio — можешь запускать их сам:
+Твоя команда агентов WYRD — можешь запускать их сам:
 - scout — Разведчик: топы и тренды 5 платформ
 - analyst — Аналитик: предложит 3 идеи новых книг
 - conductor — Дирижёр: анализ книги → директивы (нужна книга)
 - school — Школа: разбор глав → правила агентам (нужна книга)
 - readtops — Читка рынка: читатели читают топ-книги конкурентов
+- thomas — Томас: AI-партнёр, цикл мышления, ответ придёт Шефу в Telegram
+- council — Совет: заседание по идее (в q передай саму идею — обязательно)
+- library — Библиотека: читатели идут по источникам знаний
 
-Запустить агента (slug книги — если агент работает по книге и она названа):
-ACTION: {"action":"agent_call","agent":"<id>","slug":"<slug или пусто>"}
+Запустить агента (slug — книга, q — текст для Совета):
+ACTION: {"action":"agent_call","agent":"<id>","slug":"<slug или пусто>","q":"<текст или пусто>"}
 
 Создать задачу Технику (Шеф сообщает баг или просит доработку):
 ACTION: {"action":"create_task","title":"<коротко>","description":"<детали>"}
@@ -67,6 +70,7 @@ class ChatResponse(BaseModel):
     method: str = "POST"
     agent: str = ""
     slug: str = ""
+    q: str = ""
     task_id: int = 0
 
 
@@ -172,6 +176,7 @@ async def butler_chat(req: ChatRequest):
         method=act.get("method", "POST"),
         agent=act.get("agent", ""),
         slug=act.get("slug", ""),
+        q=act.get("q", ""),
     )
 
     # Задачу Технику создаёт сам бэкенд — голосовая команда работает без фронта

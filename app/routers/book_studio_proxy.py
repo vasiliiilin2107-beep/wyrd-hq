@@ -170,6 +170,11 @@ async def bs_protestant_reviews(slug: str):
 
 # --- Офис агентов: запуск с живым логом --------------------------------------
 
+THOMAS_URL = os.getenv(
+    "THOMAS_URL", "http://nliab2x9c4i45glpqn3mdcy0.147.45.212.155.sslip.io"
+).rstrip("/")
+HQ_LOCAL = "http://localhost:8000"
+
 _AGENTS = {
     "scout": {
         "title": "Разведчик", "method": "GET", "path": "/scout/all",
@@ -193,6 +198,21 @@ _AGENTS = {
         "needs_slug": False, "timeout": 30,
         "note": "Читатели пошли в топ рынка в фоне (~3-5 мин). Правила лягут в agent_notes всех книг",
     },
+    "thomas": {
+        "title": "Томас", "method": "POST", "path": "/api/trigger/think",
+        "base": THOMAS_URL, "needs_slug": False, "timeout": 30,
+        "note": "Томас думает в фоне — результат придёт Шефу в Telegram",
+    },
+    "council": {
+        "title": "Совет", "method": "POST", "path": "/council/sessions",
+        "base": HQ_LOCAL, "needs_slug": False, "timeout": 60, "payload_q": "idea",
+        "note": "Заседание идёт в фоне — вердикт в комнате Совета",
+    },
+    "library": {
+        "title": "Библиотека", "method": "POST", "path": "/library/readers/run-all",
+        "base": HQ_LOCAL, "needs_slug": False, "timeout": 90,
+        "note": "Читатели Библиотеки пошли по источникам",
+    },
 }
 
 
@@ -210,6 +230,8 @@ def _summarize(agent: str, data) -> list:
         if agent == "school":
             rules = data.get("rules") or data.get("writer_rules") or []
             return [f"📏 {r}" for r in rules[:5]] or [f"Ответ: {str(data)[:200]}"]
+        if agent == "council" and isinstance(data, dict) and data.get("session_id"):
+            return [f"🏛 Заседание №{data['session_id']} открыто"]
         if isinstance(data, dict) and data.get("message"):
             return [str(data["message"])[:300]]
         return [str(data)[:300]]
@@ -217,7 +239,28 @@ def _summarize(agent: str, data) -> list:
         return [str(data)[:300]]
 
 
-async def _agent_task(run_id: str, agent: str, cfg: dict, path: str):
+async def _agent_failed_techtask(title: str, err: str) -> int:
+    """Агент упёрся → автоматическая задача Технику."""
+    try:
+        from ..models import TechTask
+        from ..database import SessionLocal
+        async with SessionLocal() as s:
+            t = TechTask(
+                title=f"Агент упёрся: {title}",
+                description=str(err)[:1000],
+                created_by="agent_office",
+                priority=4,
+            )
+            s.add(t)
+            await s.commit()
+            await s.refresh(t)
+            return t.id
+    except Exception as e:
+        log.error("[agent-run] techtask create error: %s", e)
+        return 0
+
+
+async def _agent_task(run_id: str, agent: str, cfg: dict, path: str, q: str = ""):
     append(run_id, f"→ {cfg['title']}: {cfg['method']} {path}")
 
     async def _ticker():
@@ -227,17 +270,25 @@ async def _agent_task(run_id: str, agent: str, cfg: dict, path: str):
             n += 10
             append(run_id, f"… {cfg['title']} работает ({n} сек)")
 
+    async def _fail(err: str):
+        append(run_id, f"✗ {err}")
+        task_id = await _agent_failed_techtask(cfg["title"], err)
+        if task_id:
+            append(run_id, f"🔧 Задача Технику #{task_id} создана")
+        finish(run_id, False)
+
+    base = cfg.get("base", BS_URL)
+    payload = {cfg["payload_q"]: q} if cfg.get("payload_q") else {}
     ticker = asyncio.create_task(_ticker())
     try:
         async with httpx.AsyncClient(timeout=cfg["timeout"]) as c:
             if cfg["method"] == "POST":
-                r = await c.post(f"{BS_URL}{path}", json={})
+                r = await c.post(f"{base}{path}", json=payload)
             else:
-                r = await c.get(f"{BS_URL}{path}")
+                r = await c.get(f"{base}{path}")
         ticker.cancel()
         if r.status_code not in (200, 201):
-            append(run_id, f"✗ HTTP {r.status_code}: {r.text[:200]}")
-            finish(run_id, False)
+            await _fail(f"HTTP {r.status_code}: {r.text[:200]}")
             return
         for line in _summarize(agent, r.json()):
             append(run_id, line)
@@ -247,21 +298,23 @@ async def _agent_task(run_id: str, agent: str, cfg: dict, path: str):
         finish(run_id, True)
     except Exception as e:
         ticker.cancel()
-        append(run_id, f"✗ Ошибка: {e}")
-        finish(run_id, False)
+        await _fail(f"Ошибка: {e}")
 
 
 @router.post("/agent-run/{agent}")
-async def bs_agent_run(agent: str, slug: str = ""):
-    """Запускает агента Студии, возвращает run_id. Лог: GET /agent-log/{run_id}/tail."""
+async def bs_agent_run(agent: str, slug: str = "", q: str = ""):
+    """Запускает агента WYRD, возвращает run_id. Лог: GET /agent-log/{run_id}/tail.
+    q — текст для агентов с полезной нагрузкой (Совет: идея заседания)."""
     cfg = _AGENTS.get(agent)
     if not cfg:
         raise HTTPException(404, f"Агент '{agent}' не найден. Доступны: {list(_AGENTS)}")
     if cfg["needs_slug"] and not slug:
         raise HTTPException(400, "Нужен ?slug= — этот агент работает по книге")
+    if cfg.get("payload_q") and not q:
+        raise HTTPException(400, f"Нужен ?q= — что передать агенту «{cfg['title']}»")
     path = cfg["path"].format(slug=slug)
     run_id = start_run(agent, cfg["title"])
-    asyncio.create_task(_agent_task(run_id, agent, cfg, path))
+    asyncio.create_task(_agent_task(run_id, agent, cfg, path, q))
     return {"run_id": run_id, "agent": agent, "title": cfg["title"]}
 
 
