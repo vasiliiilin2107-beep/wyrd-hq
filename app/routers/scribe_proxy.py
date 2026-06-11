@@ -6,7 +6,8 @@ from fastapi import APIRouter, Request, Response
 router = APIRouter(tags=["scribe"])
 log = logging.getLogger(__name__)
 
-SCRIBE_URL = os.environ.get("SCRIBE_INTERNAL_URL", "http://10.0.1.1:8765/webhook")
+# Скрайб в сети coolify — DNS по имени контейнера (bridge-сеть сервера сломана наружу)
+SCRIBE_URL = os.environ.get("SCRIBE_INTERNAL_URL", "http://wyrd-scribe:8000/webhook")
 
 
 @router.post("/scribe-webhook")
