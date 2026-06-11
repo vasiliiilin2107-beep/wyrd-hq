@@ -38,8 +38,12 @@ CHAPTERS = [
     {"number": 2, "title": "Глава 2 — Система считает калории", "score": 7.4, "published": False},
 ]
 
+# Формат = реальный ответ GET /books/{slug}/arc бэкенда (main.py get_arc) — не выдумывать свой!
 _FN = ["открытие", "конфликт", "поворот", "пик", "развязка"]
 ARC = {
+    "total_arcs": 10,
+    "current_arc": 1,
+    "arcs": {str(n): {"arc_title": f"Арка {n}: Испытание {n}", "chapters": 20} for n in range(1, 11)},
     "arc_name": "Арка 1 — Пробуждение обжоры",
     "arc_summary": "Толстяк Лю Фэн узнаёт, что его дух-зверь — собственный аппетит.",
     "chapter_goals": [

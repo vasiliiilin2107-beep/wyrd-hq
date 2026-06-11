@@ -238,10 +238,17 @@ function _buildTeamTab() {
 // ── ПЛАН ──────────────────────────────────────────────────────
 function _buildPlanTab() {
   const goals = _bsArc?.chapter_goals || [];
-  if (!goals.length || !_bsChapters.length) return `<div class="bs-empty"><div style="font-size:3rem">📋</div><div>Сценарий появится когда конвейер напишет первую главу</div>
-    <button class="wyrd-btn" onclick="bsBuildArc('${_bsSlug}')">📐 Построить арку</button></div>`;
+  if (!goals.length) return `<div class="bs-empty"><div style="font-size:3rem">📋</div><div>Арки не построены — запусти подготовку (Bible + 10 арок, ~3-5 мин)</div>
+    <button class="wyrd-btn" onclick="bsPrepareBook('${_bsSlug}')">📐 Подготовка</button></div>`;
   const chMap = Object.fromEntries(_bsChapters.map(c => [c.number, c]));
-  const written = _bsChapters.length, total = goals.length, pct = Math.min(100, Math.round(written/total*100));
+  const cur = _bsArc?.current_arc || 1, allArcs = _bsArc?.arcs || {};
+  const arcChips = Object.keys(allArcs).map(n => {
+    const num = parseInt(n), active = num === cur;
+    return `<button onclick="bsLoadArc(${num})" title="${allArcs[n].arc_title || 'Арка ' + n}"
+      class="wyrd-btn wyrd-btn-sm${active ? '' : ' wyrd-btn-ghost'}"
+      style="padding:3px 9px;${active ? 'background:var(--color-studio);color:#0d1117' : ''}">${n}</button>`;
+  }).join('');
+  const written = goals.filter(g => chMap[g.number]).length, total = goals.length, pct = Math.min(100, Math.round(written/total*100));
   const blocks = goals.map(g => {
     const ch = chMap[g.number], sc = ch?.score||0, bg = ch ? _scoreColor(sc) : 'rgba(255,255,255,.08)', fnk = (g.arc_function||'').toLowerCase(), dot = _FN_COL[fnk];
     return `<div onclick="${ch?`openBsChapter('${_bsSlug}',${g.number})`:''}" title="Гл.${g.number}${ch?' · '+sc.toFixed(1):' — не написана'}"
@@ -262,10 +269,12 @@ function _buildPlanTab() {
       <div style="flex-shrink:0">${badge}</div></div>`;
   }).join('');
   return `<div style="background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:var(--r-md);padding:14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div><span style="font-size:.65rem;color:var(--text-secondary)">📐 ${_bsArc?.arc_name||'Арка 1'}</span>
-        <span style="margin-left:8px;font-size:.72rem;color:var(--color-studio);font-weight:700">${total} глав · ${written} написано</span></div>
-      <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="bsBuildArc('${_bsSlug}')">🔄</button>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <span style="font-size:.62rem;color:var(--text-secondary);letter-spacing:.08em">АРКИ</span>${arcChips}
+    </div>
+    <div style="margin-bottom:10px">
+      <span style="font-size:.65rem;color:var(--text-secondary)">📐 ${_bsArc?.arc_name||'Арка '+cur} (${cur}/${_bsArc?.total_arcs||'?'})</span>
+      <span style="margin-left:8px;font-size:.72rem;color:var(--color-studio);font-weight:700">${total} глав · ${written} написано</span>
     </div>
     <div style="background:var(--border-dim);border-radius:var(--r-sm);height:7px;margin-bottom:10px">
       <div style="width:${pct}%;height:100%;background:var(--color-studio);border-radius:var(--r-sm);transition:width .5s;box-shadow:0 0 8px rgba(245,158,11,.4)"></div>

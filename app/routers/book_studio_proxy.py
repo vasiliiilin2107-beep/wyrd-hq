@@ -105,8 +105,8 @@ async def bs_feedback(slug: str, payload: dict = Body(default={})):
 
 
 @router.get("/books/{slug}/arc")
-async def bs_arc(slug: str):
-    return await _bs_get(f"/books/{slug}/arc")
+async def bs_arc(slug: str, arc: int = 0):
+    return await _bs_get(f"/books/{slug}/arc" + (f"?arc={arc}" if arc else ""))
 
 
 @router.get("/scout/latest")

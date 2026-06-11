@@ -123,12 +123,10 @@ async function bsPublishAll(slug) {
   loadBookStudio();
 }
 
-async function bsBuildArc(slug) {
-  const s = slug || _bsSlug; showToast('📐 Строим арку... (~30 сек)');
+async function bsLoadArc(n) {
   try {
-    await _bsPost(`/bs/books/${s}/arc`, {book_slug: s, arc_number: 1, chapters_count: 20}, 60000);
-    _bsArc = await _bsFetch(`/bs/books/${s}/arc`).catch(() => null);
-    bsRenderBookPage(); showToast('✅ Арка построена');
+    _bsArc = await _bsFetch(`/bs/books/${_bsSlug}/arc?arc=${n}`);
+    bsRenderBookPage();
   } catch (e) { showToast('❌ ' + e.message); }
 }
 
