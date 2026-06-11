@@ -52,6 +52,16 @@ async def bs_books():
     return await _bs_get("/books")
 
 
+@router.post("/books")
+async def bs_create_book(payload: dict = Body(...)):
+    return await _bs_post("/books", payload, timeout=30)
+
+
+@router.post("/studio/prepare/{slug}")
+async def bs_studio_prepare(slug: str):
+    return await _bs_post(f"/studio/prepare/{slug}", timeout=30)
+
+
 @router.get("/books/{slug}")
 async def bs_book(slug: str):
     return await _bs_get(f"/books/{slug}")

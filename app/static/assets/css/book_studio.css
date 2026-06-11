@@ -1,0 +1,69 @@
+/* Book Studio — галерея постеров + страница книги.
+   Токены: design-system.css */
+
+.bs-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+.bs-poster {
+  cursor: pointer;
+  border-radius: var(--r-md);
+  transition: transform .18s ease;
+}
+.bs-poster:hover { transform: translateY(-4px) scale(1.02); }
+.bs-poster-cover {
+  width: 100%;
+  display: block;
+  border-radius: var(--r-md);
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.bs-poster:hover .bs-poster-cover { box-shadow: 0 10px 26px rgba(0,0,0,.6); }
+.bs-poster-meta { padding: 8px 2px 0; }
+.bs-poster-title {
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bs-poster-sub { font-size: .65rem; color: var(--text-secondary); margin-top: 2px; }
+
+.bs-ideas-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.bs-idea-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-left: 2px solid var(--color-agents);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+
+.bs-book-page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.bs-book-side { position: sticky; top: 12px; }
+.bs-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: .72rem;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-dim);
+  color: var(--text-secondary);
+}
+.bs-meta-row b { color: var(--text-primary); }
+
+@media (max-width: 900px) {
+  .bs-book-page { grid-template-columns: 1fr; }
+  .bs-book-side { position: static; }
+  .bs-book-side .bs-poster-cover { max-width: 140px; }
+}
