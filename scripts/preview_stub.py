@@ -4,6 +4,7 @@
 """
 import json
 import re
+import time
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -68,6 +69,17 @@ GET_ROUTES = [
 ]
 
 
+# Мок живого лога Офиса: строки "появляются" по мере времени с момента запуска
+_MOCK_RUNS = {}
+_MOCK_SCRIPT = [
+    "→ Аналитик: POST /analyst/ideas",
+    "… Аналитик работает (10 сек)",
+    "💡 Сломанная печать: Архитектор душ [xianxia_comedy]",
+    "💡 Не флиртуй с системой! [romance_fantasy]",
+    "✓ Готово",
+]
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(STATIC), **kw)
@@ -81,10 +93,23 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        path = self.path.split("?")[0]
+        path, _, query = self.path.partition("?")
         if path == "/":
             self.path = "/hq.html"
             return super().do_GET()
+        if path == "/agent-log/recent":
+            return self._json({"runs": []})
+        m = re.match(r"^/agent-log/([^/]+)/tail$", path)
+        if m:
+            rid = m.group(1)
+            start = _MOCK_RUNS.get(rid)
+            if start is None:
+                return self._json({"detail": "Запуск не найден"}, 404)
+            since = int((re.search(r"since=(\d+)", query) or [0, 0])[1])
+            avail = min(len(_MOCK_SCRIPT), int((time.time() - start) // 1.2) + 1)
+            lines = [{"t": round(i * 1.2, 1), "text": s} for i, s in enumerate(_MOCK_SCRIPT[:avail])]
+            return self._json({"agent": "mock", "title": "Мок", "lines": lines[since:],
+                               "next": avail, "done": avail >= len(_MOCK_SCRIPT), "ok": True})
         for pattern, fn in GET_ROUTES:
             m = re.match(pattern, path)
             if m:
@@ -92,7 +117,12 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path.startswith("/bs/"):
+        path = self.path.split("?")[0]
+        if path.startswith("/bs/agent-run/"):
+            rid = "mock%d" % (int(time.time() * 1000) % 1000000)
+            _MOCK_RUNS[rid] = time.time()
+            return self._json({"run_id": rid, "agent": path.rsplit("/", 1)[-1], "title": "Мок"})
+        if path.startswith("/bs/"):
             return self._json({"ok": True, "queued_chapter": 3, "message": "mock"})
         return self._json({"ok": False}, 404)
 

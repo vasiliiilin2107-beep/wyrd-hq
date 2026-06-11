@@ -28,7 +28,10 @@ function bsRenderGallery() {
        <div class="bs-ideas-row">${ideas.slice(0,6).map((idea,i) => _bsIdeaCard(idea,i)).join('')}</div>`
     : `<div style="margin-top:18px;font-size:.72rem;color:var(--text-secondary)">💡 Идей нет — запусти разведку из вкладки КОМАНДА любой книги</div>`;
   if (bEl) bEl.innerHTML =
-    (posters
+    `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" onclick="bsOpenOffice()">🏢 Офис агентов</button>
+    </div>`
+    + (posters
       ? `<div class="bs-gallery">${posters}</div>`
       : `<div class="bs-empty"><div style="font-size:3rem">📚</div><div>Книг пока нет — создай первую из идеи Аналитика</div></div>`)
     + ideasBlock;
@@ -121,6 +124,7 @@ function bsRenderBookPage() {
         <div class="bs-meta-row"><span>Тренд</span><b style="color:${tc}">${trend}</b></div>
         ${b.rulate_url ? `<a href="${b.rulate_url}" target="_blank" class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" style="width:100%;margin-top:10px;text-align:center;display:block">↗ Открыть на Rulate</a>` : ''}
         <button class="wyrd-btn wyrd-btn-sm" style="width:100%;margin-top:8px" onclick="bsGenerate('${b.slug}')">＋ Глава</button>
+        <button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" style="width:100%;margin-top:8px" onclick="bsOpenOffice()">🏢 Офис агентов</button>
         ${!_bsArc ? `<button class="wyrd-btn wyrd-btn-sm wyrd-btn-ghost" style="width:100%;margin-top:8px" onclick="bsPrepareBook('${b.slug}')">📐 Подготовка (Bible + арки)</button>` : ''}
       </div>
       <div class="bs-book-main">${nav}${fn()}</div>

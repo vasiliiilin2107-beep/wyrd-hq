@@ -1,8 +1,11 @@
+import asyncio
 import os
 import json as _json
 import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Body
+
+from .agent_log import start_run, append, finish
 
 log = logging.getLogger(__name__)
 
@@ -163,6 +166,108 @@ async def bs_school_post(slug: str):
 @router.get("/books/{slug}/protestant/reviews")
 async def bs_protestant_reviews(slug: str):
     return await _bs_get(f"/books/{slug}/protestant/reviews")
+
+
+# --- Офис агентов: запуск с живым логом --------------------------------------
+
+_AGENTS = {
+    "scout": {
+        "title": "Разведчик", "method": "GET", "path": "/scout/all",
+        "needs_slug": False, "timeout": 30,
+        "note": "Студия запустила разведку 5 платформ в фоне (~2-3 мин). Отчёты появятся в /bs/scout/reports",
+    },
+    "analyst": {
+        "title": "Аналитик", "method": "POST", "path": "/analyst/ideas",
+        "needs_slug": False, "timeout": 180,
+    },
+    "conductor": {
+        "title": "Дирижёр", "method": "POST", "path": "/books/{slug}/conductor",
+        "needs_slug": True, "timeout": 120,
+    },
+    "school": {
+        "title": "Школа", "method": "POST", "path": "/books/{slug}/school",
+        "needs_slug": True, "timeout": 180,
+    },
+    "readtops": {
+        "title": "Читка рынка", "method": "POST", "path": "/scout/read-tops",
+        "needs_slug": False, "timeout": 30,
+        "note": "Читатели пошли в топ рынка в фоне (~3-5 мин). Правила лягут в agent_notes всех книг",
+    },
+}
+
+
+def _summarize(agent: str, data) -> list:
+    """Человеческие строки результата для лога — без JSON-простыней."""
+    try:
+        if agent == "analyst":
+            ideas = data.get("ideas", []) if isinstance(data, dict) else data
+            return [f"💡 {i.get('title', '?')} [{i.get('genre', '')}]" for i in ideas[:5]]
+        if agent == "conductor":
+            out = [f"• {d}" for d in (data.get("directives") or [])[:5]]
+            if data.get("summary"):
+                out.append(f"Итог: {data['summary'][:200]}")
+            return out or ["Директив нет"]
+        if agent == "school":
+            rules = data.get("rules") or data.get("writer_rules") or []
+            return [f"📏 {r}" for r in rules[:5]] or [f"Ответ: {str(data)[:200]}"]
+        if isinstance(data, dict) and data.get("message"):
+            return [str(data["message"])[:300]]
+        return [str(data)[:300]]
+    except Exception:
+        return [str(data)[:300]]
+
+
+async def _agent_task(run_id: str, agent: str, cfg: dict, path: str):
+    append(run_id, f"→ {cfg['title']}: {cfg['method']} {path}")
+
+    async def _ticker():
+        n = 0
+        while True:
+            await asyncio.sleep(10)
+            n += 10
+            append(run_id, f"… {cfg['title']} работает ({n} сек)")
+
+    ticker = asyncio.create_task(_ticker())
+    try:
+        async with httpx.AsyncClient(timeout=cfg["timeout"]) as c:
+            if cfg["method"] == "POST":
+                r = await c.post(f"{BS_URL}{path}", json={})
+            else:
+                r = await c.get(f"{BS_URL}{path}")
+        ticker.cancel()
+        if r.status_code not in (200, 201):
+            append(run_id, f"✗ HTTP {r.status_code}: {r.text[:200]}")
+            finish(run_id, False)
+            return
+        for line in _summarize(agent, r.json()):
+            append(run_id, line)
+        if cfg.get("note"):
+            append(run_id, f"ℹ {cfg['note']}")
+        append(run_id, "✓ Готово")
+        finish(run_id, True)
+    except Exception as e:
+        ticker.cancel()
+        append(run_id, f"✗ Ошибка: {e}")
+        finish(run_id, False)
+
+
+@router.post("/agent-run/{agent}")
+async def bs_agent_run(agent: str, slug: str = ""):
+    """Запускает агента Студии, возвращает run_id. Лог: GET /agent-log/{run_id}/tail."""
+    cfg = _AGENTS.get(agent)
+    if not cfg:
+        raise HTTPException(404, f"Агент '{agent}' не найден. Доступны: {list(_AGENTS)}")
+    if cfg["needs_slug"] and not slug:
+        raise HTTPException(400, "Нужен ?slug= — этот агент работает по книге")
+    path = cfg["path"].format(slug=slug)
+    run_id = start_run(agent, cfg["title"])
+    asyncio.create_task(_agent_task(run_id, agent, cfg, path))
+    return {"run_id": run_id, "agent": agent, "title": cfg["title"]}
+
+
+@router.get("/scout/reports")
+async def bs_scout_reports():
+    return await _bs_get("/scout/reports")
 
 
 @router.post("/books/{slug}/next-book")

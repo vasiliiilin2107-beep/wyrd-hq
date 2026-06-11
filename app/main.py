@@ -14,7 +14,7 @@ from .redis_client import init_redis, close_redis
 from .qdrant_store import init_qdrant, close_qdrant
 from .routers.civilization import seed_agents
 from .routers.education import load_all_dna
-from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, book_studio_proxy, constitution, civilization, council, education, world_docs, build, analytics, ideas_dept, projects_dept, babla, butler, butler_tts, dispatcher_proxy, hq_world, scribe_proxy
+from .routers import branches, events, memory, ws, notes, tasks, backups, flags, techtasks, income, tokens, lessons, thomas_proxy, library_proxy, book_studio_proxy, constitution, civilization, council, education, world_docs, build, analytics, ideas_dept, projects_dept, babla, butler, butler_tts, dispatcher_proxy, hq_world, scribe_proxy, agent_log
 from .council_agent import council_autonomous_loop
 from .foreman_agent import foreman_loop
 from .audit_agent import audit_loop, router as audit_router
@@ -89,6 +89,7 @@ app.include_router(butler.router)
 app.include_router(butler_tts.router)
 app.include_router(hq_world.router)
 app.include_router(scribe_proxy.router)
+app.include_router(agent_log.router)
 
 if (STATIC_DIR / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
