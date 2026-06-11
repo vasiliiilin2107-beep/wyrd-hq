@@ -557,6 +557,7 @@ async function loadTopbarStats() {
 
 /* ─── TOAST ─────────────────────────────────────────── */
 function showToast(type, text, color) {
+  if (text === undefined) { text = type; type = 'WYRD'; }  // вызов с одним аргументом
   const container = document.getElementById('toast-container');
   if (!container) return;
   const toast = document.createElement('div');

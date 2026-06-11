@@ -126,11 +126,15 @@ const Butler = (() => {
       const d = await r.json();
       _replaceLastMsg('butler', d.speech);
       _history.push({ role: 'assistant', content: d.speech });
-      if (d.action === 'navigate' && d.tab) {
-        setTimeout(() => _navigate(d.tab), 300);
-      }
-      if (d.action === 'run' && d.endpoint) {
-        _runEndpoint(d.endpoint, d.method);
+      if (typeof ButlerRouter !== 'undefined' && ButlerRouter.execute(d)) {
+        // agent_call / офис / задача Технику — обработано маршрутизатором
+      } else {
+        if (d.action === 'navigate' && d.tab) {
+          setTimeout(() => _navigate(d.tab), 300);
+        }
+        if (d.action === 'run' && d.endpoint) {
+          _runEndpoint(d.endpoint, d.method);
+        }
       }
       _speak(d.speech);
     } catch (e) {

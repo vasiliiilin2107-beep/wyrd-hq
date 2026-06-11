@@ -30,9 +30,23 @@ ACTION: {"action":"navigate","tab":"<tab_name>"}
 
 Доступные вкладки: home, bookstudio, library, ideas, civilization, world, education, technik, build, notes, map, audit, constitution, files, scribe
 
-Когда нужно запустить API — добавь:
-ACTION: {"action":"run","endpoint":"<endpoint>","method":"POST"}
+Открыть офис агентов Book Studio:
+ACTION: {"action":"navigate","tab":"bookstudio","subview":"office"}
 
+Твоя команда агентов Book Studio — можешь запускать их сам:
+- scout — Разведчик: топы и тренды 5 платформ
+- analyst — Аналитик: предложит 3 идеи новых книг
+- conductor — Дирижёр: анализ книги → директивы (нужна книга)
+- school — Школа: разбор глав → правила агентам (нужна книга)
+- readtops — Читка рынка: читатели читают топ-книги конкурентов
+
+Запустить агента (slug книги — если агент работает по книге и она названа):
+ACTION: {"action":"agent_call","agent":"<id>","slug":"<slug или пусто>"}
+
+Создать задачу Технику (Шеф сообщает баг или просит доработку):
+ACTION: {"action":"create_task","title":"<коротко>","description":"<детали>"}
+
+Если непонятно, какого агента или какую книгу Шеф имеет в виду — переспроси. Не угадывай.
 Если просто отвечаешь — ничего не добавляй.
 """
 
@@ -47,8 +61,12 @@ class ChatResponse(BaseModel):
     speech: str
     action: str = "none"
     tab: str = ""
+    subview: str = ""
     endpoint: str = ""
     method: str = "POST"
+    agent: str = ""
+    slug: str = ""
+    task_id: int = 0
 
 
 async def _get_world_context() -> dict:
@@ -134,24 +152,47 @@ async def butler_chat(req: ChatRequest):
         return ChatResponse(speech="Нет связи с LLM, Шеф.")
 
     speech = raw
-    action = "none"
-    tab = ""
-    endpoint = ""
-    method = "POST"
+    act = {}
 
     if "ACTION:" in raw:
         parts = raw.split("ACTION:", 1)
         speech = parts[0].strip()
         try:
             act = json.loads(parts[1].strip())
-            action = act.get("action", "none")
-            tab = act.get("tab", "")
-            endpoint = act.get("endpoint", "")
-            method = act.get("method", "POST")
         except Exception:
-            pass
+            act = {}
 
-    return ChatResponse(speech=speech, action=action, tab=tab, endpoint=endpoint, method=method)
+    resp = ChatResponse(
+        speech=speech,
+        action=act.get("action", "none"),
+        tab=act.get("tab", ""),
+        subview=act.get("subview", ""),
+        endpoint=act.get("endpoint", ""),
+        method=act.get("method", "POST"),
+        agent=act.get("agent", ""),
+        slug=act.get("slug", ""),
+    )
+
+    # Задачу Технику создаёт сам бэкенд — голосовая команда работает без фронта
+    if resp.action == "create_task" and act.get("title"):
+        try:
+            from ..models import TechTask
+            async with SessionLocal() as session:
+                task = TechTask(
+                    title=act["title"][:200],
+                    description=act.get("description", ""),
+                    created_by="butler",
+                    priority=5,
+                )
+                session.add(task)
+                await session.commit()
+                await session.refresh(task)
+                resp.task_id = task.id
+        except Exception as e:
+            log.error("butler create_task error: %s", e)
+            resp.speech += " (Задачу записать не вышло — Техник не дозвался.)"
+
+    return resp
 
 
 @router.post("/autobrief", response_model=ChatResponse)
