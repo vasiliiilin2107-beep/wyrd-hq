@@ -415,16 +415,17 @@
       </div>
 
       <!-- TAB: SCRIBE -->
-      <div id="tab-scribe" class="tab-panel" style="display:none">
-        <div class="section-title" style="margin-bottom:14px">SCRIBE — ТРАНСКРИПЦИИ</div>
-        <div id="scribe-stats" class="lib-stats"><div class="lib-empty">Загрузка...</div></div>
-        <div class="lib-section" style="margin-top:18px">
-          <div class="lib-section-title">
-            <span>ИСТОРИЯ ТРАНСКРИПЦИЙ</span>
-            <button class="wmap-refresh" onclick="loadScribe()">↻</button>
-          </div>
-          <div id="scribe-list" class="lib-recent-list"><div class="lib-empty">Загрузка...</div></div>
+      <div id="tab-scribe" class="tab-panel" style="display:none;padding:0;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid #1e1e1e;flex-shrink:0">
+          <span class="section-title" style="margin:0">WYRD SCRIBE</span>
+          <a href="https://z12fd71faeaovvegwixh17r0.147.45.212.155.sslip.io" target="_blank"
+             style="font-size:12px;color:#f0c040;text-decoration:none;opacity:.7">⬡ открыть отдельно</a>
         </div>
+        <iframe id="scribe-iframe"
+          src="https://z12fd71faeaovvegwixh17r0.147.45.212.155.sslip.io"
+          style="flex:1;width:100%;border:none;background:#0d0d0d"
+          allow="microphone; camera">
+        </iframe>
       </div>
 
       <!-- TAB: CONSTITUTION -->
