@@ -547,7 +547,7 @@ async def _council_world_audit() -> None:
 
 async def council_autonomous_loop() -> None:
     global _topic_idx
-    await asyncio.sleep(30 * 60)  # первый запуск через 30 мин
+    await asyncio.sleep(60 * 60)  # первый запуск через 1 час
     while True:
         try:
             # Проверяем: не накопились ли висящие идеи?
@@ -575,4 +575,4 @@ async def council_autonomous_loop() -> None:
 
         except Exception as e:
             log.error("Council autonomous loop: %s", e)
-        await asyncio.sleep(90 * 60)  # каждые 90 мин
+        await asyncio.sleep(360 * 60)  # каждые 6 часов
