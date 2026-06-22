@@ -1,6 +1,6 @@
 """
-Авито OAuth callback — одноразовая авторизация.
-После получения токена сохраняет в /tmp/avito_token.txt
+Авито OAuth callback — авторизация WYRD аккаунта.
+После получения токена сохраняет в диспетчер (клиент neiroceh).
 """
 import httpx
 from fastapi import APIRouter, Request
@@ -8,10 +8,12 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter()
 
-CLIENT_ID     = "7ph7KC6WzP-vHfbKCc5F"
-CLIENT_SECRET = "G4vvXEt6Rdu554uUuGSG0uNBfUiXQfa6KWD8ZEA_"
+CLIENT_ID     = "idAgm2f7oBeBgbB4ID0B"
+CLIENT_SECRET = "VGLI7cjiykhXfqdYEboFPkwKw0UJrDKDTROHhTQV"
 REDIRECT_URI  = "https://wyrd.su/avito/callback"
-TOKEN_FILE    = "/tmp/avito_token.txt"
+
+DISPATCHER_URL    = "http://147.45.212.155:8100"
+DISPATCHER_SECRET = "4fb8c604cf845665a887e7da8029dd9c6bca23169848bafe"
 
 
 @router.get("/avito/callback", response_class=HTMLResponse)
@@ -34,24 +36,41 @@ async def avito_callback(request: Request, code: str = "", error: str = ""):
         )
         data = r.json()
 
-    if "access_token" in data:
-        token = data["access_token"]
-        with open(TOKEN_FILE, "w") as f:
-            f.write(token)
-        return HTMLResponse(f"""
-        <h2>✅ Авито подключён!</h2>
-        <p>Токен сохранён. Можно закрыть вкладку.</p>
-        <pre style='background:#f0f0f0;padding:10px;word-break:break-all'>{token[:40]}…</pre>
-        """)
-    else:
+    if "access_token" not in data:
         return HTMLResponse(f"<h2>Ошибка токена</h2><pre>{data}</pre>", status_code=400)
 
+    token = data["access_token"]
+    credential = f"{CLIENT_ID}:{CLIENT_SECRET}"
 
-@router.get("/avito/token", response_class=HTMLResponse)
-async def avito_token():
+    # Сохраняем токен в диспетчер
     try:
-        with open(TOKEN_FILE) as f:
-            token = f.read().strip()
-        return HTMLResponse(f"<pre>{token}</pre>")
-    except FileNotFoundError:
-        return HTMLResponse("<h2>Токен не найден. Пройди авторизацию.</h2>", status_code=404)
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"{DISPATCHER_URL}/internal/set-avito-token",
+                json={"client_id": "neiroceh", "avito_token": credential, "access_token": token},
+                headers={"X-Secret": DISPATCHER_SECRET},
+                timeout=5,
+            )
+        dispatcher_ok = True
+    except Exception:
+        dispatcher_ok = False
+
+    return HTMLResponse(f"""
+    <h2>✅ Авито WYRD подключён!</h2>
+    <p>Диспетчер {'обновлён ✅' if dispatcher_ok else '⚠️ не обновлён (сохрани токен вручную)'}</p>
+    <pre style='background:#f0f0f0;padding:10px;word-break:break-all'>{token[:40]}…</pre>
+    """)
+
+
+@router.get("/avito/auth", response_class=HTMLResponse)
+async def avito_auth_start():
+    from urllib.parse import urlencode
+    params = urlencode({
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": "messenger:read messenger:write items:info autoload:reports",
+        "state": "wyrd-main",
+    })
+    url = f"https://avito.ru/oauth?{params}"
+    return HTMLResponse(f'<a href="{url}">Авторизовать WYRD в Авито</a>')
