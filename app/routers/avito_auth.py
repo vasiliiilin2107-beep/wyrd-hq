@@ -10,7 +10,7 @@ router = APIRouter()
 
 CLIENT_ID     = "7ph7KC6WzP-vHfbKCc5F"
 CLIENT_SECRET = "G4vvXEt6Rdu554uUuGSG0uNBfUiXQfa6KWD8ZEA_"
-REDIRECT_URI  = "https://neiroceh.ru/avito/callback"
+REDIRECT_URI  = "https://wyrd.su/avito/callback"
 TOKEN_FILE    = "/tmp/avito_token.txt"
 
 
