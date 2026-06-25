@@ -247,24 +247,37 @@ AUTONOMOUS_TOPICS = [
 _topic_idx = 0
 
 
-async def _llm(system: str, messages: list[dict]) -> str:
+async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries: int = 3) -> str:
+    """Единый LLM-вызов всего HQ. Устойчив к пустым ответам и сбоям polza:
+    проверяет наличие choices, ретраит на 5xx/429/пустоту. Никогда не падает в 'choices'.
+    Возвращает текст или '' (пусто) — агент сам отфильтрует, не запишет мусор в отчёт."""
     if not POLZA_KEY:
         return "[POLZA_API_KEY не задан в env HQ]"
-    try:
-        async with httpx.AsyncClient(timeout=90) as client:
-            r = await client.post(
-                POLZA_URL,
-                headers={"Authorization": f"Bearer {POLZA_KEY}"},
-                json={
-                    "model": MODEL,
-                    "messages": [{"role": "system", "content": system}] + messages,
-                    "max_tokens": 500,
-                },
-            )
-            return r.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        log.error("LLM call failed: %s", e)
-        return f"[ошибка LLM: {e}]"
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "system", "content": system}] + messages,
+        "max_tokens": max_tokens,
+    }
+    last = ""
+    for attempt in range(1, retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=90) as client:
+                r = await client.post(POLZA_URL, headers={"Authorization": f"Bearer {POLZA_KEY}"}, json=payload)
+            if r.status_code >= 500 or r.status_code == 429:
+                last = f"HTTP {r.status_code}"
+            else:
+                r.raise_for_status()
+                choices = (r.json() or {}).get("choices") or []
+                content = (choices[0].get("message", {}).get("content") if choices else "") or ""
+                if content.strip():
+                    return content.strip()
+                last = "пустой ответ модели"
+        except Exception as e:
+            last = str(e)
+        if attempt < retries:
+            await asyncio.sleep(2 * attempt)
+    log.warning("LLM пусто после %d попыток: %s", retries, last)
+    return ""
 
 
 async def _get_synthesis_brief() -> str:
