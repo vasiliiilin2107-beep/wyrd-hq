@@ -40,9 +40,14 @@ async def get_build_queue(session: AsyncSession = Depends(get_session)):
     for s in verdict_sessions:
         if s.id not in existing_ids:
             v = s.verdict_json or {}
+            # Ворота: карточку создаём ТОЛЬКО если вратарь решил строить.
+            # Старые вердикты без build_decision больше не флудят Стройку.
+            bd = v.get("build_decision") or {}
+            if not bd.get("build"):
+                continue
             session.add(BuildCard(
                 session_id=s.id,
-                topic=s.idea_text,
+                topic=bd.get("title") or s.idea_text,
                 tz_text=v.get("architect", ""),
                 summary=v.get("summary", ""),
             ))

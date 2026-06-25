@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -8,7 +9,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AgentJournal, AnalyticsReport, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
+from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
 
 log = logging.getLogger(__name__)
 
@@ -373,6 +374,58 @@ async def _save_msg(session_id: int, speaker: str, message: str) -> None:
         await db.commit()
 
 
+SYS_BUILD_GATE = """Ты вратарь Стройки WYRD. По вердикту Совета решаешь одно: превращать это в ТЗ на стройку или нет.
+
+build=true — вердикт предлагает КОНКРЕТНОЕ реализуемое действие/фичу/улучшение, которое строитель может взять и сделать.
+build=false — это размышление, наблюдение, «надо подумать», самоанализ системы без конкретного действия, или дубль уже существующего.
+
+Будь строг: лучше не пропустить пустословие, чем завалить Стройку мусором. Отвечай ТОЛЬКО валидным JSON-объектом."""
+
+
+def _extract_obj(text: str) -> dict | None:
+    """Достаёт JSON-объект из ответа модели (HQ без robust-парсера)."""
+    if not text:
+        return None
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        if t.lower().startswith("json"):
+            t = t[4:]
+    s, e = t.find("{"), t.rfind("}")
+    if s >= 0 and e > s:
+        for cand in (t[s:e + 1], re.sub(r",\s*([}\]])", r"\1", t[s:e + 1])):
+            try:
+                r = json.loads(cand)
+                if isinstance(r, dict):
+                    return r
+            except Exception:
+                continue
+    return None
+
+
+async def _decide_build(idea: str, carto: str, arch: str) -> dict:
+    """Вратарь: вердикт → строить или нет (+ название и приоритет)."""
+    prompt = (
+        f"ТЕМА: {idea}\n\nВЕРДИКТ КАРТОГРАФА:\n{carto[:1500]}\n\n"
+        f"ТЕХОЦЕНКА АРХИТЕКТОРА:\n{arch[:700]}\n\n"
+        "Превращать в ТЗ на стройку?\n"
+        'JSON: {"build": true|false, "title": "что строим, до 80 симв", "priority": 1-5, "reason": "1 предложение"}'
+    )
+    raw = await _llm(SYS_BUILD_GATE, [{"role": "user", "content": prompt}], max_tokens=300)
+    obj = _extract_obj(raw) or {}
+    prio = obj.get("priority", 3)
+    try:
+        prio = max(1, min(5, int(prio)))
+    except Exception:
+        prio = 3
+    return {
+        "build": bool(obj.get("build")),
+        "title": (str(obj.get("title") or idea))[:120],
+        "priority": prio,
+        "reason": str(obj.get("reason", ""))[:200],
+    }
+
+
 async def run_council_dialog(session_id: int, idea: str) -> None:
     try:
         snapshot = await _world_snapshot()
@@ -479,6 +532,34 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         await _pulse_council("Стратег", f"сессия #{session_id}: {idea[:50]}")
         await _pulse_council("Архитектор", f"техоценка #{session_id}: {idea[:50]}")
         await _pulse_council("Картограф", f"вердикт #{session_id}: {idea[:50]}")
+
+        # ═══ ВРАТАРЬ СТРОЙКИ: вердикт → действие. Строить → BuildCard сразу (автомат) ═══
+        try:
+            decision = await _decide_build(idea, carto, arch1)
+            async with SessionLocal() as db:
+                s = await db.get(CouncilSession, session_id)
+                v = dict(s.verdict_json or {})
+                v["build_decision"] = decision
+                s.verdict_json = v
+                if decision["build"]:
+                    exists = (await db.execute(
+                        select(BuildCard).where(BuildCard.session_id == session_id)
+                    )).scalar_one_or_none()
+                    if not exists:
+                        db.add(BuildCard(
+                            session_id=session_id,
+                            topic=decision["title"],
+                            tz_text=arch1,
+                            summary=carto[:500],
+                            status="waiting",
+                        ))
+                        log.info("[ВРАТАРЬ-СТРОЙКА] вердикт #%d → СТРОИМ: %s", session_id, decision["title"][:60])
+                else:
+                    log.info("[ВРАТАРЬ-СТРОЙКА] вердикт #%d → не строим: %s", session_id, decision.get("reason", "")[:60])
+                await db.commit()
+        except Exception as e:
+            log.warning("[ВРАТАРЬ-СТРОЙКА] ошибка session=%d: %s", session_id, e)
+
         log.info("Council session %d done", session_id)
 
     except Exception as e:
