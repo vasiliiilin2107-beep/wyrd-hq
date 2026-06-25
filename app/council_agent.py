@@ -248,14 +248,16 @@ AUTONOMOUS_TOPICS = [
 _topic_idx = 0
 
 
-async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries: int = 3) -> str:
+async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries: int = 3,
+               model: str | None = None) -> str:
     """Единый LLM-вызов всего HQ. Устойчив к пустым ответам и сбоям polza:
     проверяет наличие choices, ретраит на 5xx/429/пустоту. Никогда не падает в 'choices'.
+    model=None → дешёвый MODEL (deepseek) для циклов. Можно дать модель посильнее точечно.
     Возвращает текст или '' (пусто) — агент сам отфильтрует, не запишет мусор в отчёт."""
     if not POLZA_KEY:
         return "[POLZA_API_KEY не задан в env HQ]"
     payload = {
-        "model": MODEL,
+        "model": model or MODEL,
         "messages": [{"role": "system", "content": system}] + messages,
         "max_tokens": max_tokens,
     }
