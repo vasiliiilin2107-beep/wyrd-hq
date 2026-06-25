@@ -26,6 +26,7 @@ from .babla_agent import babla_loop, run_babla_check
 from .professor_agent import professor_loop, run_professor_check
 from .template_agent import template_loop
 from .library_agent import library_loop
+from .watcher_agent import watcher_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -52,6 +53,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(professor_loop())
     asyncio.create_task(template_loop())
     asyncio.create_task(library_loop())
+    asyncio.create_task(watcher_loop())
     yield
     await close_qdrant()
     await close_redis()
