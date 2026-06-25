@@ -655,16 +655,36 @@ async def council_autonomous_loop() -> None:
                 # Режим аудита — чистим мусор, сигналим Томасу
                 await _council_world_audit()
             else:
-                # Обычный режим — генерируем новую идею
-                topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
-                _topic_idx += 1
+                # Обычный режим. ПРИОРИТЕТ — конкретная идея Идейного отдела (контакт Идейный→Совет).
+                # Абстрактный список — только если свежих идей нет.
+                topic = None
+                src = "autonomous"
                 async with SessionLocal() as db:
-                    s = CouncilSession(idea_text=topic, source="autonomous")
+                    ideas = (await db.execute(
+                        select(IncomeIdea).where(IncomeIdea.status == "idea")
+                        .order_by(desc(IncomeIdea.created_at)).limit(10)
+                    )).scalars().all()
+                    for ir in ideas:
+                        marker = f"income_idea:{ir.id}"
+                        seen = (await db.execute(
+                            select(CouncilSession).where(CouncilSession.source == marker)
+                        )).first()
+                        if not seen:
+                            desc_txt = (ir.description or "")[:400]
+                            topic = (f"Бизнес-идея Идейного отдела: «{ir.title}». {desc_txt} "
+                                     "Стоит ли это строить, с чего начать, что конкретно нужно сделать первым шагом?")
+                            src = marker
+                            break
+                if not topic:
+                    topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
+                    _topic_idx += 1
+                async with SessionLocal() as db:
+                    s = CouncilSession(idea_text=topic, source=src)
                     db.add(s)
                     await db.commit()
                     await db.refresh(s)
                     sid = s.id
-                log.info("Council autonomous session %d: %s", sid, topic[:50])
+                log.info("Council autonomous session %d [%s]: %s", sid, src, topic[:50])
                 await run_council_dialog(sid, topic)
 
         except Exception as e:
