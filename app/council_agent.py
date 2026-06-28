@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask
+from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport
 
 log = logging.getLogger(__name__)
 
@@ -341,6 +341,28 @@ async def _get_analytics_brief() -> str:
     return f"=== АНАЛИТИКА МИРА (последние {report.period_hours}ч) ===\n{report.analysis}"
 
 
+async def _get_ideas_brief() -> str:
+    """Последний отчёт Идейного отдела — контекст для СТРАТЕГА (связь Идейный→Стратег)."""
+    async with SessionLocal() as db:
+        report = (await db.execute(
+            select(IdeaDeptReport).order_by(IdeaDeptReport.checked_at.desc()).limit(1)
+        )).scalar_one_or_none()
+    if not report:
+        return ""
+    return f"=== ОТЧЁТ ИДЕЙНОГО ОТДЕЛА (внутренняя политика — что развивать) ===\n{report.analysis[:1200]}"
+
+
+async def _get_projects_brief() -> str:
+    """Последний отчёт отдела Проектов — контекст для АРХИТЕКТОРА (связь Проекты→Архитектор)."""
+    async with SessionLocal() as db:
+        report = (await db.execute(
+            select(ProjectDeptReport).order_by(ProjectDeptReport.checked_at.desc()).limit(1)
+        )).scalar_one_or_none()
+    if not report:
+        return ""
+    return f"=== ОТЧЁТ ОТДЕЛА ПРОЕКТОВ (декомпозиция, блокеры, конфликты) ===\n{report.analysis[:1200]}"
+
+
 async def _world_snapshot() -> str:
     async with SessionLocal() as db:
         agents = (await db.execute(select(Agent))).scalars().all()
@@ -441,6 +463,8 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         snapshot = await _world_snapshot()
         library_ctx = await _library_search(idea)
         synthesis_brief = await _get_synthesis_brief()
+        ideas_brief = await _get_ideas_brief()        # связь Идейный → Стратег
+        projects_brief = await _get_projects_brief()  # связь Проекты → Архитектор
         ctx = f"Состояние мира:\n{snapshot}"
         if synthesis_brief:
             ctx += f"\n\n{synthesis_brief}"
@@ -455,12 +479,15 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             s.status = "thinking"
             await db.commit()
 
-        # Стратег открывает
-        strat1 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": ctx}])
+        # Стратег открывает — теперь СЛЫШИТ Идейный отдел
+        strat_ctx = ctx + (f"\n\n{ideas_brief}" if ideas_brief else "")
+        strat1 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat_ctx}])
         await _save_msg(session_id, "strategist", strat1)
 
-        # Архитектор отвечает
+        # Архитектор отвечает — теперь СЛЫШИТ отдел Проектов
         arch_ctx = f"{ctx}\n\nСтратег предлагает:\n{strat1}"
+        if projects_brief:
+            arch_ctx += f"\n\n{projects_brief}"
         arch1 = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}])
         await _save_msg(session_id, "architect", arch1)
 
