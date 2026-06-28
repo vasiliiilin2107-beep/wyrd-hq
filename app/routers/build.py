@@ -15,10 +15,20 @@ class BuildCardUpdate(BaseModel):
     status: str | None = None
 
 
+class SelfUpgradeIn(BaseModel):
+    """ТЗ на саморазвитие от любого агента → раздел самоапгрейда Стройки."""
+    agent_name: str
+    title: str
+    tz_text: str
+    summary: str | None = None
+
+
 def _fmt(c: BuildCard) -> dict:
     return {
         "id": c.id,
         "session_id": c.session_id,
+        "kind": getattr(c, "kind", "council"),
+        "agent_name": getattr(c, "agent_name", None),
         "topic": c.topic,
         "tz_text": c.tz_text,
         "summary": c.summary,
@@ -29,13 +39,13 @@ def _fmt(c: BuildCard) -> dict:
 
 
 @router.get("/queue")
-async def get_build_queue(session: AsyncSession = Depends(get_session)):
+async def get_build_queue(kind: str | None = None, session: AsyncSession = Depends(get_session)):
     verdict_sessions = (await session.execute(
         select(CouncilSession).where(CouncilSession.status == "verdict")
     )).scalars().all()
 
     existing = (await session.execute(select(BuildCard))).scalars().all()
-    existing_ids = {c.session_id for c in existing}
+    existing_ids = {c.session_id for c in existing if c.session_id is not None}
 
     for s in verdict_sessions:
         if s.id not in existing_ids:
@@ -50,14 +60,35 @@ async def get_build_queue(session: AsyncSession = Depends(get_session)):
                 topic=bd.get("title") or s.idea_text,
                 tz_text=v.get("architect", ""),
                 summary=v.get("summary", ""),
+                kind="council",
             ))
 
     await session.commit()
 
-    cards = (await session.execute(
-        select(BuildCard).order_by(desc(BuildCard.created_at))
-    )).scalars().all()
+    q = select(BuildCard).order_by(desc(BuildCard.created_at))
+    if kind:
+        q = q.where(BuildCard.kind == kind)
+    cards = (await session.execute(q)).scalars().all()
     return {"cards": [_fmt(c) for c in cards]}
+
+
+@router.post("/self-upgrade", status_code=201)
+async def add_self_upgrade(data: SelfUpgradeIn, session: AsyncSession = Depends(get_session)):
+    """Любой агент пишет сюда ТЗ на саморазвитие — попадает в раздел самоапгрейда Стройки,
+    минуя Совет (агент сам знает что в нём ограничивает). Идеи больше не теряются в чате."""
+    card = BuildCard(
+        session_id=None,
+        kind="self_upgrade",
+        agent_name=data.agent_name,
+        topic=data.title[:200],
+        tz_text=data.tz_text,
+        summary=data.summary,
+        status="waiting",
+    )
+    session.add(card)
+    await session.commit()
+    await session.refresh(card)
+    return {"ok": True, "card": _fmt(card)}
 
 
 @router.get("/foreman")
@@ -89,6 +120,9 @@ async def cleanup_legacy_cards(session: AsyncSession = Depends(get_session)):
              if (s.verdict_json or {}).get("build_decision", {}).get("build")}
     removed = 0
     for c in cards:
+        # самоапгрейд-карточки не трогаем — они без сессии и созданы вручную агентами
+        if c.kind == "self_upgrade":
+            continue
         if c.session_id not in gated:
             await session.delete(c)
             removed += 1

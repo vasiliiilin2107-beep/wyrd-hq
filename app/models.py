@@ -230,10 +230,15 @@ class BuildCard(Base):
     __tablename__ = "build_cards"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("council_sessions.id"), unique=True, index=True)
+    # council-карточки ссылаются на сессию; self_upgrade — session_id=NULL
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("council_sessions.id"), unique=True, index=True, nullable=True)
     topic: Mapped[str] = mapped_column(Text)
     tz_text: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
+    # council | self_upgrade — раздел Стройки
+    kind: Mapped[str] = mapped_column(String(30), default="council", index=True)
+    # кто предложил self_upgrade ТЗ (thomas, смотритель, …)
+    agent_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # waiting | in_progress | done
     status: Mapped[str] = mapped_column(String(30), default="waiting", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)

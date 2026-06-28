@@ -38,6 +38,14 @@ STATIC_DIR = Path(__file__).parent / "static"
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # лёгкая миграция build_cards под раздел самоапгрейда (идемпотентно)
+        from sqlalchemy import text
+        await conn.execute(text(
+            "ALTER TABLE build_cards ADD COLUMN IF NOT EXISTS kind VARCHAR(30) DEFAULT 'council'"))
+        await conn.execute(text(
+            "ALTER TABLE build_cards ADD COLUMN IF NOT EXISTS agent_name VARCHAR(100)"))
+        await conn.execute(text(
+            "ALTER TABLE build_cards ALTER COLUMN session_id DROP NOT NULL"))
     await init_redis()
     await init_qdrant()
     async with SessionLocal() as session:
