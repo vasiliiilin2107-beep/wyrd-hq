@@ -77,6 +77,25 @@ async def get_foreman_reports(limit: int = 10, session: AsyncSession = Depends(g
     ]}
 
 
+@router.post("/cleanup")
+async def cleanup_legacy_cards(session: AsyncSession = Depends(get_session)):
+    """Удаляет waiting-карточки легаси-флуда: вердикты БЕЗ build_decision.build=true.
+    Гейтнутые вердикты (ворота с201) сохраняются. in_progress/done не трогаются."""
+    cards = (await session.execute(
+        select(BuildCard).where(BuildCard.status == "waiting")
+    )).scalars().all()
+    sessions = (await session.execute(select(CouncilSession))).scalars().all()
+    gated = {s.id for s in sessions
+             if (s.verdict_json or {}).get("build_decision", {}).get("build")}
+    removed = 0
+    for c in cards:
+        if c.session_id not in gated:
+            await session.delete(c)
+            removed += 1
+    await session.commit()
+    return {"removed": removed, "kept_gated_sessions": len(gated)}
+
+
 @router.patch("/queue/{card_id}")
 async def update_build_card(
     card_id: int,

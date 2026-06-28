@@ -241,6 +241,29 @@ async def get_global_journal(entry_type: str | None = None, limit: int = 60,
              "created_at": r.created_at.isoformat()} for r in rows]
 
 
+class GlobalJournalIn(BaseModel):
+    """Журнал от внешних сервисов (Book Studio и др.). Гибкий: entry или title/body."""
+    agent_name: str = "external"
+    entry_type: str = "update"
+    title: Optional[str] = None
+    entry: Optional[str] = None   # Book Studio шлёт текст сюда
+    body: Optional[str] = None
+    created_by: str = "external"
+
+
+@router.post("/journal")
+async def add_global_journal_entry(data: GlobalJournalIn, session: AsyncSession = Depends(get_session)):
+    """Запись в глобальный журнал без agent_id — для внешних сервисов (фикс 405)."""
+    text = data.entry or data.body
+    title = data.title or (text[:200] if text else "(без заголовка)")
+    j = AgentJournal(agent_name=data.agent_name, entry_type=data.entry_type,
+                     title=title[:200], body=data.body or data.entry, created_by=data.created_by)
+    session.add(j)
+    await session.commit()
+    await session.refresh(j)
+    return {"ok": True, "id": j.id}
+
+
 # ─── train ────────────────────────────────────────────────
 
 @router.post("/agents/{agent_id}/train")
