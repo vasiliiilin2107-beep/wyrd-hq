@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport
+from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport, Flag
 
 log = logging.getLogger(__name__)
 
@@ -254,6 +254,52 @@ AUTONOMOUS_TOPICS = [
 _topic_idx = 0
 
 
+_llm_down = False  # edge-trigger: мозг без LLM (пусто/402) — флаг поднят?
+
+
+async def _llm_alarm(reason: str) -> None:
+    """Мозг остался без LLM (402/пусто) — поднимаем флаг ОДИН раз. Молчать о пустоте запрещено."""
+    global _llm_down
+    if _llm_down:
+        return
+    _llm_down = True
+    is_pay = "402" in reason or "Payment" in reason
+    title = "🔴 МОЗГ БЕЗ LLM: баланс кончился (402)" if is_pay else "🔴 МОЗГ БЕЗ LLM: модель молчит (пусто)"
+    body = (f"_llm не отвечает: {reason[:200]}. Отделы и Совет выдают ПУСТОТУ. "
+            f"{'Пополнить баланс polza (ключ HQ).' if is_pay else 'Проверить модель/ключ HQ.'}")
+    try:
+        async with SessionLocal() as db:
+            exists = (await db.execute(
+                select(Flag).where(Flag.anchor == "hq.llm.dead", Flag.status == "active")
+            )).scalar_one_or_none()
+            if not exists:
+                db.add(Flag(title=title, body=body, type="risk", component="hq",
+                            anchor="hq.llm.dead", status="active", author="hq_brain"))
+                await db.commit()
+        log.warning("LLM-ALARM поднят: %s", reason[:120])
+    except Exception as e:
+        log.warning("LLM-ALARM не записан: %s", e)
+
+
+async def _llm_recovered() -> None:
+    """LLM снова отвечает — гасим флаг (один раз)."""
+    global _llm_down
+    if not _llm_down:
+        return
+    _llm_down = False
+    try:
+        async with SessionLocal() as db:
+            flags = (await db.execute(
+                select(Flag).where(Flag.anchor == "hq.llm.dead", Flag.status == "active")
+            )).scalars().all()
+            for f in flags:
+                f.status = "done"
+            await db.commit()
+        log.info("LLM-ALARM снят — мозг ожил")
+    except Exception as e:
+        log.warning("LLM-ALARM снятие: %s", e)
+
+
 async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries: int = 3,
                model: str | None = None) -> str:
     """Единый LLM-вызов всего HQ. Устойчив к пустым ответам и сбоям polza:
@@ -279,6 +325,7 @@ async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries
                 choices = (r.json() or {}).get("choices") or []
                 content = (choices[0].get("message", {}).get("content") if choices else "") or ""
                 if content.strip():
+                    await _llm_recovered()  # мозг ожил — гасим алярм
                     return content.strip()
                 last = "пустой ответ модели"
         except Exception as e:
@@ -286,6 +333,7 @@ async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries
         if attempt < retries:
             await asyncio.sleep(2 * attempt)
     log.warning("LLM пусто после %d попыток: %s", retries, last)
+    await _llm_alarm(last)  # мозг без LLM — заорать (флаг → Томас → Шеф)
     return ""
 
 
