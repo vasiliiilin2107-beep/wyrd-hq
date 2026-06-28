@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport, Flag
+from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport, Flag, EnergyLedger
 
 log = logging.getLogger(__name__)
 
@@ -254,6 +254,39 @@ AUTONOMOUS_TOPICS = [
 _topic_idx = 0
 
 
+# Цены polza ₽ за 1M токенов (вход, выход). Замерено по cost_rub, см. память reference-polza-llm-prices.
+LLM_PRICES = {
+    "opus":     (484.0, 2421.0),
+    "sonnet":   (291.0, 1453.0),
+    "deepseek": (20.0, 80.0),   # deepseek-v4-flash — дёшево, для циклов
+}
+
+
+def _price_for(model: str) -> tuple[float, float]:
+    m = (model or "").lower()
+    for key, rates in LLM_PRICES.items():
+        if key in m:
+            return rates
+    return (20.0, 80.0)  # дефолт — дешёвая модель
+
+
+async def _record_energy(caller: str, model: str, usage: dict) -> None:
+    """Фиксирует один импульс LLM: кто, вход/выход токенов, ₽. Сердце детального учёта."""
+    try:
+        ti = int(usage.get("prompt_tokens") or 0)
+        to = int(usage.get("completion_tokens") or 0)
+        if ti == 0 and to == 0:
+            return
+        rin, rout = _price_for(model)
+        cost = ti / 1_000_000 * rin + to / 1_000_000 * rout
+        async with SessionLocal() as db:
+            db.add(EnergyLedger(caller=caller[:100], model=model[:120],
+                                tokens_in=ti, tokens_out=to, cost_rub=round(cost, 5)))
+            await db.commit()
+    except Exception as e:
+        log.warning("energy-ledger не записан: %s", e)
+
+
 _llm_down = False  # edge-trigger: мозг без LLM (пусто/402) — флаг поднят?
 
 
@@ -301,7 +334,7 @@ async def _llm_recovered() -> None:
 
 
 async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries: int = 3,
-               model: str | None = None) -> str:
+               model: str | None = None, caller: str = "hq") -> str:
     """Единый LLM-вызов всего HQ. Устойчив к пустым ответам и сбоям polza:
     проверяет наличие choices, ретраит на 5xx/429/пустоту. Никогда не падает в 'choices'.
     model=None → дешёвый MODEL (deepseek) для циклов. Можно дать модель посильнее точечно.
@@ -322,10 +355,12 @@ async def _llm(system: str, messages: list[dict], max_tokens: int = 800, retries
                 last = f"HTTP {r.status_code}"
             else:
                 r.raise_for_status()
-                choices = (r.json() or {}).get("choices") or []
+                data = r.json() or {}
+                choices = data.get("choices") or []
                 content = (choices[0].get("message", {}).get("content") if choices else "") or ""
                 if content.strip():
                     await _llm_recovered()  # мозг ожил — гасим алярм
+                    asyncio.create_task(_record_energy(caller, payload["model"], data.get("usage") or {}))
                     return content.strip()
                 last = "пустой ответ модели"
         except Exception as e:
@@ -491,7 +526,7 @@ async def _decide_build(idea: str, carto: str, arch: str) -> dict:
         "Превращать в ТЗ на стройку?\n"
         'JSON: {"build": true|false, "title": "что строим, до 80 симв", "priority": 1-5, "reason": "1 предложение"}'
     )
-    raw = await _llm(SYS_BUILD_GATE, [{"role": "user", "content": prompt}], max_tokens=300)
+    raw = await _llm(SYS_BUILD_GATE, [{"role": "user", "content": prompt}], max_tokens=300, caller="Вратарь")
     obj = _extract_obj(raw) or {}
     prio = obj.get("priority", 3)
     try:
@@ -529,14 +564,14 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
 
         # Стратег открывает — теперь СЛЫШИТ Идейный отдел
         strat_ctx = ctx + (f"\n\n{ideas_brief}" if ideas_brief else "")
-        strat1 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat_ctx}])
+        strat1 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat_ctx}], caller="Стратег")
         await _save_msg(session_id, "strategist", strat1)
 
         # Архитектор отвечает — теперь СЛЫШИТ отдел Проектов
         arch_ctx = f"{ctx}\n\nСтратег предлагает:\n{strat1}"
         if projects_brief:
             arch_ctx += f"\n\n{projects_brief}"
-        arch1 = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}])
+        arch1 = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}], caller="Архитектор")
         await _save_msg(session_id, "architect", arch1)
 
         # Стратег реагирует
@@ -545,7 +580,7 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             f"Архитектор ответил:\n{arch1}\n\n"
             "Твоя реакция на замечания Архитектора. Меняешь позицию? Финальная версия идеи?"
         )
-        strat2 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat2_ctx}])
+        strat2 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat2_ctx}], caller="Стратег")
         await _save_msg(session_id, "strategist", strat2)
 
         # Картограф — вердикт (читает аналитику мира)
@@ -559,7 +594,7 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         if analytics_brief:
             carto_ctx += f"{analytics_brief}\n\n"
         carto_ctx += "Дай вердикт: что строим, порядок, зависимости, риски."
-        carto = await _llm(SYS_CARTOGRAPHER, [{"role": "user", "content": carto_ctx}])
+        carto = await _llm(SYS_CARTOGRAPHER, [{"role": "user", "content": carto_ctx}], caller="Картограф")
         await _save_msg(session_id, "cartographer", carto)
 
         # Томас — финальное слово для Шефа
@@ -571,7 +606,7 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             f"Картограф (вердикт):\n{carto}\n\n"
             "Напиши брифинг Шефу."
         )
-        thomas_msg = await _llm(SYS_THOMAS, [{"role": "user", "content": thomas_ctx}])
+        thomas_msg = await _llm(SYS_THOMAS, [{"role": "user", "content": thomas_ctx}], caller="Томас-голос")
         await _save_msg(session_id, "thomas", thomas_msg)
 
         # Сохраняем вердикт + мысль
@@ -685,7 +720,7 @@ async def _council_world_audit() -> None:
         f"Состояние мира:\n{world_ctx}"
     )
 
-    result = await _llm(SYS_AUDITOR, [{"role": "user", "content": audit_prompt}])
+    result = await _llm(SYS_AUDITOR, [{"role": "user", "content": audit_prompt}], caller="Аудитор")
     log.info("Council audit result: %s", result[:200])
 
     # Парсим DROP-решения и удаляем мусор

@@ -140,7 +140,7 @@ async def _run_decomposer() -> str:
     lines = ["Build cards ожидающие реализации:"]
     for c in cards:
         lines.append(f"\n[{c.id}] {c.topic[:80]}\nТЗ: {(c.tz_text or 'нет ТЗ')[:300]}")
-    result = await _llm(get_trained_prompt("Декомпозер", SYS_DECOMPOSER), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Декомпозер", SYS_DECOMPOSER), [{"role": "user", "content": "\n".join(lines)}], caller="Декомпозер")
     # Помечаем карточку in_progress СИНХРОННО — до возврата, чтобы следующий цикл не взял её снова
     target_card = next((c for c in cards if c.tz_text and len(c.tz_text) > 20), None)
     if target_card:
@@ -175,7 +175,7 @@ async def _run_synchronizer() -> str:
         lines.append(f"  [{c.id}] {c.topic[:80]}")
     if not active_tasks and not waiting_cards:
         lines.append("  очередь пуста")
-    result = await _llm(get_trained_prompt("Синхронизатор", SYS_SYNCHRONIZER), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Синхронизатор", SYS_SYNCHRONIZER), [{"role": "user", "content": "\n".join(lines)}], caller="Синхронизатор")
     await _pulse("Синхронизатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     await _journal("Синхронизатор", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — проверка конфликтов", result[:400])
     return result
@@ -196,7 +196,7 @@ async def _run_ocenschik_proj() -> str:
     lines.append("\nТехнические задачи по статусам:")
     for status, cnt in task_stats:
         lines.append(f"  {status}: {cnt}")
-    result = await _llm(get_trained_prompt("Оценщик Проектов", SYS_OCENSCHIK_PROJ), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Оценщик Проектов", SYS_OCENSCHIK_PROJ), [{"role": "user", "content": "\n".join(lines)}], caller="Оценщик Проектов")
     await _pulse("Оценщик Проектов", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     await _journal("Оценщик Проектов", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — оценка сложности и рисков", result[:400])
     return result
@@ -225,7 +225,7 @@ async def run_project_check() -> None:
         f"=== СИНХРОНИЗАТОР (конфликты) ===\n{safe(syn)}\n\n"
         f"=== ОЦЕНЩИК (сложность и риски) ===\n{safe(oce)}"
     )
-    analysis = await _llm(get_trained_prompt(PROJECT_FOREMAN, SYS_BRIGADIR_PROJ), [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(PROJECT_FOREMAN, SYS_BRIGADIR_PROJ), [{"role": "user", "content": report_ctx}], caller="Бригадир Проектов")
 
     async with SessionLocal() as db:
         db.add(ProjectDeptReport(

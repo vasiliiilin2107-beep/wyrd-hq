@@ -338,6 +338,31 @@ class BablaReport(Base):
     analysis: Mapped[str] = mapped_column(Text)
 
 
+class EnergyLedger(Base):
+    """Счётчик энергии: КАЖДЫЙ импульс LLM — кто, вход/выход токенов, ₽. Не в куче."""
+    __tablename__ = "energy_ledger"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    caller: Mapped[str] = mapped_column(String(100), index=True, default="hq")
+    model: Mapped[str] = mapped_column(String(120), default="")
+    tokens_in: Mapped[int] = mapped_column(default=0)    # входящий импульс (prompt)
+    tokens_out: Mapped[int] = mapped_column(default=0)   # исходящий импульс (completion)
+    cost_rub: Mapped[float] = mapped_column(default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class LedgerEntry(Base):
+    """Бухгалтерия мира: реальные ₽ вход/выход (доход/расход) — для Казначея."""
+    __tablename__ = "ledger_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    direction: Mapped[str] = mapped_column(String(10), index=True)  # in | out
+    category: Mapped[str] = mapped_column(String(50), index=True)   # llm | server | revenue | other
+    amount_rub: Mapped[float] = mapped_column(default=0.0)
+    note: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 

@@ -151,7 +151,7 @@ async def _run_schetchik(period_h: int) -> str:
         lines.append(f"\nБригадир Стройки: застряло {last_foreman.stuck_count} задач")
         lines.append(f"  {last_foreman.analysis[:150]}")
 
-    result = await _llm(get_trained_prompt("Счётчик", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Счётчик", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}], caller="Счётчик")
     await _pulse_agent("Счётчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -170,7 +170,7 @@ async def _run_razvedchik() -> str:
     else:
         ctx += "По категориям: данные недоступны"
     ctx += f"\n\n{synthesis}"
-    result = await _llm(get_trained_prompt("Разведчик", SYS_RAZVEDCHIK), [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Разведчик", SYS_RAZVEDCHIK), [{"role": "user", "content": ctx}], caller="Разведчик")
     await _pulse_agent("Разведчик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -208,7 +208,7 @@ async def _run_kritik() -> str:
         for t in thoughts:
             lines.append(f"  • {t.text[:100]}")
 
-    result = await _llm(get_trained_prompt("Критик", SYS_KRITIK), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Критик", SYS_KRITIK), [{"role": "user", "content": "\n".join(lines)}], caller="Критик")
     await _pulse_agent("Критик", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -250,7 +250,7 @@ async def run_analytics_check() -> None:
     )
 
     log.info("Analytics: бригадир сводит доклады")
-    analysis = await _llm(get_trained_prompt(ANALYTICS_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(ANALYTICS_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}], caller="Бригадир Аналитики")
 
     metrics_json = {
         "period_hours": period_h,

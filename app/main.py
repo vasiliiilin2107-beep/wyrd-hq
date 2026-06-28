@@ -90,6 +90,8 @@ app.include_router(council.router)
 app.include_router(education.router)
 app.include_router(world_docs.router)
 app.include_router(build.router)
+from .routers import treasury
+app.include_router(treasury.router)
 app.include_router(audit_router)
 app.include_router(analytics.router)
 app.include_router(ideas_dept.router)

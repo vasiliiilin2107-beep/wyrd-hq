@@ -190,7 +190,7 @@ async def _run_hunter() -> str:
         )).scalars().all()
     active = "\n".join(f"- [{i.status}] {i.title}" for i in ideas) or "нет идей"
     ctx = f"{synthesis}\n\nАктивные идеи WYRD:\n{active}"
-    result = await _llm(get_trained_prompt("Охотник", SYS_HUNTER), [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Охотник", SYS_HUNTER), [{"role": "user", "content": ctx}], caller="Охотник")
     await _pulse("Охотник", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -211,7 +211,7 @@ async def _run_schetchik() -> str:
             f"Гипотеза: {(e.hypothesis or 'нет')[:100]}\n"
             f"Результат: {(e.result or 'нет результата')[:100]}"
         )
-    result = await _llm(get_trained_prompt("Счетовод", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Счетовод", SYS_SCHETCHIK), [{"role": "user", "content": "\n".join(lines)}], caller="Счетовод")
     await _pulse("Счетовод", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 
@@ -231,7 +231,7 @@ async def _run_prioritizer() -> str:
         lines.append(f"  [{i.status}] {i.title}: {(i.description or '')[:80]}")
     if last_report:
         lines.append(f"\nАналитический отчёт:\n{last_report.analysis[:400]}")
-    result = await _llm(get_trained_prompt("Приоритизатор", SYS_PRIORITIZER), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Приоритизатор", SYS_PRIORITIZER), [{"role": "user", "content": "\n".join(lines)}], caller="Приоритизатор")
     await _pulse("Приоритизатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     return result
 

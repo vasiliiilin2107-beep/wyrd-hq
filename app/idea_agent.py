@@ -146,7 +146,7 @@ async def _run_generator() -> str:
     if synthesis and "пусто" not in synthesis and "недоступна" not in synthesis:
         library_extra = f"\n\nВНЕШНИЕ ТРЕНДЫ (подсказка): {synthesis[:200]}"
     ctx = f"{_WYRD_FALLBACK}{library_extra}\n\nУЖЕ В БАНКЕ (не повторять): {titles[:300]}"
-    result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}])
+    result = await _llm(get_trained_prompt("Генератор", SYS_GENERATOR), [{"role": "user", "content": ctx}], caller="Генератор")
     await _pulse("Генератор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     # Бригадир пишет в журнал что сгенерил
     short = result[:300] if result else "пустой ответ"
@@ -168,7 +168,7 @@ async def _run_detalizator(generator_idea: str = "") -> str:
         lines.append("\n\n--- БАНК ИДЕЙ (если найдёшь реализуемую — бери) ---")
         for i in ideas:
             lines.append(f"[{i.id}] {i.title}: {(i.description or '')[:100]}")
-    result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Детализатор", SYS_DETALIZATOR), [{"role": "user", "content": "\n".join(lines)}], caller="Детализатор")
     await _pulse("Детализатор", "idle", f"готово {datetime.utcnow().strftime('%H:%M')}")
     await _journal("Детализатор", f"Цикл {datetime.utcnow().strftime('%d.%m %H:%M')} — план на 3 дня", (result or "")[:300])
     return result
@@ -190,7 +190,7 @@ async def _run_ocenschik() -> tuple[str, list[str]]:
     for i in ideas:
         lines.append(f"  [{i.id}] {i.title}")
         idea_map[i.title.lower()[:40]] = i.id
-    result = await _llm(get_trained_prompt("Оценщик Идей", SYS_OCENSCHIK), [{"role": "user", "content": "\n".join(lines)}])
+    result = await _llm(get_trained_prompt("Оценщик Идей", SYS_OCENSCHIK), [{"role": "user", "content": "\n".join(lines)}], caller="Оценщик Идей")
 
     # Парсим DROP-идеи и убиваем их в БД
     drop_ids = []
@@ -257,7 +257,7 @@ async def run_idea_check() -> None:
         f"=== ДЕТАЛИЗАТОР (план на 3 дня) ===\n{safe(det)}\n\n"
         f"=== ОЦЕНЩИК (убито {dropped_count} идей) ===\n{oce_text}"
     )
-    analysis = await _llm(get_trained_prompt(IDEA_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}])
+    analysis = await _llm(get_trained_prompt(IDEA_FOREMAN, SYS_BRIGADIR), [{"role": "user", "content": report_ctx}], caller="Бригадир Идей")
 
     async with SessionLocal() as db:
         db.add(IdeaDeptReport(
