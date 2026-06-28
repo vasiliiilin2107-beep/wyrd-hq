@@ -63,13 +63,15 @@ JSON-массив из 3 объектов (по одному на фронт):
 
 
 def _extract_list(text: str) -> list:
+    """Достаёт массив объектов из ответа модели. Спасает даже обрезанный по max_tokens
+    массив — вытаскивает все ЦЕЛЫЕ {...} объекты, последний неполный отбрасывает."""
     if not text:
         return []
     t = text.strip()
     if t.startswith("```"):
-        t = t.strip("`")
-        if t.lower().startswith("json"):
-            t = t[4:]
+        t = re.sub(r"^```(?:json)?\s*", "", t)
+        t = re.sub(r"\s*```$", "", t)
+    # 1) попытка распарсить весь массив целиком
     s, e = t.find("["), t.rfind("]")
     if s >= 0 and e > s:
         for cand in (t[s:e + 1], re.sub(r",\s*([}\]])", r"\1", t[s:e + 1])):
@@ -78,8 +80,36 @@ def _extract_list(text: str) -> list:
                 if isinstance(r, list):
                     return r
             except Exception:
-                continue
-    return []
+                pass
+    # 2) спасение: вытащить отдельные {...} объекты по балансу скобок
+    objs, depth, start, in_str, esc = [], 0, None, False, False
+    for i, ch in enumerate(t):
+        if esc:
+            esc = False
+            continue
+        if ch == "\\" and in_str:
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                try:
+                    o = json.loads(re.sub(r",\s*([}\]])", r"\1", t[start:i + 1]))
+                    if isinstance(o, dict):
+                        objs.append(o)
+                except Exception:
+                    pass
+                start = None
+    return objs
 
 
 async def _pulse(status: str, task: str | None = None) -> None:
@@ -131,7 +161,7 @@ async def run_watcher_check() -> dict:
         f"УЖЕ ПРЕДЛАГАЛ (не повторять): {recent_titles[:400]}\n\n"
         "Дай 3 РЕАЛЬНЫХ ПЛАНА: УКРЕПИТЬ, УЛУЧШИТЬ, ЗАРАБОТАТЬ. Без выдуманных цифр — только заземлённый движ."
     )
-    raw = await _llm(SYS_WATCHER, [{"role": "user", "content": ctx}], max_tokens=1600, model=WATCHER_MODEL)
+    raw = await _llm(SYS_WATCHER, [{"role": "user", "content": ctx}], max_tokens=3000, model=WATCHER_MODEL)
     items = _extract_list(raw)
 
     saved = 0
