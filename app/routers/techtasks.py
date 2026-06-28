@@ -16,6 +16,7 @@ class TechTaskCreate(BaseModel):
     description: str | None = None
     created_by: str = "thomas"
     priority: int = 5
+    status: str = "pending"  # авто-маршрутизатор кладёт waiting_approval (стоп-ворота)
 
 
 class TechTaskUpdate(BaseModel):
@@ -53,11 +54,13 @@ async def list_tasks(
 
 @router.post("/tasks", status_code=201)
 async def create_task(data: TechTaskCreate, session: AsyncSession = Depends(get_session)):
+    status = data.status if data.status in VALID_STATUSES else "pending"
     task = TechTask(
         title=data.title,
         description=data.description,
         created_by=data.created_by,
         priority=data.priority,
+        status=status,
     )
     session.add(task)
     await session.commit()
