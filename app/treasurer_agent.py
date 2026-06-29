@@ -17,8 +17,8 @@ from .database import SessionLocal
 from .models import (Agent, AgentJournal, BablaReport, Constitution,
                      EnergyLedger, Flag, LedgerEntry)
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
-from .routers.treasury import (POLZA_MONTHLY_LIMIT_RUB, SERVER_RUB_PER_MONTH,
-                               TOOLING_RUB_PER_MONTH)
+from .routers.treasury import (LLM_BASELINE_RUB_PER_MONTH, POLZA_MONTHLY_LIMIT_RUB,
+                               SERVER_RUB_PER_MONTH, TOOLING_RUB_PER_MONTH)
 
 log = logging.getLogger(__name__)
 
@@ -95,20 +95,23 @@ def _month_start() -> datetime:
 
 async def _gather_books(db, days: int = 30) -> dict:
     since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
-    llm_cost = float((await db.execute(
+    llm_hq = float((await db.execute(
         select(func.sum(EnergyLedger.cost_rub)).where(EnergyLedger.created_at >= since)
     )).scalar() or 0.0)
     server_cost = round(SERVER_RUB_PER_MONTH * days / 30, 2)
     tooling_cost = round(TOOLING_RUB_PER_MONTH * days / 30, 2)
+    llm_other = round(LLM_BASELINE_RUB_PER_MONTH * days / 30, 2)
+    llm_total = round(llm_hq + llm_other, 2)
     rows = (await db.execute(
         select(LedgerEntry.direction, func.sum(LedgerEntry.amount_rub))
         .where(LedgerEntry.created_at >= since).group_by(LedgerEntry.direction)
     )).all()
     income = round(sum(r[1] for r in rows if r[0] == "in"), 2)
     manual_out = round(sum(r[1] for r in rows if r[0] == "out"), 2)
-    total_out = round(llm_cost + server_cost + tooling_cost + manual_out, 2)
-    return {"income": income, "llm": round(llm_cost, 2), "server": server_cost,
-            "tooling": tooling_cost, "manual_out": manual_out, "total_out": total_out,
+    total_out = round(llm_total + server_cost + tooling_cost + manual_out, 2)
+    return {"income": income, "llm": llm_total, "llm_hq": round(llm_hq, 2),
+            "llm_other": llm_other, "server": server_cost, "tooling": tooling_cost,
+            "manual_out": manual_out, "total_out": total_out,
             "balance": round(income - total_out, 2)}
 
 

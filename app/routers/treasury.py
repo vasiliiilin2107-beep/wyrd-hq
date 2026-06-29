@@ -12,11 +12,15 @@ from .. import coin
 
 router = APIRouter(prefix="/treasury", tags=["treasury"])
 
-# Постоянные расходы мира (₽/мес) — амортизация. Считаются помесячно в книгу.
-SERVER_RUB_PER_MONTH = float(os.environ.get("SERVER_RUB_PER_MONTH", "4000"))
-# Наша подписка Claude Code — реальный расход мира (Стройка = Шеф+Моз). Шеф уточнит сумму.
-TOOLING_RUB_PER_MONTH = float(os.environ.get("TOOLING_RUB_PER_MONTH", "18000"))
-# Месячный потолок плана polza (ключ HQ). Казначей орёт ДО 402.
+# Постоянные расходы мира (₽/мес) — амортизация. Реальные цифры из биллинга (июнь 2026).
+# Серверы Таймвэб: run-rate ~150₽/день (контейнеры росли) → ~4500/мес.
+SERVER_RUB_PER_MONTH = float(os.environ.get("SERVER_RUB_PER_MONTH", "4500"))
+# Подписка Claude Code: $20/мес ≈ 2400₽ через посредника (Стройка = Шеф+Моз). С 5 июня 2026.
+TOOLING_RUB_PER_MONTH = float(os.environ.get("TOOLING_RUB_PER_MONTH", "2400"))
+# LLM не-HQ сервисов (Library+Book+Studio+боты — отдельные ключи polza, EnergyLedger их НЕ видит).
+# Оценка по июню (~3000₽/мес). Срезать когда эти сервисы начнут репортить энергию в EnergyLedger.
+LLM_BASELINE_RUB_PER_MONTH = float(os.environ.get("LLM_BASELINE_RUB_PER_MONTH", "3000"))
+# Месячный потолок плана polza (ключ HQ). Казначей орёт ДО 402. Шеф поднял лимит 29.06.
 POLZA_MONTHLY_LIMIT_RUB = float(os.environ.get("POLZA_MONTHLY_LIMIT_RUB", "5000"))
 
 
@@ -74,9 +78,12 @@ async def books(days: int = 30, session: AsyncSession = Depends(get_session)):
     llm_cost = (await session.execute(
         select(func.sum(EnergyLedger.cost_rub)).where(EnergyLedger.created_at >= since)
     )).scalar() or 0.0
+    llm_hq = round(float(llm_cost), 2)  # энергия мозга HQ (EnergyLedger, поимённо)
     # постоянные расходы — амортизация за период
     server_cost = round(SERVER_RUB_PER_MONTH * days / 30, 2)
-    tooling_cost = round(TOOLING_RUB_PER_MONTH * days / 30, 2)  # подписка Claude Code (Стройка)
+    tooling_cost = round(TOOLING_RUB_PER_MONTH * days / 30, 2)   # подписка Claude Code (Стройка)
+    llm_other = round(LLM_BASELINE_RUB_PER_MONTH * days / 30, 2)  # polza не-HQ сервисов (оценка)
+    llm_total = round(llm_hq + llm_other, 2)
     # ручные записи (доход + прочий расход)
     rows = (await session.execute(
         select(LedgerEntry.direction, LedgerEntry.category, func.sum(LedgerEntry.amount_rub))
@@ -85,14 +92,16 @@ async def books(days: int = 30, session: AsyncSession = Depends(get_session)):
     )).all()
     income = round(sum(r[2] for r in rows if r[0] == "in"), 2)
     manual_out = round(sum(r[2] for r in rows if r[0] == "out"), 2)
-    total_out = round(float(llm_cost) + server_cost + tooling_cost + manual_out, 2)
+    total_out = round(llm_total + server_cost + tooling_cost + manual_out, 2)
     return {
         "период_дней": days,
         "вход_₽": income,
         "выход_₽": total_out,
         "детализация_выхода": {
-            "llm": round(float(llm_cost), 2), "серверы": server_cost,
-            "подписка_claude_code": tooling_cost, "прочее": manual_out,
+            "llm_всего": llm_total,
+            "llm_мозг_hq": llm_hq, "llm_прочие_сервисы": llm_other,
+            "серверы": server_cost, "подписка_claude_code": tooling_cost,
+            "прочее": manual_out,
         },
         "баланс_₽": round(income - total_out, 2),
         "вердикт": "🟢 в плюсе" if income >= total_out else "🔴 труба потребляет, дохода нет"
