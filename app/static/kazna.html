@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WYRD · КАЗНА</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#06061a; color:#c8d8ff; font-family:'Courier New',monospace; padding:18px; }
+a { color:#4488ff; text-decoration:none; }
+h1 { font-size:14px; letter-spacing:5px; color:#5a6aa0; font-weight:normal; }
+.sub { font-size:10px; letter-spacing:2px; color:#2a3a6a; margin-top:3px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:14px; margin-top:18px; }
+.card { background:rgba(12,14,34,.7); border:1px solid #15203f; border-radius:10px; padding:16px 18px; }
+.card h2 { font-size:11px; letter-spacing:3px; color:#5a6aa0; font-weight:normal; margin-bottom:14px; text-transform:uppercase; }
+.big { font-size:38px; font-weight:bold; letter-spacing:1px; }
+.big.red { color:#f0556a; } .big.green { color:#40f088; }
+.tag { font-size:10px; letter-spacing:2px; color:#2a3a6a; margin-top:4px; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:right; color:#3a4a78; font-weight:normal; padding:6px 8px; border-bottom:1px solid #15203f; font-size:10px; letter-spacing:1px; }
+th:first-child, td:first-child { text-align:left; }
+td { text-align:right; padding:7px 8px; border-bottom:1px solid #0d1428; }
+tr:last-child td { border-bottom:none; }
+.neg { color:#f0556a; } .pos { color:#40f088; } .dim { color:#445577; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:12.5px; border-bottom:1px solid #0d1428; }
+.row:last-child { border-bottom:none; }
+.bar { height:9px; background:#0d1428; border-radius:5px; overflow:hidden; margin-top:8px; }
+.bar > div { height:100%; border-radius:5px; transition:width .5s; }
+.cogs-seg { display:flex; height:20px; border-radius:5px; overflow:hidden; margin:10px 0 6px; }
+.cogs-seg > div { height:100%; }
+.legend { display:flex; flex-wrap:wrap; gap:10px 16px; font-size:11px; margin-top:8px; }
+.legend span { display:inline-flex; align-items:center; gap:5px; color:#8a9ac8; }
+.dot { width:9px; height:9px; border-radius:2px; display:inline-block; }
+.wallet { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; border-bottom:1px solid #0d1428; }
+.coins { color:#f0c040; font-weight:bold; }
+form { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+input, button { font-family:inherit; font-size:12px; border-radius:6px; border:1px solid #1c2950; background:#0a1024; color:#c8d8ff; padding:8px 10px; }
+input { width:100px; } input.wide { flex:1; min-width:120px; }
+button { cursor:pointer; background:#0f1832; border-color:#234; color:#9ab; }
+button.go { background:#103a22; border-color:#1d6b3d; color:#40f088; }
+button.fund { background:#101f3a; border-color:#234a7b; color:#6aa8ff; }
+.muted { color:#3a4a78; font-size:11px; }
+.foot { margin-top:20px; font-size:10px; color:#223355; letter-spacing:2px; }
+</style>
+</head>
+<body>
+<h1>WYRD · КАЗНА</h1>
+<div class="sub">КНИГА МИРА · МОНЕТА · СЕБЕСТОИМОСТЬ — обновление 30с · <a href="/hq">← штаб</a></div>
+
+<div class="grid">
+
+  <!-- Текущий остаток -->
+  <div class="card">
+    <h2>Остаток мира (нарастающим)</h2>
+    <div id="balance" class="big">—</div>
+    <div id="balance-tag" class="tag">загрузка…</div>
+  </div>
+
+  <!-- Run-rate себестоимость -->
+  <div class="card">
+    <h2>Себестоимость · ₽/мес (run-rate)</h2>
+    <div id="cogs-total" class="big" style="font-size:28px;color:#f0a050">—</div>
+    <div class="cogs-seg" id="cogs-seg"></div>
+    <div class="legend" id="cogs-legend"></div>
+  </div>
+
+  <!-- Лимит ключа -->
+  <div class="card">
+    <h2>Лимит ключа polza (этот месяц)</h2>
+    <div id="limit-num" class="big" style="font-size:26px">—</div>
+    <div class="bar"><div id="limit-bar" style="width:0;background:#40f088"></div></div>
+    <div id="limit-tag" class="tag"></div>
+  </div>
+
+  <!-- Книга по месяцам -->
+  <div class="card" style="grid-column:1/-1">
+    <h2>Книга по месяцам — остатки перетекают</h2>
+    <table id="monthly">
+      <thead><tr>
+        <th>Месяц</th><th>Вход</th><th>Доход клиентов</th><th>Пополнения Шефа</th>
+        <th>Расход</th><th>Итог месяца</th><th>Остаток ∑</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Монета: пул -->
+  <div class="card">
+    <h2>Монета мира (пул)</h2>
+    <div class="row"><span>Отчеканено всего</span><span id="pool-minted" class="coins">—</span></div>
+    <div class="row"><span>Роздано агентам</span><span id="pool-dist">—</span></div>
+    <div class="row"><span>Резерв (доступно)</span><span id="pool-avail" class="coins">—</span></div>
+    <div class="muted" style="margin-top:8px">Монета чеканится только под реальный ₽ (1₽=1 монета)</div>
+  </div>
+
+  <!-- Кошельки -->
+  <div class="card">
+    <h2>Кошельки агентов (кто полезен)</h2>
+    <div id="wallets"><div class="muted">нет начислений — мир ещё не заработал</div></div>
+  </div>
+
+  <!-- Внести деньги -->
+  <div class="card" style="grid-column:1/-1">
+    <h2>Внести в книгу</h2>
+    <form id="form-fund">
+      <input type="number" id="fund-amt" placeholder="₽" step="1">
+      <input type="text" id="fund-note" class="wide" placeholder="за что (напр: пополнил polza)">
+      <button type="submit" class="fund">+ Пополнение Шефа</button>
+    </form>
+    <form id="form-rev">
+      <input type="number" id="rev-amt" placeholder="₽" step="1">
+      <input type="text" id="rev-note" class="wide" placeholder="источник (напр: диспетчер Уютный Берег)">
+      <button type="submit" class="go">+ Доход клиента → чеканит монету</button>
+    </form>
+    <div class="muted" style="margin-top:8px">Пополнение = топливо (монета НЕ чеканится). Доход клиента → авто-чеканка монеты.</div>
+  </div>
+
+</div>
+
+<div class="foot">WYRD TREASURY · Казначей считает · флаги → Томас → Шеф</div>
+
+<script>
+const f = n => (n==null?'—':Number(n).toLocaleString('ru-RU',{maximumFractionDigits:0})+' ₽');
+const COGS_COLORS = {llm:'#9060f0', серверы:'#4488ff', подписка:'#f0a050'};
+
+async function j(u, opt) { const r = await fetch(u, opt); return r.json(); }
+
+async function load() {
+  try {
+    const [mon, books, lim, pool, wal] = await Promise.all([
+      j('/treasury/monthly'), j('/treasury/books'), j('/treasury/limits'),
+      j('/treasury/pool'), j('/treasury/wallets'),
+    ]);
+
+    // Остаток
+    const bal = mon.текущий_остаток_₽ ?? 0;
+    const be = document.getElementById('balance');
+    be.textContent = f(bal);
+    be.className = 'big ' + (bal>=0?'green':'red');
+    document.getElementById('balance-tag').textContent =
+      bal>=0 ? 'мир в плюсе' : 'мир потребляет — Шеф кормит, ждём первый ₽';
+
+    // COGS run-rate
+    const d = books.детализация_выхода || {};
+    document.getElementById('cogs-total').textContent = f(books.выход_₽) + '/мес';
+    const segs = [
+      ['llm', d.llm_всего, '#9060f0'],
+      ['серверы', d.серверы, '#4488ff'],
+      ['подписка', d.подписка_claude_code, '#f0a050'],
+    ];
+    const tot = segs.reduce((s,x)=>s+(x[1]||0),0) || 1;
+    document.getElementById('cogs-seg').innerHTML = segs.map(x=>
+      `<div style="width:${(x[1]||0)/tot*100}%;background:${x[2]}"></div>`).join('');
+    document.getElementById('cogs-legend').innerHTML = segs.map(x=>
+      `<span><i class="dot" style="background:${x[2]}"></i>${x[0]} ${f(x[1])}</span>`).join('');
+
+    // Лимит
+    document.getElementById('limit-num').textContent = `${f(lim.потрачено_в_месяце_₽)} / ${f(lim.потолок_₽)}`;
+    const lb = document.getElementById('limit-bar');
+    lb.style.width = Math.min(100, lim.процент) + '%';
+    lb.style.background = lim.процент>=100?'#f0556a':lim.процент>=80?'#f0a050':'#40f088';
+    document.getElementById('limit-tag').textContent = `${lim.зона} · ${lim.процент}% · осталось ${f(lim.осталось_₽)}`;
+
+    // Книга по месяцам
+    const tb = document.querySelector('#monthly tbody');
+    tb.innerHTML = (mon.месяцы||[]).map(m=>{
+      const net = m.итог_месяца_₽, ost = m.остаток_нарастающим_₽;
+      return `<tr>
+        <td>${m.месяц}</td>
+        <td>${f(m.вход_₽)}</td>
+        <td class="${m.из_них_доход_клиентов>0?'pos':'dim'}">${f(m.из_них_доход_клиентов)}</td>
+        <td class="dim">${f(m.из_них_пополнения_шефа)}</td>
+        <td class="neg">${f(m.расход_₽)}</td>
+        <td class="${net>=0?'pos':'neg'}">${f(net)}</td>
+        <td class="${ost>=0?'pos':'neg'}">${f(ost)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="muted">книга пуста</td></tr>';
+
+    // Пул
+    document.getElementById('pool-minted').textContent = (pool.отчеканено_всего??0)+' ⊚';
+    document.getElementById('pool-dist').textContent = (pool.роздано_агентам??0)+' ⊚';
+    document.getElementById('pool-avail').textContent = (pool.доступно_в_резерве??0)+' ⊚';
+
+    // Кошельки
+    const ws = wal.кошельки || [];
+    document.getElementById('wallets').innerHTML = ws.length ? ws.map(w=>
+      `<div class="wallet"><span>${w.агент}</span><span class="coins">${w.баланс} ⊚</span></div>`
+    ).join('') : '<div class="muted">нет начислений — мир ещё не заработал</div>';
+
+  } catch(e) { console.error(e); }
+}
+
+async function send(direction, category, amtId, noteId) {
+  const amt = parseFloat(document.getElementById(amtId).value);
+  if (!amt || amt<=0) return alert('Введи сумму');
+  await j('/treasury/ledger', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({direction, category, amount_rub:amt, note:document.getElementById(noteId).value||null})});
+  document.getElementById(amtId).value=''; document.getElementById(noteId).value='';
+  load();
+}
+document.getElementById('form-fund').onsubmit = e=>{e.preventDefault();send('in','funding','fund-amt','fund-note');};
+document.getElementById('form-rev').onsubmit = e=>{e.preventDefault();send('in','revenue','rev-amt','rev-note');};
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

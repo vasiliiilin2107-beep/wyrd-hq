@@ -131,6 +131,109 @@ async def limits(session: AsyncSession = Depends(get_session)):
     }
 
 
+# ============ МЕСЯЧНАЯ БУХГАЛТЕРИЯ (книга по месяцам, остатки перетекают) ============
+
+# Постоянные расходы для авто-проводки в новый месяц (run-rate). HQ-LLM не тут — он в EnergyLedger.
+RECURRING_COSTS = [
+    ("server", SERVER_RUB_PER_MONTH, "Серверы Таймвэб"),
+    ("tooling", TOOLING_RUB_PER_MONTH, "Подписка Claude Code"),
+    ("llm", LLM_BASELINE_RUB_PER_MONTH, "LLM прочие сервисы (Library/Book/боты)"),
+]
+
+
+async def ensure_month_costs(session: AsyncSession, month: str) -> list[str]:
+    """Идемпотентно проводит постоянные расходы месяца ('YYYY-MM') в книгу.
+    Так новый месяц сам надевает одежду расходов. HQ-LLM не дублируем (он в EnergyLedger)."""
+    y, mo = int(month[:4]), int(month[5:7])
+    when = datetime(y, mo, 1)
+    posted = []
+    for cat, amount, label in RECURRING_COSTS:
+        if amount <= 0:
+            continue
+        note = f"авто:{cat}:{month}"
+        exists = (await session.execute(
+            select(LedgerEntry).where(LedgerEntry.note == note)
+        )).scalar_one_or_none()
+        if not exists:
+            session.add(LedgerEntry(direction="out", category=cat,
+                                    amount_rub=round(amount, 2), note=note, created_at=when))
+            posted.append(cat)
+    if posted:
+        await session.commit()
+    return posted
+
+
+# Реальные факты июня 2026 из биллинга Шефа (одноразовый исторический сид).
+JUNE_2026_ACTUALS = [
+    ("out", "server", 3478.0, "июнь факт: Таймвэб"),
+    ("out", "tooling", 2400.0, "июнь факт: Claude Code $20"),
+    ("out", "llm", 3500.0, "июнь факт: пополнения polza"),
+    ("out", "domain", 1499.0, "июнь разово: домены (wyrd.su + 5×200)"),
+]
+
+
+@router.post("/seed-history", status_code=201)
+async def seed_history(session: AsyncSession = Depends(get_session)):
+    """Одноразово накладывает июнь 2026 как закрытый расходный месяц (реальные цифры биллинга).
+    Идемпотентно по note. Домены — разово, остальное — факт месяца."""
+    when = datetime(2026, 6, 1)
+    added = []
+    for direction, cat, amount, note in JUNE_2026_ACTUALS:
+        exists = (await session.execute(
+            select(LedgerEntry).where(LedgerEntry.note == note)
+        )).scalar_one_or_none()
+        if not exists:
+            session.add(LedgerEntry(direction=direction, category=cat,
+                                    amount_rub=amount, note=note, created_at=when))
+            added.append(note)
+    if added:
+        await session.commit()
+    return {"добавлено": added, "уже_было": len(JUNE_2026_ACTUALS) - len(added)}
+
+
+@router.get("/monthly")
+async def monthly(session: AsyncSession = Depends(get_session)):
+    """Книга по месяцам: вход (Шеф/клиенты) / расход / итог месяца / остаток нарастающим.
+    Остаток предыдущего месяца перетекает в следующий. HQ-LLM (EnergyLedger) добавляется в расход."""
+    # все записи книги
+    entries = (await session.execute(select(LedgerEntry))).scalars().all()
+    # энергия мозга HQ по месяцам
+    energy = (await session.execute(select(EnergyLedger.created_at, EnergyLedger.cost_rub))).all()
+
+    from collections import defaultdict
+    months = defaultdict(lambda: {"funding": 0.0, "revenue": 0.0, "expense": 0.0, "hq_llm": 0.0})
+    for e in entries:
+        mk = e.created_at.strftime("%Y-%m") if e.created_at else "?"
+        if e.direction == "in":
+            key = "revenue" if e.category == "revenue" else "funding"
+            months[mk][key] += e.amount_rub
+        else:
+            months[mk]["expense"] += e.amount_rub
+    for created_at, cost in energy:
+        mk = created_at.strftime("%Y-%m") if created_at else "?"
+        months[mk]["hq_llm"] += float(cost or 0)
+
+    running = 0.0
+    out = []
+    for mk in sorted(months):
+        m = months[mk]
+        income = round(m["funding"] + m["revenue"], 2)
+        expense = round(m["expense"] + m["hq_llm"], 2)
+        net = round(income - expense, 2)
+        running = round(running + net, 2)
+        out.append({
+            "месяц": mk,
+            "вход_₽": income,
+            "из_них_доход_клиентов": round(m["revenue"], 2),
+            "из_них_пополнения_шефа": round(m["funding"], 2),
+            "расход_₽": expense,
+            "из_них_llm_мозг_hq": round(m["hq_llm"], 2),
+            "итог_месяца_₽": net,
+            "остаток_нарастающим_₽": running,
+        })
+    return {"месяцы": out, "текущий_остаток_₽": running}
+
+
 # ============ МОНЕТА МИРА (Ф3) ============
 
 class CoinIn(BaseModel):

@@ -18,7 +18,7 @@ from .models import (Agent, AgentJournal, BablaReport, Constitution,
                      EnergyLedger, Flag, LedgerEntry)
 from .routers.education import activate_passport, get_trained_prompt, issue_passport, seed_prompt, train_agent
 from .routers.treasury import (LLM_BASELINE_RUB_PER_MONTH, POLZA_MONTHLY_LIMIT_RUB,
-                               SERVER_RUB_PER_MONTH, TOOLING_RUB_PER_MONTH)
+                               SERVER_RUB_PER_MONTH, TOOLING_RUB_PER_MONTH, ensure_month_costs)
 
 log = logging.getLogger(__name__)
 
@@ -136,6 +136,14 @@ async def _check_key_limit(db) -> dict:
 async def run_treasurer_check() -> None:
     await activate_passport(KAZNACHEY)
     await _pulse("active", "сведение книги мира")
+
+    # Новый месяц сам надевает одежду постоянных расходов (идемпотентно).
+    cur_month = datetime.utcnow().strftime("%Y-%m")
+    async with SessionLocal() as db:
+        posted = await ensure_month_costs(db, cur_month)
+    if posted:
+        await _journal(f"Месяц {cur_month} одет в расходы", f"Проведено: {', '.join(posted)}",
+                       entry_type="cycle")
 
     async with SessionLocal() as db:
         books = await _gather_books(db)

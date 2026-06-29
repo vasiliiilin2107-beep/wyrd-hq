@@ -150,6 +150,11 @@ def pulse_page():
     return _html("pulse.html")
 
 
+@app.get("/kazna", include_in_schema=False)
+def kazna_page():
+    return _html("kazna.html")
+
+
 @app.get("/agent/{name}", include_in_schema=False)
 def agent_passport_page(name: str):
     return _html("agent_passport.html")
