@@ -146,17 +146,22 @@ async def ensure_month_costs(session: AsyncSession, month: str) -> list[str]:
     Так новый месяц сам надевает одежду расходов. HQ-LLM не дублируем (он в EnergyLedger)."""
     y, mo = int(month[:4]), int(month[5:7])
     when = datetime(y, mo, 1)
+    nxt = datetime(y + (mo == 12), (mo % 12) + 1, 1)
     posted = []
     for cat, amount, label in RECURRING_COSTS:
         if amount <= 0:
             continue
-        note = f"авто:{cat}:{month}"
+        # Идемпотентность по СУТИ: если расход этой категории за месяц уже есть
+        # (авто-проводка ИЛИ ручной факт из сида) — не дублируем.
         exists = (await session.execute(
-            select(LedgerEntry).where(LedgerEntry.note == note)
-        )).scalar_one_or_none()
+            select(LedgerEntry).where(
+                LedgerEntry.direction == "out", LedgerEntry.category == cat,
+                LedgerEntry.created_at >= when, LedgerEntry.created_at < nxt,
+            )
+        )).first()
         if not exists:
-            session.add(LedgerEntry(direction="out", category=cat,
-                                    amount_rub=round(amount, 2), note=note, created_at=when))
+            session.add(LedgerEntry(direction="out", category=cat, amount_rub=round(amount, 2),
+                                    note=f"авто:{cat}:{month}", created_at=when))
             posted.append(cat)
     if posted:
         await session.commit()
