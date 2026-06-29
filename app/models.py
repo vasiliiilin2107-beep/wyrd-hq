@@ -363,6 +363,41 @@ class LedgerEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
 
+class AgentWallet(Base):
+    """Кошелёк агента: монета мира (мотивация/отбор). 1₽=1 монета, обеспечена реальным доходом."""
+    __tablename__ = "agent_wallets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    balance_coins: Mapped[float] = mapped_column(Float, default=0.0)
+    earned_total: Mapped[float] = mapped_column(Float, default=0.0)   # всего заработано за всё время
+    spent_total: Mapped[float] = mapped_column(Float, default=0.0)    # всего потрачено
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class CoinTx(Base):
+    """Журнал движения монеты: чеканка / награда за результат / трата на апгрейд."""
+    __tablename__ = "coin_tx"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_name: Mapped[str] = mapped_column(String(100), index=True)  # 'POOL' для чеканки в резерв
+    delta: Mapped[float] = mapped_column(Float)                       # + начисление, - списание
+    reason: Mapped[str] = mapped_column(String(30), index=True)       # mint | reward | spend
+    ref: Mapped[str | None] = mapped_column(String(300))             # за что (card#123, глава, доход)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class CoinPool(Base):
+    """Общий резерв обеспеченной монеты = сумма реального ₽, вошедшего в мир. Один ряд (id=1)."""
+    __tablename__ = "coin_pool"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    minted_total: Mapped[float] = mapped_column(Float, default=0.0)   # всего отчеканено (= вошло ₽)
+    distributed_total: Mapped[float] = mapped_column(Float, default=0.0)  # роздано агентам наградами
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class UserToken(Base):
     __tablename__ = "user_tokens"
 

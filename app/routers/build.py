@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,10 +6,13 @@ from sqlalchemy import select, desc
 from pydantic import BaseModel
 from ..database import get_session
 from ..models import BuildCard, CouncilSession, ForemanReport
+from .. import coin
 
 router = APIRouter(prefix="/build", tags=["build"])
 
 VALID_STATUSES = {"waiting", "in_progress", "done"}
+# Награда за результат: ТЗ доведено до прода. Монета идёт автору (или Совету для council-карт).
+REWARD_PER_BUILD = float(os.environ.get("REWARD_PER_BUILD", "50"))
 
 
 class BuildCardUpdate(BaseModel):
@@ -141,10 +145,17 @@ async def update_build_card(
     )).scalar_one_or_none()
     if not card:
         return {"error": "not found"}
+    rewarded = None
     if data.status and data.status in VALID_STATUSES:
         if data.status == "done" and card.status != "done":
             card.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            # Награда ЗА РЕЗУЛЬТАТ: ТЗ доведено до прода. Из пула (нет пула → дефицит).
+            author = card.agent_name or "Совет"
+            rewarded = await coin.reward(author, REWARD_PER_BUILD, ref=f"ТЗ#{card.id}: {card.topic[:80]}")
         card.status = data.status
     await session.commit()
     await session.refresh(card)
-    return _fmt(card)
+    out = _fmt(card)
+    if rewarded is not None:
+        out["награда"] = rewarded
+    return out

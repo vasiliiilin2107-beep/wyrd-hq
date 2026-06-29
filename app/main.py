@@ -23,6 +23,7 @@ from .analytics_agent import analytics_loop, run_analytics_check
 from .idea_agent import idea_loop, run_idea_check
 from .project_agent import project_loop, run_project_check
 from .babla_agent import babla_loop, run_babla_check
+from .treasurer_agent import treasurer_loop, run_treasurer_check
 from .professor_agent import professor_loop, run_professor_check
 from .template_agent import template_loop
 from .library_agent import library_loop
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(idea_loop())
     asyncio.create_task(project_loop())
     asyncio.create_task(babla_loop())
+    asyncio.create_task(treasurer_loop())
     asyncio.create_task(professor_loop())
     asyncio.create_task(template_loop())
     asyncio.create_task(library_loop())
@@ -163,6 +165,7 @@ _TRIGGERS = {
     "ideas":     run_idea_check,
     "projects":  run_project_check,
     "babla":     run_babla_check,
+    "treasurer": run_treasurer_check,
     "professor": run_professor_check,
 }
 
