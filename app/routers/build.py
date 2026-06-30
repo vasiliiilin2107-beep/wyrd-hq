@@ -62,7 +62,8 @@ async def get_build_queue(kind: str | None = None, session: AsyncSession = Depen
             session.add(BuildCard(
                 session_id=s.id,
                 topic=bd.get("title") or s.idea_text,
-                tz_text=v.get("architect", ""),
+                # full_tz = ТЗ Архитектора + команда ботов Профессора. Откат на architect для старых вердиктов.
+                tz_text=v.get("full_tz") or v.get("architect", ""),
                 summary=v.get("summary", ""),
                 kind="council",
             ))
