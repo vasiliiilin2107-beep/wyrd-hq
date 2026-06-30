@@ -459,6 +459,37 @@ async def _get_projects_brief() -> str:
     return f"=== ОТЧЁТ ОТДЕЛА ПРОЕКТОВ (декомпозиция, блокеры, конфликты) ===\n{report.analysis[:1200]}"
 
 
+async def _get_money_brief() -> str:
+    """Реальные деньги мира из Казны — приземляет амбицию Совета (для КАЗНАЧЕЯ).
+    Сколько заработано на самом деле → такой уровень и можем планировать."""
+    from sqlalchemy import func as _f
+    try:
+        async with SessionLocal() as db:
+            earned = (await db.execute(
+                select(_f.coalesce(_f.sum(LedgerEntry.amount_rub), 0.0))
+                .where(LedgerEntry.direction == "in", LedgerEntry.category == "revenue")
+            )).scalar() or 0.0
+            total_in = (await db.execute(
+                select(_f.coalesce(_f.sum(LedgerEntry.amount_rub), 0.0))
+                .where(LedgerEntry.direction == "in")
+            )).scalar() or 0.0
+            total_out = (await db.execute(
+                select(_f.coalesce(_f.sum(LedgerEntry.amount_rub), 0.0))
+                .where(LedgerEntry.direction == "out")
+            )).scalar() or 0.0
+    except Exception as e:
+        log.warning("money brief error: %s", e)
+        return ""
+    balance = total_in - total_out
+    level = ("НОЛЬ — пока мир не заработал ни рубля. Масштаб амбиции: только то, что запускается за копейки/бесплатно, "
+             "первая цель — ПЕРВЫЙ реальный ₽." if earned <= 0 else
+             f"есть реальный доход — можно планировать под него.")
+    return (f"=== КАЗНА — РЕАЛЬНЫЕ ДЕНЬГИ (приземляй амбицию на это) ===\n"
+            f"Заработано миром (доход): {earned:.0f}₽. Баланс книги: {balance:.0f}₽ "
+            f"(пришло {total_in:.0f}₽ − расход {total_out:.0f}₽).\n"
+            f"Уровень амбиции: {level}")
+
+
 async def _world_snapshot() -> str:
     async with SessionLocal() as db:
         agents = (await db.execute(select(Agent))).scalars().all()
@@ -554,6 +585,33 @@ async def _decide_build(idea: str, carto: str, arch: str) -> dict:
     }
 
 
+ASSETS_BLOCK = """=== АКТИВЫ WYRD (УЖЕ ПОСТРОЕНО — на этом зарабатываем) ===
+ВОПРОС №1 каждого сбора: как заработать на том, что у нас УЖЕ есть?
+- Book Studio — готовая фабрика книг (пишет ранобэ, вратарь качества, детектор ИИ-повторов, публикация на Rulate). Потенциал: Rulate + корейские/европейские площадки. Нужно продумать: перевод, регистрацию на площадках, вывод денег.
+- Диспетчер — CRM для владельцев бизнеса (аренда домика, окна): лиды, бронь, Telegram-боты клиентов, Яндекс Директ API + Метрика. Пульт рекламного агентства.
+- Сайты клиентов (wooden-house72, uytbereg72, москитпро72) — статика, умеем быстро клепать лендинги под нишу.
+- Библиотека (Qdrant) — знания о внешнем мире.
+- ⛔ Content Studio / НЕЙРОЦЕХ — СТОП от Шефа, НЕ трогаем пока.
+Масштаб амбиции бери ПО РЕАЛЬНЫМ ДЕНЬГАМ (см. блок Казны), а не из мечты."""
+
+
+SYS_KAZNACHEY_VOICE = """Ты — Казначей в Совете WYRD, начальник Отдела Бабла и хранитель Казны.
+Твоя задача в обсуждении: приземлить идею на ДЕНЬГИ. Без выдуманной выручки «50 клиентов × 2000₽».
+1. Сколько мир УЖЕ заработал реально (из блока Казны) — какой уровень амбиции мы можем себе позволить.
+2. Бюджет запуска идеи: что стоит (LLM, серверы, площадки, перевод и т.п.) — порядок ₽.
+3. Модель денег: кто платит, сколько, на чём маржа, когда окупится.
+Если на этот масштаб денег нет — скажи прямо и предложи версию по карману. Коротко, цифрами. Не больше 150 слов."""
+
+
+SYS_PROFESSOR_VOICE = """Ты — Профессор в Совете WYRD, начальник Профобразования. Ты делаешь МОЗГИ ботам.
+ТЗ без исполнителей — пустое. Твоя задача: для этого ТЗ продумать БОТОВ, которые его выполнят.
+Для каждой ключевой задачи ТЗ назови:
+- какой бот/агент её делает (существующий или новый);
+- если НОВЫЙ — роль, отдел, системный промпт в двух словах, какие навыки/доступы/API нужны;
+- если СУЩЕСТВУЮЩИЙ — чего ему не хватает (какой апгрейд мозга).
+Без воды. Дай список ботов-исполнителей под ТЗ — конкретно, чтобы строитель собрал и команду, и код. Не больше 180 слов."""
+
+
 async def run_council_dialog(session_id: int, idea: str) -> None:
     try:
         snapshot = await _world_snapshot()
@@ -561,7 +619,11 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         synthesis_brief = await _get_synthesis_brief()
         ideas_brief = await _get_ideas_brief()        # связь Идейный → Стратег
         projects_brief = await _get_projects_brief()  # связь Проекты → Архитектор
-        ctx = f"Состояние мира:\n{snapshot}"
+        analytics_brief = await _get_analytics_brief()# связь Аналитика → Картограф
+        money_brief = await _get_money_brief()        # Казна → Казначей
+        ctx = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if money_brief:
+            ctx += f"\n\n{money_brief}"
         if synthesis_brief:
             ctx += f"\n\n{synthesis_brief}"
         if library_ctx:
@@ -575,49 +637,58 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             s.status = "thinking"
             await db.commit()
 
-        # Стратег открывает — теперь СЛЫШИТ Идейный отдел
+        # 1. СТРАТЕГ (Идейный отдел) — открывает: какой АКТИВ монетизируем, идея целиком
         strat_ctx = ctx + (f"\n\n{ideas_brief}" if ideas_brief else "")
+        strat_ctx += ("\n\nТы Стратег (Идейный отдел). Главный вопрос — как ЗАРАБОТАТЬ на наших активах. "
+                      "Предложи конкретную идею монетизации актива (что, кому, как). Прожми идею ЦЕЛИКОМ — от начала до денег.")
         strat1 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat_ctx}], caller="Стратег")
         await _save_msg(session_id, "strategist", strat1)
 
-        # Архитектор отвечает — теперь СЛЫШИТ отдел Проектов
-        arch_ctx = f"{ctx}\n\nСтратег предлагает:\n{strat1}"
-        if projects_brief:
-            arch_ctx += f"\n\n{projects_brief}"
-        arch1 = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}], caller="Архитектор")
-        await _save_msg(session_id, "architect", arch1)
+        # 2. КАЗНАЧЕЙ (Отдел Бабла + Казна) — деньги: сколько заработано → уровень, бюджет, модель
+        kazna_ctx = (f"{ctx}\n\nСтратег предлагает:\n{strat1}\n\n"
+                     "Приземли на деньги: реальный заработок мира → уровень амбиции, бюджет запуска, модель денег.")
+        kazna = await _llm(SYS_KAZNACHEY_VOICE, [{"role": "user", "content": kazna_ctx}], caller="Казначей")
+        await _save_msg(session_id, "treasurer", kazna)
 
-        # Стратег реагирует
-        strat2_ctx = (
-            f"{ctx}\n\nСтратег предложил:\n{strat1}\n\n"
-            f"Архитектор ответил:\n{arch1}\n\n"
-            "Твоя реакция на замечания Архитектора. Меняешь позицию? Финальная версия идеи?"
-        )
-        strat2 = await _llm(SYS_STRATEGIST, [{"role": "user", "content": strat2_ctx}], caller="Стратег")
-        await _save_msg(session_id, "strategist", strat2)
-
-        # Картограф — вердикт (читает аналитику мира)
-        analytics_brief = await _get_analytics_brief()
-        carto_ctx = (
-            f"{ctx}\n\n"
-            f"Стратег (1):\n{strat1}\n\n"
-            f"Архитектор:\n{arch1}\n\n"
-            f"Стратег (итог):\n{strat2}\n\n"
-        )
+        # 3. КАРТОГРАФ (Аналитика) — АНАЛИЗ рынка/рисков/реальности (НЕ вердикт — вердикт за Вратарём)
+        carto_ctx = f"{ctx}\n\nСтратег:\n{strat1}\n\nКазначей (деньги):\n{kazna}\n\n"
         if analytics_brief:
             carto_ctx += f"{analytics_brief}\n\n"
-        carto_ctx += "Дай вердикт: что строим, порядок, зависимости, риски."
+        carto_ctx += ("Ты Картограф (Аналитика). Дай АНАЛИЗ: рынок, спрос, риски, насколько реально нашими силами. "
+                      "НЕ выноси вердикт «строить/не строить» — это работа Вратаря. Только трезвый анализ.")
         carto = await _llm(SYS_CARTOGRAPHER, [{"role": "user", "content": carto_ctx}], caller="Картограф")
         await _save_msg(session_id, "cartographer", carto)
 
-        # Томас — финальное слово для Шефа
+        # 4. АРХИТЕКТОР (Проектный отдел) — требует инфу + собирает ПОЛНОЕ ТЗ из идеи+денег+анализа
+        arch_ctx = (f"{ctx}\n\nСтратег (идея):\n{strat1}\n\nКазначей (деньги/бюджет):\n{kazna}\n\n"
+                    f"Картограф (анализ):\n{carto}\n\n")
+        if projects_brief:
+            arch_ctx += f"{projects_brief}\n\n"
+        arch_ctx += ("Ты Архитектор (Проектный отдел). Собери ПОЛНОЕ ТЗ, продуманное до выкладок — как готовый проект, "
+                     "чтобы строитель собрал за 1 день без додумываний. Структура: ЦЕЛЬ; ЧТО СТРОИМ (шаги/модули); "
+                     "НУЖНА ИНФА/ДОСТУПЫ (что выяснить, какие API/ключи — качество/доступ/функционал/цена); "
+                     "ИНТЕГРАЦИИ; РИСКИ И ОБХОД; ПЕРВЫЙ ШАГ. Конкретно, без воды.")
+        arch1 = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}], max_tokens=1100, caller="Архитектор")
+        await _save_msg(session_id, "architect", arch1)
+
+        # 5. ПРОФЕССОР (Профобразование) — БОТЫ под ТЗ: кто исполняет, какие мозги. ТЗ без ботов — пустое.
+        prof_ctx = (f"Тема: {idea}\n\nТЗ Архитектора:\n{arch1}\n\n"
+                    "Продумай БОТОВ-исполнителей под это ТЗ (существующие+новые, мозги/навыки/доступы).")
+        prof = await _llm(SYS_PROFESSOR_VOICE, [{"role": "user", "content": prof_ctx}], caller="Профессор")
+        await _save_msg(session_id, "professor", prof)
+
+        # Полное ТЗ = проект Архитектора + команда ботов Профессора
+        full_tz = f"{arch1}\n\n=== БОТЫ-ИСПОЛНИТЕЛИ (Профессор) ===\n{prof}"
+
+        # 6. ТОМАС — брифинг Шефу
         thomas_ctx = (
             f"Тема: {idea}\n\n"
             f"Стратег:\n{strat1}\n\n"
-            f"Архитектор:\n{arch1}\n\n"
-            f"Стратег (итог):\n{strat2}\n\n"
-            f"Картограф (вердикт):\n{carto}\n\n"
-            "Напиши брифинг Шефу."
+            f"Казначей (деньги):\n{kazna}\n\n"
+            f"Картограф (анализ):\n{carto}\n\n"
+            f"Архитектор (ТЗ):\n{arch1[:800]}\n\n"
+            f"Профессор (боты):\n{prof[:400]}\n\n"
+            "Напиши краткий брифинг Шефу: что предлагаем, на каком активе, деньги, готово ли ТЗ."
         )
         thomas_msg = await _llm(SYS_THOMAS, [{"role": "user", "content": thomas_ctx}], caller="Томас-голос")
         await _save_msg(session_id, "thomas", thomas_msg)
@@ -627,8 +698,12 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             "summary": carto,
             "thomas_brief": thomas_msg,
             "idea": idea,
-            "strategist_final": strat2,
+            "strategist": strat1,
+            "treasurer": kazna,
+            "analytics": carto,
             "architect": arch1,
+            "professor": prof,
+            "full_tz": full_tz,
         }
         async with SessionLocal() as db:
             s = await db.get(CouncilSession, session_id)
@@ -636,39 +711,57 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
             s.verdict_json = verdict
             thought_text = f"[{idea[:60]}] → {carto[:180]}"
             db.add(CouncilThought(text=thought_text, source="council", tags=["verdict"]))
-            # Журнал Совета: Картограф фиксирует вердикт
-            db.add(AgentJournal(
-                agent_name="Картограф",
-                entry_type="outgoing",
-                title=f"→ Вердикт сессии #{session_id} — {datetime.utcnow().strftime('%d.%m %H:%M')}",
-                body=f"Тема: {idea[:120]}\n\nВердикт: {carto[:300]}",
-                created_by="council",
-            ))
-            # Журнал Совета: Стратег фиксирует позицию
+            # Журнал Совета: Стратег — идея на активе
             db.add(AgentJournal(
                 agent_name="Стратег",
                 entry_type="cycle",
                 title=f"Сессия #{session_id} — {idea[:80]}",
-                body=f"Финальная позиция: {strat2[:300]}",
+                body=f"Идея монетизации: {strat1[:300]}",
                 created_by="council",
             ))
-            # Журнал Совета: Архитектор фиксирует техоценку
+            # Журнал Совета: Казначей — деньги
+            db.add(AgentJournal(
+                agent_name="Казначей",
+                entry_type="cycle",
+                title=f"Сессия #{session_id} — деньги",
+                body=f"Бюджет/модель: {kazna[:300]}",
+                created_by="council",
+            ))
+            # Журнал Совета: Картограф — анализ (не вердикт)
+            db.add(AgentJournal(
+                agent_name="Картограф",
+                entry_type="cycle",
+                title=f"Сессия #{session_id} — анализ",
+                body=f"Тема: {idea[:120]}\n\nАнализ: {carto[:300]}",
+                created_by="council",
+            ))
+            # Журнал Совета: Архитектор — полное ТЗ
             db.add(AgentJournal(
                 agent_name="Архитектор",
+                entry_type="outgoing",
+                title=f"→ ТЗ сессии #{session_id} — {datetime.utcnow().strftime('%d.%m %H:%M')}",
+                body=f"Тема: {idea[:80]}\n\nТЗ: {arch1[:300]}",
+                created_by="council",
+            ))
+            # Журнал Совета: Профессор — боты-исполнители
+            db.add(AgentJournal(
+                agent_name="Профессор",
                 entry_type="cycle",
-                title=f"Сессия #{session_id} — техоценка",
-                body=f"Тема: {idea[:80]}\n\nОценка реализуемости: {arch1[:300]}",
+                title=f"Сессия #{session_id} — боты под ТЗ",
+                body=f"Команда исполнителей: {prof[:300]}",
                 created_by="council",
             ))
             await db.commit()
 
         await _pulse_council("Стратег", f"сессия #{session_id}: {idea[:50]}")
-        await _pulse_council("Архитектор", f"техоценка #{session_id}: {idea[:50]}")
-        await _pulse_council("Картограф", f"вердикт #{session_id}: {idea[:50]}")
+        await _pulse_council("Казначей", f"деньги #{session_id}: {idea[:50]}")
+        await _pulse_council("Картограф", f"анализ #{session_id}: {idea[:50]}")
+        await _pulse_council("Архитектор", f"ТЗ #{session_id}: {idea[:50]}")
+        await _pulse_council("Профессор", f"боты #{session_id}: {idea[:50]}")
 
         # ═══ ВРАТАРЬ СТРОЙКИ: вердикт → действие. Строить → BuildCard сразу (автомат) ═══
         try:
-            decision = await _decide_build(idea, carto, arch1)
+            decision = await _decide_build(idea, carto, full_tz)
             async with SessionLocal() as db:
                 s = await db.get(CouncilSession, session_id)
                 v = dict(s.verdict_json or {})
@@ -682,7 +775,7 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
                         db.add(BuildCard(
                             session_id=session_id,
                             topic=decision["title"],
-                            tz_text=arch1,
+                            tz_text=full_tz,
                             summary=carto[:500],
                             status="waiting",
                         ))
