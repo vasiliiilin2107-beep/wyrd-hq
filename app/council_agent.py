@@ -812,7 +812,9 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         await _pulse_council("Архитектор", f"ТЗ #{session_id}: {idea[:50]}")
         await _pulse_council("Профессор", f"боты #{session_id}: {idea[:50]}")
 
-        # ═══ ВРАТАРЬ СТРОЙКИ: вердикт → действие. Строить → BuildCard сразу (автомат) ═══
+        # ═══ КОНЕЦ ЭХО-КАМЕРЫ: Совет/отделы больше НЕ штампуют карточку напрямую. ═══
+        # Достойный вердикт → ИДЕЯ в банк (status=idea). Карточку идея ЗАСЛУЖИТ через корону (3 слоя).
+        # Единственный создатель карточек — run_council_crown.
         try:
             decision = await _decide_build(idea, carto, full_tz)
             async with SessionLocal() as db:
@@ -821,23 +823,24 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
                 v["build_decision"] = decision
                 s.verdict_json = v
                 if decision["build"]:
+                    marker = f"council_dialog:{session_id}"
                     exists = (await db.execute(
-                        select(BuildCard).where(BuildCard.session_id == session_id)
+                        select(IncomeIdea).where(IncomeIdea.source == marker)
                     )).scalar_one_or_none()
                     if not exists:
-                        db.add(BuildCard(
-                            session_id=session_id,
-                            topic=decision["title"],
-                            tz_text=full_tz,
-                            summary=carto[:500],
-                            status="waiting",
+                        db.add(IncomeIdea(
+                            title=decision["title"][:290],
+                            description=(f"{idea[:400]}\n\n[Совет счёл достойным. Заготовка ТЗ:]\n{full_tz[:600]}")[:1000],
+                            source=marker,
+                            status="idea",
                         ))
-                        log.info("[ВРАТАРЬ-СТРОЙКА] вердикт #%d → СТРОИМ: %s", session_id, decision["title"][:60])
+                        log.info("[СОВЕТ→ИДЕЯ] сессия #%d → идея в банк, корона заслужит ТЗ: %s",
+                                 session_id, decision["title"][:60])
                 else:
-                    log.info("[ВРАТАРЬ-СТРОЙКА] вердикт #%d → не строим: %s", session_id, decision.get("reason", "")[:60])
+                    log.info("[СОВЕТ] сессия #%d → не в стройку: %s", session_id, decision.get("reason", "")[:60])
                 await db.commit()
         except Exception as e:
-            log.warning("[ВРАТАРЬ-СТРОЙКА] ошибка session=%d: %s", session_id, e)
+            log.warning("[СОВЕТ→ИДЕЯ] ошибка session=%d: %s", session_id, e)
 
         log.info("Council session %d done", session_id)
 
