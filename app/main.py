@@ -77,7 +77,28 @@ async def lifespan(app: FastAPI):
     await init_qdrant()
     async with SessionLocal() as session:
         await seed_agents(session)
-        await _seed_clients(session)
+    # Реестр клиентов — ПРАВДА, идемпотентно, в своей сессии, не роняет старт
+    try:
+        from sqlalchemy import select as _sel, func as _fn
+        from .models import Client as _Client
+        async with SessionLocal() as s2:
+            if not (await s2.execute(_sel(_fn.count()).select_from(_Client))).scalar():
+                s2.add_all([
+                    _Client(name="Павел", business="Уютный Берег — посуточная аренда домика (Тюмень)",
+                            pays="15000₽/мес + 15000₽ сайт (разово)", status="активен",
+                            channel="Директ + сайт uytbereg72 + бот @uytbereg72_bot",
+                            notes="ЕДИНСТВЕННЫЙ платящий. НЕ выдумывать доп-плату (200₽/лид) — он уже платит. "
+                                  "Рост = удержать + найти ВТОРОГО как Павел на 15к, не доить одного."),
+                    _Client(name="Юля", business="Wooden House — домик у реки (аренда)", pays="0₽",
+                            status="не платит", channel="сайт wooden-house72 + бот",
+                            notes="Пользуется, не платит. Не источник дохода."),
+                    _Client(name="Саня", business="Окна/остекление (Тюмень)", pays="0₽",
+                            status="пауза (сезон)", channel="лендинг остекления",
+                            notes="Встал по сезону, сейчас 0₽, потенциальный при возврате."),
+                ])
+                await s2.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning("seed_clients skip: %s", e)
     await load_all_dna()
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
