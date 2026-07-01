@@ -900,6 +900,84 @@ async def _council_world_audit() -> None:
     log.info("Council audit: задача Томасу создана, осталось висеть %d идей", remaining)
 
 
+async def run_council_talk(session_id: int, topic: str) -> None:
+    """ЭТАП 1 короны — режим ПЛАНЁРКА (частый пульс, БЕЗ ТЗ).
+    Отделы коротко разговаривают: что по теме, чего не хватает в СВЯЗЯХ, где упираются.
+    Выход — мысль (CouncilThought) + может родиться конкретная income_idea. Никаких карточек стройки."""
+    try:
+        snapshot = await _world_snapshot()
+        money_brief = await _get_money_brief()
+        ctx = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if money_brief:
+            ctx += f"\n\n{money_brief}"
+        ctx += f"\n\nТЕМА ПЛАНЁРКИ: {topic}"
+
+        async with SessionLocal() as db:
+            s = await db.get(CouncilSession, session_id)
+            if not s:
+                return
+            s.status = "talking"
+            await db.commit()
+
+        TALK = ("\n\nЭто ПЛАНЁРКА, не сборка ТЗ. Скажи КОРОТКО (до 90 слов) со своей стороны: "
+                "что по этой теме, чего не хватает в СВЯЗЯХ между отделами/ботами, где ты упираешься. "
+                "Реагируй по имени на уже сказанное, если уместно. НЕ пиши ТЗ, НЕ раскладывай на модули.")
+        voices = [
+            ("strategist", SYS_STRATEGIST, "Стратег"),
+            ("treasurer", SYS_KAZNACHEY_VOICE, "Казначей"),
+            ("cartographer", SYS_CARTOGRAPHER, "Картограф"),
+            ("professor", SYS_PROFESSOR_VOICE, "Профессор"),
+            ("projects", SYS_PROJ_DECOMP, "Проектный отдел"),
+        ]
+        transcript = ""
+        for speaker, sysp, name in voices:
+            vctx = ctx + (f"\n\nЧто уже сказали на планёрке:\n{transcript}" if transcript else "") + TALK
+            msg = await _llm(sysp, [{"role": "user", "content": vctx}], max_tokens=380, caller=f"{name}·планёрка")
+            if not (msg or "").strip():
+                continue
+            await _save_msg(session_id, speaker, msg)
+            transcript += f"\n{name}: {msg}\n"
+
+        # Синтез — что родилось; может выделить ОДНУ созревшую идею
+        syn_ctx = (
+            f"ТЕМА: {topic}\n\nПЛАНЁРКА:\n{transcript}\n\n"
+            "Сведи в 3-5 строк: главное по теме и чего не хватает в связях между отделами/ботами. "
+            "Если из разговора СОЗРЕЛА одна конкретная монетизируемая идея — добавь ОТДЕЛЬНОЙ последней строкой ровно так:\n"
+            "ИДЕЯ: <название до 100 симв> | <кому и на чём деньги, в двух словах>\n"
+            "Если конкретная идея НЕ созрела — строку ИДЕЯ не пиши (планёрка = просто пульс, это норма)."
+        )
+        syn = await _llm(SYS_STRATEGIST, [{"role": "user", "content": syn_ctx}], max_tokens=420, caller="Планёрка·синтез")
+        if (syn or "").strip():
+            await _save_msg(session_id, "synthesis", syn)
+
+        # Может родить income_idea (её потом подхватит цикл на сборку ТЗ)
+        new_idea_id = None
+        for line in (syn or "").splitlines():
+            if line.strip().upper().startswith("ИДЕЯ:"):
+                body = line.split(":", 1)[1].strip()
+                title = body.split("|")[0].strip()[:290]
+                if len(title) > 8:
+                    async with SessionLocal() as db:
+                        ii = IncomeIdea(title=title, description=body[:1000],
+                                        source="council_planerka", status="idea")
+                        db.add(ii)
+                        await db.commit()
+                        await db.refresh(ii)
+                        new_idea_id = ii.id
+                break
+
+        async with SessionLocal() as db:
+            db.add(CouncilThought(text=(syn or transcript)[:4000], source="planerka", tags=["planerka"]))
+            s = await db.get(CouncilSession, session_id)
+            if s:
+                s.status = "talked"
+                s.verdict_json = {"mode": "planerka", "synthesis": syn, "born_idea": new_idea_id}
+            await db.commit()
+        log.info("Council ПЛАНЁРКА session %d: родилась идея=%s", session_id, new_idea_id)
+    except Exception as e:
+        log.error("run_council_talk: %s", e)
+
+
 async def council_autonomous_loop() -> None:
     global _topic_idx
     await asyncio.sleep(60 * 60)  # первый запуск через 1 час
@@ -936,17 +1014,23 @@ async def council_autonomous_loop() -> None:
                                      "Стоит ли это строить, с чего начать, что конкретно нужно сделать первым шагом?")
                             src = marker
                             break
+                # Свежая конкретная идея → СБОРКА ТЗ. Нет идеи → ПЛАНЁРКА (пульс), а не штамповка абстракции.
+                mode = "assembly" if topic else "planerka"
                 if not topic:
                     topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
                     _topic_idx += 1
+                    src = "planerka"
                 async with SessionLocal() as db:
                     s = CouncilSession(idea_text=topic, source=src)
                     db.add(s)
                     await db.commit()
                     await db.refresh(s)
                     sid = s.id
-                log.info("Council autonomous session %d [%s]: %s", sid, src, topic[:50])
-                await run_council_dialog(sid, topic)
+                log.info("Council autonomous session %d [%s/%s]: %s", sid, mode, src, topic[:50])
+                if mode == "assembly":
+                    await run_council_dialog(sid, topic)   # созревшая идея → ТЗ
+                else:
+                    await run_council_talk(sid, topic)     # планёрка → пульс, может родить идею
 
         except Exception as e:
             log.error("Council autonomous loop: %s", e)
