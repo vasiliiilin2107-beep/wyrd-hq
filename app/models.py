@@ -422,3 +422,19 @@ class TokenTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
     user: Mapped["UserToken"] = relationship(back_populates="transactions")
+
+
+class IdeaStamp(Base):
+    """Печать отдела на идее (КОРОНА Совета).
+    round=1 — вклад в Круг 1 (отдал инфу, расписался что полная);
+    round=2 — чтение собранного ТЗ (моя часть в документе верна)."""
+    __tablename__ = "idea_stamps"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    idea_id: Mapped[int] = mapped_column(index=True)              # income_ideas.id
+    session_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    dept: Mapped[str] = mapped_column(String(60))
+    round: Mapped[int] = mapped_column(default=1)                 # 1=вклад, 2=чтение ТЗ
+    verdict: Mapped[str] = mapped_column(String(8))               # ✅ / ❌
+    accepted: Mapped[str | None] = mapped_column(Text)            # что проверил/принял
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)

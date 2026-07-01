@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select, desc
 
 from .database import SessionLocal
-from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport, Flag, EnergyLedger, LedgerEntry
+from .models import Agent, AgentJournal, AnalyticsReport, BuildCard, CouncilMessage, CouncilSession, CouncilThought, IncomeIdea, TechTask, IdeaDeptReport, ProjectDeptReport, Flag, EnergyLedger, LedgerEntry, IdeaStamp
 
 log = logging.getLogger(__name__)
 
@@ -953,8 +953,9 @@ async def run_council_talk(session_id: int, topic: str) -> None:
         # Может родить income_idea (её потом подхватит цикл на сборку ТЗ)
         new_idea_id = None
         for line in (syn or "").splitlines():
-            if line.strip().upper().startswith("ИДЕЯ:"):
-                body = line.split(":", 1)[1].strip()
+            l = line.strip().lstrip("*#-• ").strip()
+            if l.upper().startswith("ИДЕЯ:"):
+                body = l.split(":", 1)[1].strip()
                 title = body.split("|")[0].strip()[:290]
                 if len(title) > 8:
                     async with SessionLocal() as db:
@@ -978,6 +979,169 @@ async def run_council_talk(session_id: int, topic: str) -> None:
         log.error("run_council_talk: %s", e)
 
 
+def _parse_stamp(text: str, marker: str) -> tuple[str, str]:
+    """Ищет строку 'MARKER: ✅|❌ | текст'. Возвращает (verdict, accepted). Нет строки → ('','')."""
+    for raw in (text or "").splitlines():
+        l = raw.strip().lstrip("*#-•> ").strip()
+        if l.upper().startswith(marker.upper()):
+            body = l.split(":", 1)[1].strip() if ":" in l else l
+            verdict = "✅" if "✅" in body else "❌"
+            acc = body.split("|", 1)[1].strip() if "|" in body else body.replace("✅", "").replace("❌", "").strip()
+            return verdict, acc[:400]
+    return "", ""
+
+
+async def _park_idea(idea_id: int, sid: int, reason: str) -> None:
+    """Идея упёрлась в тупик на любом слое короны — паркуем с причиной (не дропаем молча)."""
+    async with SessionLocal() as db:
+        s = await db.get(CouncilSession, sid)
+        if s:
+            s.status = "immature"
+            s.verdict_json = {"crown": True, "parked": reason}
+        ii = await db.get(IncomeIdea, idea_id)
+        if ii:
+            ii.status = "immature"
+            ii.description = ((ii.description or "")[:600] + f"\n[КОРОНА-тупик: {reason}]")[:1000]
+        db.add(CouncilThought(text=f"Идея #{idea_id} упёрлась в тупик короны: {reason}",
+                              source="crown", tags=["parked"]))
+        await db.commit()
+    log.info("КОРОНА: идея #%d припаркована (не созрела): %s", idea_id, reason[:90])
+
+
+async def run_council_crown(idea_id: int, topic: str) -> None:
+    """КОРОНА Совета (Этапы 2-6). Идея ЗАРАБАТЫВАЕТ ТЗ через 3 слоя обороны:
+    Круг1 — 5 отделов дают вклад + ПЕЧАТЬ (моя инфа полная).
+    Круг2 — Архитектор аудитит полноту перед сборкой.
+    Сборка ТЗ → подпись-чтение (каждый начальник читает СВОЮ часть) → Вратарь по штампам.
+    Провал любого слоя → парковка (тупик, ищи выход), а не молчаливая карточка."""
+    try:
+        snapshot = await _world_snapshot()
+        money_brief = await _get_money_brief()
+        base = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if money_brief:
+            base += f"\n\n{money_brief}"
+        base += f"\n\nИДЕЯ НА СОЗРЕВАНИЕ: {topic}"
+
+        async with SessionLocal() as db:
+            s = CouncilSession(idea_text=topic, source=f"crown:{idea_id}")
+            db.add(s); await db.commit(); await db.refresh(s); sid = s.id
+
+        STAMP = ("\n\nВ КОНЦЕ обязательно поставь ПЕЧАТЬ отдельной последней строкой РОВНО так:\n"
+                 "ПЕЧАТЬ: ✅ | <что ты проверил/принял по существу, 1 строка>\n"
+                 "Если по этой идее твоя часть НЕ проходит (пусто/фантазия/нет данных) — ПЕЧАТЬ: ❌ | <причина>. "
+                 "Пустую печать не ставь — Вратарь ловит печать без содержания.")
+        circle1 = [
+            ("Стратег", SYS_STRATEGIST, "strategist",
+             "Идея монетизации ЦЕЛИКОМ: что, кому, как деньги. Копай ГЛУБЖЕ поверхности — задай вопросы: есть ли реальный спрос? чем гарантируем результат клиенту? что уже работает у нас, а что нет?"),
+            ("Казначей", SYS_KAZNACHEY_VOICE, "treasurer",
+             "Деньги: реальный заработок мира → уровень амбиции, бюджет запуска (₽), кто платит и сколько, когда окупится. БЕЗ выдуманной выручки."),
+            ("Картограф", SYS_CARTOGRAPHER, "cartographer",
+             "Анализ: рынок, спрос, риски, МОДЕРАЦИЯ/блокировки площадок, насколько реально НАШИМИ силами прямо сейчас. Трезво."),
+            ("Профессор", SYS_PROFESSOR_VOICE, "professor",
+             "Боты-исполнители под идею: кто делает, каких НОВЫХ надо (роль/промпт/доступы), чего не хватает существующим."),
+            ("Проектный отдел", SYS_PROJ_DECOMP, "projects",
+             "Разложи до атомов: модули, задачи, интеграции/конфликты, что уточнить/каких доступов нет. Это сырьё для ТЗ."),
+        ]
+        contribs: dict[str, str] = {}
+        transcript = ""
+        gaps = []
+        for dept, voice, speaker, task in circle1:
+            ctx = base + (f"\n\nЧто уже сказали:\n{transcript}" if transcript else "") + f"\n\nТвоя работа: {task}" + STAMP
+            out = await _llm(voice, [{"role": "user", "content": ctx}], max_tokens=900, caller=f"{dept}·круг1")
+            v, acc = _parse_stamp(out, "ПЕЧАТЬ")
+            if not v:
+                v, acc = "❌", "печать не поставлена"
+            contribs[dept] = out or ""
+            transcript += f"\n{dept}: {(out or '')[:600]}\n"
+            await _save_msg(sid, speaker, out or "")
+            async with SessionLocal() as db:
+                db.add(IdeaStamp(idea_id=idea_id, session_id=sid, dept=dept, round=1, verdict=v, accepted=acc))
+                await db.commit()
+            if v != "✅":
+                gaps.append(f"{dept}: {acc}")
+
+        if gaps:
+            await _park_idea(idea_id, sid, f"Круг1 (печати) не пройден: {'; '.join(gaps)[:350]}")
+            return
+
+        # ── КРУГ 2: аудит Архитектора (полнота перед сборкой) ──
+        audit_ctx = (base + "\n\nВклады отделов (все с печатью ✅):\n" +
+                     "\n".join(f"[{d}]\n{contribs[d][:700]}" for d, _, _, _ in circle1) +
+                     "\n\nТы Архитектор. АУДИТ перед сборкой ТЗ: всё ли по существу и полно? Нет ли дыр, фантазий, "
+                     "пустых обещаний, неотвеченных вопросов (спрос, доступы, вывод денег, модерация)? "
+                     "В КОНЦЕ строкой: АУДИТ: ✅ | <итог> — или АУДИТ: ❌ | <какой отдел что недодал>.")
+        audit = await _llm(SYS_ARCHITECT, [{"role": "user", "content": audit_ctx}], max_tokens=700, caller="Архитектор·круг2")
+        av, aacc = _parse_stamp(audit, "АУДИТ")
+        await _save_msg(sid, "architect_audit", audit or "")
+        async with SessionLocal() as db:
+            db.add(IdeaStamp(idea_id=idea_id, session_id=sid, dept="Архитектор·аудит", round=1,
+                             verdict=av or "❌", accepted=aacc or (audit or "")[:300]))
+            await db.commit()
+        if av != "✅":
+            await _park_idea(idea_id, sid, f"Круг2 аудит Архитектора ❌: {aacc[:300]}")
+            return
+
+        # ── СБОРКА ТЗ ──
+        arch_ctx = (base + "\n\nВклады отделов:\n" +
+                    "\n".join(f"[{d}]\n{contribs[d]}" for d, _, _, _ in circle1) +
+                    "\n\nСобери ПОЛНОЕ ГЛУБОКОЕ ТЗ по разделам: 1.ЦЕЛЬ (измеримый первый ₽) 2.ЧТО ЕСТЬ "
+                    "3.ЧТО СТРОИМ по модулям (файлы/эндпоинты/логика) 4.ИНФА/ДОСТУПЫ 5.ИНТЕГРАЦИИ "
+                    "6.ВЫВОД ДЕНЕГ/МОДЕЛЬ 7.РИСКИ И ОБХОД (баны/модерация) 8.ШАГИ от 1-го рубля 9.ПЕРВЫЙ ШАГ. "
+                    "Плотно, конкретно, без воды и без фантазий.")
+        tz = await _llm(SYS_ARCHITECT, [{"role": "user", "content": arch_ctx}], max_tokens=2600, caller="Архитектор·ТЗ")
+        bots = await _llm(SYS_PROFESSOR_VOICE,
+                          [{"role": "user", "content": f"ТЗ:\n{tz}\n\nПродумай БОТОВ-исполнителей (существующие+новые, мозги/доступы)."}],
+                          max_tokens=700, caller="Профессор·ТЗ")
+        full_tz = f"{tz}\n\n=== БОТЫ-ИСПОЛНИТЕЛИ (Профессор) ===\n{bots}"
+        await _save_msg(sid, "architect", tz or "")
+        await _save_msg(sid, "professor", bots or "")
+
+        # ── ПОДПИСЬ-ЧТЕНИЕ (Круг подписей 2): каждый начальник читает СВОЮ часть ──
+        circle2 = [
+            ("Стратег", SYS_STRATEGIST, "идея/монетизация"),
+            ("Казначей", SYS_KAZNACHEY_VOICE, "деньги/бюджет/модель"),
+            ("Картограф", SYS_CARTOGRAPHER, "анализ/риски/реальность"),
+            ("Профессор", SYS_PROFESSOR_VOICE, "боты-исполнители"),
+        ]
+        r2_gaps = []
+        for dept, voice, part in circle2:
+            ctx = (f"СОБРАННОЕ ТЗ:\n{full_tz[:3000]}\n\n"
+                   f"Ты {dept}. Прочитай в этом ТЗ СВОЮ часть ({part}). Верна ли она, не выхолощена, не потеряна? "
+                   "Строкой: ПОДПИСЬ: ✅ | <что принял> — или ПОДПИСЬ: ❌ | <что не так>.")
+            out = await _llm(voice, [{"role": "user", "content": ctx}], max_tokens=350, caller=f"{dept}·подпись")
+            v, acc = _parse_stamp(out, "ПОДПИСЬ")
+            if not v:
+                v, acc = "❌", "подпись не поставлена"
+            async with SessionLocal() as db:
+                db.add(IdeaStamp(idea_id=idea_id, session_id=sid, dept=dept, round=2, verdict=v, accepted=acc))
+                await db.commit()
+            if v != "✅":
+                r2_gaps.append(f"{dept}: {acc}")
+
+        if r2_gaps:
+            await _park_idea(idea_id, sid, f"Вратарь: подписи ТЗ не полны: {'; '.join(r2_gaps)[:300]}")
+            return
+
+        # ── ВРАТАРЬ: все 5 печатей Круга1 ✅ + аудит ✅ + 4 подписи ✅ → ЗАСЛУЖЕННОЕ ТЗ ──
+        title = topic.strip()[:100]
+        async with SessionLocal() as db:
+            s = await db.get(CouncilSession, sid)
+            s.status = "verdict"
+            s.verdict_json = {"crown": True, "idea_id": idea_id,
+                              "build_decision": {"build": True, "title": title, "reason": "все печати короны ✅"}}
+            exists = (await db.execute(select(BuildCard).where(BuildCard.session_id == sid))).scalar_one_or_none()
+            if not exists:
+                db.add(BuildCard(session_id=sid, topic=title, tz_text=full_tz,
+                                 summary=contribs.get("Картограф", "")[:500], status="waiting"))
+            ii = await db.get(IncomeIdea, idea_id)
+            if ii:
+                ii.status = "building"
+            await db.commit()
+        log.info("КОРОНА: идея #%d прошла ВСЕ 3 слоя → заслуженная карточка стройки", idea_id)
+    except Exception as e:
+        log.error("run_council_crown idea=%d: %s", idea_id, e)
+
+
 async def council_autonomous_loop() -> None:
     global _topic_idx
     await asyncio.sleep(60 * 60)  # первый запуск через 1 час
@@ -994,43 +1158,28 @@ async def council_autonomous_loop() -> None:
                 # Режим аудита — чистим мусор, сигналим Томасу
                 await _council_world_audit()
             else:
-                # Обычный режим. ПРИОРИТЕТ — конкретная идея Идейного отдела (контакт Идейный→Совет).
-                # Абстрактный список — только если свежих идей нет.
+                # КОРОНА: свежая идея (status=idea) → ЗАРАБАТЫВАЕТ ТЗ через 3 слоя. Нет идей → ПЛАНЁРКА (пульс).
+                idea_id = None
                 topic = None
-                src = "autonomous"
                 async with SessionLocal() as db:
-                    ideas = (await db.execute(
+                    ir = (await db.execute(
                         select(IncomeIdea).where(IncomeIdea.status == "idea")
-                        .order_by(desc(IncomeIdea.created_at)).limit(10)
-                    )).scalars().all()
-                    for ir in ideas:
-                        marker = f"income_idea:{ir.id}"
-                        seen = (await db.execute(
-                            select(CouncilSession).where(CouncilSession.source == marker)
-                        )).first()
-                        if not seen:
-                            desc_txt = (ir.description or "")[:400]
-                            topic = (f"Бизнес-идея Идейного отдела: «{ir.title}». {desc_txt} "
-                                     "Стоит ли это строить, с чего начать, что конкретно нужно сделать первым шагом?")
-                            src = marker
-                            break
-                # Свежая конкретная идея → СБОРКА ТЗ. Нет идеи → ПЛАНЁРКА (пульс), а не штамповка абстракции.
-                mode = "assembly" if topic else "planerka"
-                if not topic:
+                        .order_by(desc(IncomeIdea.created_at)).limit(1)
+                    )).scalar_one_or_none()
+                    if ir:
+                        idea_id = ir.id
+                        topic = f"«{ir.title}». {(ir.description or '')[:400]}"
+                if idea_id:
+                    log.info("Council КОРОНА idea #%d: %s", idea_id, (topic or "")[:50])
+                    await run_council_crown(idea_id, topic)  # идея зарабатывает ТЗ через 3 слоя
+                else:
                     topic = AUTONOMOUS_TOPICS[_topic_idx % len(AUTONOMOUS_TOPICS)]
                     _topic_idx += 1
-                    src = "planerka"
-                async with SessionLocal() as db:
-                    s = CouncilSession(idea_text=topic, source=src)
-                    db.add(s)
-                    await db.commit()
-                    await db.refresh(s)
-                    sid = s.id
-                log.info("Council autonomous session %d [%s/%s]: %s", sid, mode, src, topic[:50])
-                if mode == "assembly":
-                    await run_council_dialog(sid, topic)   # созревшая идея → ТЗ
-                else:
-                    await run_council_talk(sid, topic)     # планёрка → пульс, может родить идею
+                    async with SessionLocal() as db:
+                        s = CouncilSession(idea_text=topic, source="planerka")
+                        db.add(s); await db.commit(); await db.refresh(s); sid = s.id
+                    log.info("Council планёрка #%d: %s", sid, topic[:50])
+                    await run_council_talk(sid, topic)       # пульс, может родить идею
 
         except Exception as e:
             log.error("Council autonomous loop: %s", e)
