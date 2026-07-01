@@ -133,6 +133,71 @@ async def _check_key_limit(db) -> dict:
     return {"mtd": mtd, "limit": POLZA_MONTHLY_LIMIT_RUB, "pct": pct}
 
 
+async def _spend_map(db, since_h: int, until_h: int = 0) -> dict:
+    """Расход ₽ по каждому сервису за окно [since_h назад .. until_h назад]."""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    q = select(EnergyLedger.caller, func.sum(EnergyLedger.cost_rub)).where(
+        EnergyLedger.created_at >= now - timedelta(hours=since_h))
+    if until_h:
+        q = q.where(EnergyLedger.created_at < now - timedelta(hours=until_h))
+    rows = (await db.execute(q.group_by(EnergyLedger.caller))).all()
+    return {r[0]: round(float(r[1] or 0), 4) for r in rows}
+
+
+async def _feed_council(topic: str) -> None:
+    """Подать ситуацию в Совет планёркой — мозг разберёт и предложит выход."""
+    try:
+        from .council_agent import run_council_talk
+        from .models import CouncilSession
+        async with SessionLocal() as db:
+            s = CouncilSession(idea_text=topic, source="econ_watch")
+            db.add(s); await db.commit(); await db.refresh(s); sid = s.id
+        await run_council_talk(sid, topic)
+    except Exception as e:
+        log.warning("Экономдозор → Совет: %s", e)
+
+
+async def _economic_watch() -> None:
+    """Экономический дозор Отдела Бабла: расход ключей = ЖИВОЙ пульс мира.
+    МОЛЧУН (был активен, замолчал) и ОБЖОРА (скачок) → ВОПРОС в Совет + флаг Шефу.
+    Guardrail (лечили паранойю в с202-203): молчит без работы = НОРМА;
+    тревога ТОЛЬКО если сервис БЫЛ активен и пропал — не пугать idle-покоем."""
+    async with SessionLocal() as db:
+        recent = await _spend_map(db, 24)                 # последние 24ч
+        prior = await _spend_map(db, 72, until_h=24)      # предыдущие 48ч (24-72ч назад)
+    prior_daily = {c: v / 2.0 for c, v in prior.items()}  # ₽/день в прошлом окне
+
+    silent = sorted(((c, round(pd, 2)) for c, pd in prior_daily.items()
+                     if pd >= 1.0 and recent.get(c, 0.0) == 0.0),
+                    key=lambda x: -x[1])                    # был активен ≥1₽/день, сейчас 0
+    greedy = sorted(((c, round(rv, 2), round(prior_daily.get(c, 0.0), 2))
+                     for c, rv in recent.items()
+                     if rv >= 10.0 and rv > max(prior_daily.get(c, 0.0) * 3, prior_daily.get(c, 0.0) + 8)),
+                    key=lambda x: -x[1])                    # реальный скачок, не шум
+
+    # В Совет — только худшего молчуна + худшего обжору (кост-кап), остальных флагом.
+    if silent:
+        c, pd = silent[0]
+        await _feed_council(
+            f"Экономический дозор: сервис «{c}» жёг ~{pd}₽/день, а последние сутки МОЛЧИТ (0₽). "
+            "Почему замолчал — застрял, упал, нет работы или сломался? Разбери и предложи, как вернуть в строй.")
+    if greedy:
+        c, rv, pd = greedy[0]
+        await _feed_council(
+            f"Экономический дозор: сервис «{c}» за сутки сжёг {rv}₽ (норма была ~{pd}₽/день) — скачок. "
+            "Почему жрёт: зациклился, неэффективный промпт, лишние повторы? Найди причину и как срезать.")
+    for c, pd in silent[:3]:
+        await _raise_flag(f"econ.silent.{c}"[:60], f"🟠 Сервис «{c}» замолчал",
+                          f"Жёг ~{pd}₽/день, последние сутки 0₽. Совет разбирает причину.", ftype="note")
+    for c, rv, pd in greedy[:3]:
+        await _raise_flag(f"econ.greedy.{c}"[:60], f"🟠 Сервис «{c}» жрёт много",
+                          f"{rv}₽/сутки против нормы ~{pd}₽/день. Совет разбирает.", ftype="note")
+    if silent or greedy:
+        log.info("Экономдозор: молчунов %d, обжор %d", len(silent), len(greedy))
+    else:
+        log.info("Экономдозор: аномалий нет — пульс расхода ровный")
+
+
 async def run_treasurer_check() -> None:
     await activate_passport(KAZNACHEY)
     await _pulse("active", "сведение книги мира")
@@ -200,6 +265,13 @@ async def run_treasurer_check() -> None:
                        analysis[:1500])
     log.info("Казначей: книга сведена (баланс %.0f₽, лимит %.0f%%, пул %.0f)",
              books["balance"], limit["pct"], pool["доступно_в_резерве"])
+
+    # Экономический дозор: пульс расхода → молчуны/обжоры → вопрос в Совет + флаг Шефу
+    try:
+        await _economic_watch()
+    except Exception as e:
+        log.warning("Экономдозор: %s", e)
+
     await _pulse("idle", f"баланс {books['balance']}₽ · лимит {limit['pct']}%")
 
 
