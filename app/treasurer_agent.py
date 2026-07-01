@@ -6,6 +6,9 @@
 """
 import asyncio
 import logging
+import os
+
+import httpx
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
@@ -133,6 +136,26 @@ async def _check_key_limit(db) -> dict:
     return {"mtd": mtd, "limit": POLZA_MONTHLY_LIMIT_RUB, "pct": pct}
 
 
+async def _polza_balance() -> dict | None:
+    """ЖИВОЙ баланс кошелька Polza — реальные деньги на LLM всего мира (не модель!).
+    GET /balance → {amount: остаток, spentAmount: потрачено всего}."""
+    key = os.environ.get("POLZA_API_KEY", "")
+    if not key:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get("https://polza.ai/api/v1/balance",
+                                 headers={"Authorization": f"Bearer {key}"})
+            if r.status_code == 200:
+                d = r.json()
+                return {"amount": round(float(d.get("amount", 0) or 0), 2),
+                        "spent": round(float(d.get("spentAmount", 0) or 0), 2)}
+            log.warning("Polza balance HTTP %s", r.status_code)
+    except Exception as e:
+        log.warning("Polza balance: %s", e)
+    return None
+
+
 async def _spend_map(db, since_h: int, until_h: int = 0) -> dict:
     """Расход ₽ по каждому сервису за окно [since_h назад .. until_h назад]."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -241,8 +264,24 @@ async def run_treasurer_check() -> None:
     else:
         await _clear_flag("hq.revenue.zero")
 
+    # --- ЖИВОЙ кошелёк Polza: реальные деньги мира на LLM (не модель) ---
+    polza = await _polza_balance()
+    if polza:
+        if polza["amount"] < 500:
+            await _raise_flag("polza.wallet.low",
+                              f"🔴 Кошелёк Polza почти пуст: {polza['amount']}₽",
+                              "Реальные деньги мира на LLM на исходе — скоро мир замолчит (402). Пополнить.")
+        elif polza["amount"] < 1500:
+            await _raise_flag("polza.wallet.low",
+                              f"🟠 Кошелёк Polza тает: {polza['amount']}₽",
+                              "Топливо мира ниже 1500₽ — следить, готовить пополнение.", ftype="note")
+        else:
+            await _clear_flag("polza.wallet.low")
+
     # --- Отчёт Казначея ---
     burn_str = ", ".join(f"{c}={r}₽" for c, r in burners) or "нет данных"
+    polza_str = (f"РЕАЛЬНЫЙ КОШЕЛЁК POLZA (живьём): остаток {polza['amount']}₽, потрачено всего {polza['spent']}₽"
+                 if polza else "живой баланс Polza недоступен")
     babla_str = (last_babla.analysis[:400] if last_babla else "отчёта Отдела Бабла пока нет")
     ctx = (
         f"КНИГА (30 дней): вход {books['income']}₽ | выход {books['total_out']}₽ "
@@ -250,6 +289,7 @@ async def run_treasurer_check() -> None:
         f"прочее {books['manual_out']}) | баланс {books['balance']}₽\n"
         f"ЭНЕРГИЯ (топ за сутки): {burn_str}\n"
         f"ЛИМИТ КЛЮЧА: {limit['mtd']}/{limit['limit']}₽ ({limit['pct']}%)\n"
+        f"{polza_str}\n"
         f"МОНЕТА: резерв пула {pool['доступно_в_резерве']}, отчеканено {pool['отчеканено_всего']}, "
         f"кошельков {len(wallets)}\n"
         f"ПОСЛЕДНИЙ ОТЧЁТ ОТДЕЛА БАБЛА:\n{babla_str}"
