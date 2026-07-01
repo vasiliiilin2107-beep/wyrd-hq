@@ -991,6 +991,23 @@ def _parse_stamp(text: str, marker: str) -> tuple[str, str]:
     return "", ""
 
 
+def _stamp_from(out: str, marker: str) -> tuple[str, str]:
+    """Печать по СУЩЕСТВУ, а не по формату. Явная строка MARKER → её вердикт.
+    Нет строки, но вклад содержательный → ✅. Пусто/явный отказ/фантазия → ❌.
+    Так Вратарь ловит печать без содержания, но не рубит за забытый формат."""
+    v, acc = _parse_stamp(out, marker)
+    if v:
+        return v, acc
+    body = (out or "").strip()
+    low = body.lower()
+    neg = any(w in low for w in ("не проходит", "нет данных", "недостаточно данных",
+                                 "не могу", "невозможно", "фантаз", "непонятно что"))
+    if len(body) >= 150 and not neg:
+        first = next((ln.strip() for ln in body.splitlines() if len(ln.strip()) > 25), body[:160])
+        return "✅", first[:200]
+    return "❌", ("явный отказ/фантазия" if neg else "вклад пустой/слабый")
+
+
 async def _park_idea(idea_id: int, sid: int, reason: str) -> None:
     """Идея упёрлась в тупик на любом слое короны — паркуем с причиной (не дропаем молча)."""
     async with SessionLocal() as db:
@@ -1048,9 +1065,7 @@ async def run_council_crown(idea_id: int, topic: str) -> None:
         for dept, voice, speaker, task in circle1:
             ctx = base + (f"\n\nЧто уже сказали:\n{transcript}" if transcript else "") + f"\n\nТвоя работа: {task}" + STAMP
             out = await _llm(voice, [{"role": "user", "content": ctx}], max_tokens=900, caller=f"{dept}·круг1")
-            v, acc = _parse_stamp(out, "ПЕЧАТЬ")
-            if not v:
-                v, acc = "❌", "печать не поставлена"
+            v, acc = _stamp_from(out, "ПЕЧАТЬ")
             contribs[dept] = out or ""
             transcript += f"\n{dept}: {(out or '')[:600]}\n"
             await _save_msg(sid, speaker, out or "")
@@ -1071,7 +1086,7 @@ async def run_council_crown(idea_id: int, topic: str) -> None:
                      "пустых обещаний, неотвеченных вопросов (спрос, доступы, вывод денег, модерация)? "
                      "В КОНЦЕ строкой: АУДИТ: ✅ | <итог> — или АУДИТ: ❌ | <какой отдел что недодал>.")
         audit = await _llm(SYS_ARCHITECT, [{"role": "user", "content": audit_ctx}], max_tokens=700, caller="Архитектор·круг2")
-        av, aacc = _parse_stamp(audit, "АУДИТ")
+        av, aacc = _stamp_from(audit, "АУДИТ")
         await _save_msg(sid, "architect_audit", audit or "")
         async with SessionLocal() as db:
             db.add(IdeaStamp(idea_id=idea_id, session_id=sid, dept="Архитектор·аудит", round=1,
@@ -1109,9 +1124,7 @@ async def run_council_crown(idea_id: int, topic: str) -> None:
                    f"Ты {dept}. Прочитай в этом ТЗ СВОЮ часть ({part}). Верна ли она, не выхолощена, не потеряна? "
                    "Строкой: ПОДПИСЬ: ✅ | <что принял> — или ПОДПИСЬ: ❌ | <что не так>.")
             out = await _llm(voice, [{"role": "user", "content": ctx}], max_tokens=350, caller=f"{dept}·подпись")
-            v, acc = _parse_stamp(out, "ПОДПИСЬ")
-            if not v:
-                v, acc = "❌", "подпись не поставлена"
+            v, acc = _stamp_from(out, "ПОДПИСЬ")
             async with SessionLocal() as db:
                 db.add(IdeaStamp(idea_id=idea_id, session_id=sid, dept=dept, round=2, verdict=v, accepted=acc))
                 await db.commit()
