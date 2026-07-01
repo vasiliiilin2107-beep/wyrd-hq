@@ -982,10 +982,11 @@ async def run_council_talk(session_id: int, topic: str) -> None:
 def _parse_stamp(text: str, marker: str) -> tuple[str, str]:
     """Ищет строку 'MARKER: ✅|❌ | текст'. Возвращает (verdict, accepted). Нет строки → ('','')."""
     for raw in (text or "").splitlines():
-        l = raw.strip().lstrip("*#-•> ").strip()
-        if l.upper().startswith(marker.upper()):
+        l = raw.strip().lstrip("*#-•> ").strip().rstrip("*").strip()
+        # печать только если строка-маркер НЕСЁТ вердикт (✅/❌); голый заголовок «АУДИТ …» игнор
+        if l.upper().startswith(marker.upper()) and ("✅" in l or "❌" in l):
             body = l.split(":", 1)[1].strip() if ":" in l else l
-            verdict = "✅" if "✅" in body else "❌"
+            verdict = "✅" if "✅" in l else "❌"
             acc = body.split("|", 1)[1].strip() if "|" in body else body.replace("✅", "").replace("❌", "").strip()
             return verdict, acc[:400]
     return "", ""
