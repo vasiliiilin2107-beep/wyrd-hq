@@ -156,6 +156,36 @@ async def _polza_balance() -> dict | None:
     return None
 
 
+async def _direct_account() -> dict | None:
+    """ЖИВОЙ баланс рекламного счёта Яндекс.Директ — деньги клиентов на рекламу.
+    v4 AccountManagement.Get → баланс; v5 campaigns.get → активные кампании."""
+    token = os.environ.get("YADIRECT_TOKEN", "")
+    if not token:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post("https://api.direct.yandex.ru/live/v4/json/",
+                                  json={"method": "AccountManagement", "token": token,
+                                        "param": {"Action": "Get"}})
+            accs = ((r.json().get("data") or {}).get("Accounts") or []) if r.status_code == 200 else []
+            if not accs:
+                return None
+            a = accs[0]
+            acc = {"login": a.get("Login"), "amount": round(float(a.get("Amount", 0) or 0), 2)}
+            r2 = await client.post("https://api.direct.yandex.com/json/v5/campaigns",
+                                   headers={"Authorization": f"Bearer {token}", "Accept-Language": "ru"},
+                                   json={"method": "get", "params": {"SelectionCriteria": {},
+                                         "FieldNames": ["Id", "Name", "State", "Status"]}})
+            active = [c.get("Name", "")[:45] for c in
+                      ((r2.json().get("result") or {}).get("Campaigns") or [])
+                      if c.get("State") == "ON"] if r2.status_code == 200 else []
+            acc["active"] = active
+            return acc
+    except Exception as e:
+        log.warning("Direct balance: %s", e)
+    return None
+
+
 async def _spend_map(db, since_h: int, until_h: int = 0) -> dict:
     """Расход ₽ по каждому сервису за окно [since_h назад .. until_h назад]."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -278,10 +308,29 @@ async def run_treasurer_check() -> None:
         else:
             await _clear_flag("polza.wallet.low")
 
+    # --- ЖИВОЙ счёт Яндекс.Директ: деньги клиентов на рекламу ---
+    direct = await _direct_account()
+    if direct:
+        n = len(direct.get("active", []))
+        if direct["amount"] < 500 and n > 0:
+            await _raise_flag("direct.wallet.low",
+                              f"🔴 Реклама Директ встанет: счёт {direct['amount']}₽",
+                              f"На счёте {direct.get('login')} {n} активных кампаний, денег {direct['amount']}₽ — "
+                              "реклама (и лиды клиентов) вот-вот остановится. Пополнить.")
+        elif direct["amount"] < 1500 and n > 0:
+            await _raise_flag("direct.wallet.low",
+                              f"🟠 Счёт Директа тает: {direct['amount']}₽ ({n} кампаний ON)",
+                              "Рекламный бюджет клиентов ниже 1500₽ — следить, пополнить.", ftype="note")
+        else:
+            await _clear_flag("direct.wallet.low")
+
     # --- Отчёт Казначея ---
     burn_str = ", ".join(f"{c}={r}₽" for c, r in burners) or "нет данных"
     polza_str = (f"РЕАЛЬНЫЙ КОШЕЛЁК POLZA (живьём): остаток {polza['amount']}₽, потрачено всего {polza['spent']}₽"
                  if polza else "живой баланс Polza недоступен")
+    direct_str = (f"РЕКЛАМА ДИРЕКТ (живьём): счёт {direct['amount']}₽, активных кампаний "
+                  f"{len(direct.get('active', []))} ({', '.join(direct.get('active', [])) or 'нет'})"
+                  if direct else "баланс Директа недоступен (нет YADIRECT_TOKEN)")
     babla_str = (last_babla.analysis[:400] if last_babla else "отчёта Отдела Бабла пока нет")
     ctx = (
         f"КНИГА (30 дней): вход {books['income']}₽ | выход {books['total_out']}₽ "
@@ -290,6 +339,7 @@ async def run_treasurer_check() -> None:
         f"ЭНЕРГИЯ (топ за сутки): {burn_str}\n"
         f"ЛИМИТ КЛЮЧА: {limit['mtd']}/{limit['limit']}₽ ({limit['pct']}%)\n"
         f"{polza_str}\n"
+        f"{direct_str}\n"
         f"МОНЕТА: резерв пула {pool['доступно_в_резерве']}, отчеканено {pool['отчеканено_всего']}, "
         f"кошельков {len(wallets)}\n"
         f"ПОСЛЕДНИЙ ОТЧЁТ ОТДЕЛА БАБЛА:\n{babla_str}"
