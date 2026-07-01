@@ -36,6 +36,32 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
+async def _seed_clients(session) -> None:
+    """Засев реестра клиентов ПРАВДОЙ — идемпотентно (только если пусто)."""
+    from sqlalchemy import select, func as _f
+    from .models import Client
+    if (await session.execute(select(_f.count()).select_from(Client))).scalar():
+        return
+    seeds = [
+        Client(name="Павел", business="Уютный Берег — посуточная аренда домика (Тюмень)",
+               pays="15000₽/мес + 15000₽ за сайт+настройку (разово)", status="активен",
+               channel="Яндекс.Директ + сайт uytbereg72 + бот @uytbereg72_bot",
+               notes="ЕДИНСТВЕННЫЙ платящий клиент мира. НЕ выдумывать с него доп-плату (200₽/лид и пр.) — "
+                     "он уже платит. Рост = УДЕРЖАТЬ его + найти ВТОРОГО такого на 15к, а не доить одного."),
+        Client(name="Юля", business="Wooden House — домик у реки (аренда)",
+               pays="0₽", status="не платит",
+               channel="сайт wooden-house72 + бот @Wooden_house72_bot",
+               notes="Пользуется инструментами, не платит. НЕ источник дохода."),
+        Client(name="Саня", business="Окна/остекление (Тюмень)",
+               pays="0₽", status="пауза (сезон)",
+               channel="лендинг остекления",
+               notes="Встал из-за сезонности. Потенциальный при возврате сезона, сейчас 0₽."),
+    ]
+    for c in seeds:
+        session.add(c)
+    await session.commit()
+
+
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -51,6 +77,7 @@ async def lifespan(app: FastAPI):
     await init_qdrant()
     async with SessionLocal() as session:
         await seed_agents(session)
+        await _seed_clients(session)
     await load_all_dna()
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())

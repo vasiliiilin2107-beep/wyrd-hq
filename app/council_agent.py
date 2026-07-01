@@ -623,6 +623,21 @@ SYS_PROJ_DECOMP = """Ты — Проектный отдел WYRD (Декомпо
 Пиши плотно, конкретно, МНОГО — это сырьё для ТЗ. Без воды и общих слов."""
 
 
+async def _get_clients_brief() -> str:
+    """Реестр клиентов = ПРАВДА кто платит. Чтобы Совет не выдумывал сделки (типа 'CPA-Павел')."""
+    from .models import Client
+    async with SessionLocal() as db:
+        rows = (await db.execute(select(Client).order_by(Client.id))).scalars().all()
+    if not rows:
+        return ""
+    lines = ["=== РЕЕСТР КЛИЕНТОВ (ПРАВДА — НЕ выдумывай сделки с ними) ==="]
+    for c in rows:
+        lines.append(f"- {c.name} ({c.business}): платит {c.pays} — {c.status}. {(c.notes or '')}")
+    lines.append("ВЫВОД: новых денег НЕ искать доением этих троих. Реальный рост = удержать Павла + "
+                 "найти ВТОРОГО платящего как Павел (15к) + книги (Book Studio). Кто уже платит/не платит — не выдумывать им плату.")
+    return "\n".join(lines)
+
+
 async def run_council_dialog(session_id: int, idea: str) -> None:
     try:
         snapshot = await _world_snapshot()
@@ -632,7 +647,10 @@ async def run_council_dialog(session_id: int, idea: str) -> None:
         projects_brief = await _get_projects_brief()  # связь Проекты → Архитектор
         analytics_brief = await _get_analytics_brief()# связь Аналитика → Картограф
         money_brief = await _get_money_brief()        # Казна → Казначей
+        clients_brief = await _get_clients_brief()    # ПРАВДА о клиентах → все головы
         ctx = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if clients_brief:
+            ctx += f"\n\n{clients_brief}"
         if money_brief:
             ctx += f"\n\n{money_brief}"
         if synthesis_brief:
@@ -907,7 +925,10 @@ async def run_council_talk(session_id: int, topic: str) -> None:
     try:
         snapshot = await _world_snapshot()
         money_brief = await _get_money_brief()
+        clients_brief = await _get_clients_brief()
         ctx = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if clients_brief:
+            ctx += f"\n\n{clients_brief}"
         if money_brief:
             ctx += f"\n\n{money_brief}"
         ctx += f"\n\nТЕМА ПЛАНЁРКИ: {topic}"
@@ -1035,7 +1056,10 @@ async def run_council_crown(idea_id: int, topic: str) -> None:
     try:
         snapshot = await _world_snapshot()
         money_brief = await _get_money_brief()
+        clients_brief = await _get_clients_brief()
         base = f"{ASSETS_BLOCK}\n\nСостояние мира:\n{snapshot}"
+        if clients_brief:
+            base += f"\n\n{clients_brief}"
         if money_brief:
             base += f"\n\n{money_brief}"
         base += f"\n\nИДЕЯ НА СОЗРЕВАНИЕ: {topic}"
