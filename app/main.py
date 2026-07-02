@@ -99,6 +99,38 @@ async def lifespan(app: FastAPI):
                 await s2.commit()
     except Exception as e:
         logging.getLogger(__name__).warning("seed_clients skip: %s", e)
+    # КАРТА ФРОНТИРА — измеренная правда (Rulate 25 жанров), идемпотентно, не роняет старт
+    try:
+        from sqlalchemy import select as _sf, func as _ff
+        from .models import Frontier as _Fr
+        async with SessionLocal() as s3:
+            if not (await s3.execute(_sf(_ff.count()).select_from(_Fr))).scalar():
+                # покрытие: сянься=Толстяк, романтика=Не флиртуй, боевик=Сломанный герб
+                _cover = {"Сянься": "tolstyak", "Романтика": "ne_flirtuy_s_sistemoy",
+                          "Боевик": "slomannyy_gerb_arhitektor_vozmezdiya"}
+                _hot = {"Литрпг", "Сянься", "Боевик", "Городское фэнтези", "Гаремник",
+                        "Постапокалиптика", "Героическое фэнтези"}
+                _genres = ["Боевик", "Боевые искусства", "История", "Детектив", "Драма", "Комедия",
+                           "Мистика", "Повседневность", "Постапокалиптика", "Приключения", "Психология",
+                           "Романтика", "Сверхъестественное", "Научная фантастика", "Сюаньхуань",
+                           "Героическое фэнтези", "Фэнтези", "Фантастика", "Школа", "Этти", "Гаремник",
+                           "Литрпг", "Городское фэнтези", "Сянься", "Фанфик"]
+                for g in _genres:
+                    s3.add(_Fr(platform="rulate", genre=g, rail_built=True, lang="ru",
+                               covered=g in _cover, book_slug=_cover.get(g),
+                               demand="высокий (рынок)" if g in _hot else "не измерен",
+                               notes="Rulate раздел «Авторские» (cat_id=18)"))
+                # площадки без рельса — вся площадка пустая, нужен публикатор-рельс
+                _plat = [("author_today", "ru"), ("litnet", "ru"), ("litres", "ru"), ("ridero", "ru"),
+                         ("bookmate", "ru"), ("ficbook", "ru"), ("litmarket", "ru"),
+                         ("royal_road", "en"), ("webnovel", "en"), ("scribblehub", "en"),
+                         ("wattpad", "en"), ("amazon_kdp", "en"), ("naver", "ko")]
+                for name, lang in _plat:
+                    s3.add(_Fr(platform=name, genre="— (вся площадка)", rail_built=False, lang=lang,
+                               notes="рельс-публикатор не построен — весь каталог открыт"))
+                await s3.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning("seed_frontier skip: %s", e)
     await load_all_dna()
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
@@ -142,6 +174,8 @@ app.include_router(world_docs.router)
 app.include_router(build.router)
 from .routers import treasury
 app.include_router(treasury.router)
+from .routers import frontier
+app.include_router(frontier.router)
 app.include_router(audit_router)
 app.include_router(analytics.router)
 app.include_router(ideas_dept.router)

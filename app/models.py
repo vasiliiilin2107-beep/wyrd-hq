@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any
-from sqlalchemy import String, JSON, ForeignKey, DateTime, func, Text, BigInteger, ARRAY, Float
+from sqlalchemy import String, JSON, ForeignKey, DateTime, func, Text, BigInteger, ARRAY, Float, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -452,3 +452,22 @@ class IdeaStamp(Base):
     verdict: Mapped[str] = mapped_column(String(8))               # ✅ / ❌
     accepted: Mapped[str | None] = mapped_column(Text)            # что проверил/принял
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class Frontier(Base):
+    """КАРТА ФРОНТИРА — клетки (площадка × жанр): что покрыто, где дыра.
+    Мир получает ГЛАЗА: где мы стоим, где пусто, куда целить ⑨ спавн.
+    Измерено 02.07.2026 (Rulate = 25 жанров). Разведчик держит свежим.
+    Закрытие ветки на потоке ОТКРЫВАЕТ соседние клетки этой карты (арх. v2)."""
+    __tablename__ = "frontier"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    platform: Mapped[str] = mapped_column(String(60), index=True)        # rulate / author_today / royal_road
+    genre: Mapped[str] = mapped_column(String(80))                       # Боевик / Сянься / «— (вся площадка)»
+    rail_built: Mapped[bool] = mapped_column(Boolean, default=False)     # есть публикатор-рельс?
+    covered: Mapped[bool] = mapped_column(Boolean, default=False)        # есть наша книга в клетке?
+    book_slug: Mapped[str | None] = mapped_column(String(80))            # чем покрыто
+    demand: Mapped[str] = mapped_column(String(30), default="не измерен")  # высокий/средний/низкий/не измерен
+    lang: Mapped[str] = mapped_column(String(8), default="ru")
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
