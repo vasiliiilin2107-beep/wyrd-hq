@@ -13,7 +13,7 @@ from .council_agent import _llm
 from .database import SessionLocal
 from .models import (
     Agent, AgentJournal, AgentPassport, AgentReport, AnalyticsReport, BablaReport,
-    Constitution, Event, IdeaDeptReport, ProjectDeptReport, Proposal, TechTask,
+    BuildCard, Constitution, Event, IdeaDeptReport, ProjectDeptReport, Proposal, TechTask,
 )
 from .routers.education import get_trained_prompt, issue_passport, train_agent, persist_dna
 
@@ -73,6 +73,57 @@ def _infer_branch(role: str, reason: str) -> str:
     if any(w in text for w in ["аналитик", "метрик", "статистик", "данных", "мониторинг"]):
         return "аналитика"
     return "глобал"
+
+
+async def propose_hire(role: str, purpose: str, closes: str = "", depends_on: str = "",
+                       first_step: str = "", from_agent: str = "Профессор") -> dict:
+    """Ф5: иерархия упёрлась в дыру → Профессор пишет ЧИСТУЮ заявку на найм (kind=new_hire).
+    6 полей, дедуп против штата + открытых наймов. Дальше Томас → Шеф строит.
+    Для ролей, что требуют КОДА/инструментов (Толмач+RoyalRoadClient) — не автопородить из ДНК."""
+    role = (role or "").strip()
+    if not role:
+        return {"ok": False, "detail": "пустая роль"}
+
+    async with SessionLocal() as db:
+        roster = (await db.execute(select(Agent.name, Agent.role))).all()
+        open_hires = (await db.execute(
+            select(BuildCard.id, BuildCard.topic)
+            .where(BuildCard.kind == "new_hire", BuildCard.status.in_(["waiting", "in_progress"]))
+        )).all()
+
+    # ДЕДУП: уже в штате или уже заказан?
+    have = "\n".join(f"штат: {r[0]} — {r[1]}" for r in roster[:60]) or "штат пуст"
+    hires = "\n".join(f"#{h[0]}: {h[1]}" for h in open_hires) or "открытых наймов нет"
+    try:
+        out = await _llm(
+            "Ты кадровик-дедупер. Отвечай только: DUP <что> — или NEW.",
+            [{"role": "user", "content":
+              f"Нужен: «{role}» — {purpose}.\n\nУЖЕ ЕСТЬ:\n{have}\n\nОТКРЫТЫЕ НАЙМЫ:\n{hires}\n\n"
+              f"Эту роль уже кто-то закрывает (в штате) или уже заказан найм? "
+              f"Ответь 'DUP <кто/номер>' если да, или 'NEW' если реально новая дыра."}],
+            max_tokens=20, caller="Кадровик")
+        if (out or "").strip().upper().startswith("DUP"):
+            log.info("[ПРОФЕССОР] найм «%s» — дубль (%s), не плодим", role, out.strip()[:60])
+            return {"ok": False, "duplicate": out.strip()[:120]}
+    except Exception:
+        pass  # сбой дедупа не должен блокировать реальную дыру
+
+    tz = (f"КТО: {role}\n"
+          f"ЗАЧЕМ: {purpose}\n"
+          f"ЗАКРЫВАЕТ: {closes or '—'}\n"
+          f"ЗАВИСИТ ОТ: {depends_on or '—'}\n"
+          f"ПЕРВЫЙ ШАГ: {first_step or '—'}\n"
+          f"СТАТУС: ждёт стройки")
+    async with SessionLocal() as db:
+        card = BuildCard(session_id=None, kind="new_hire", agent_name=from_agent,
+                         topic=f"Найм: {role}"[:200], tz_text=tz, summary=purpose[:500],
+                         status="waiting")
+        db.add(card)
+        await db.commit()
+        await db.refresh(card)
+        cid = card.id
+    log.info("[ПРОФЕССОР] Ф5 найм-ТЗ #%d: нужен «%s» — %s", cid, role, purpose[:60])
+    return {"ok": True, "card_id": cid, "role": role, "tz": tz}
 
 
 async def _library_synthesis() -> str:

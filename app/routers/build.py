@@ -96,6 +96,35 @@ async def add_self_upgrade(data: SelfUpgradeIn, session: AsyncSession = Depends(
     return {"ok": True, "card": _fmt(card)}
 
 
+class NewHireIn(BaseModel):
+    """Ф5: иерархия упёрлась в дыру → заявка на найм. Профессор пишет чисто, дедуп."""
+    role: str
+    purpose: str
+    closes: str = ""
+    depends_on: str = ""
+    first_step: str = ""
+    from_agent: str = "Профессор"
+
+
+@router.post("/new-hire", status_code=201)
+async def add_new_hire(data: NewHireIn):
+    """Профессор кладёт чистую заявку на найм (kind=new_hire), с дедупом против штата.
+    Дальше Томас алертит Шефу, Шеф строит. Для ролей, требующих кода/инструментов."""
+    from ..professor_agent import propose_hire
+    res = await propose_hire(data.role, data.purpose, data.closes,
+                             data.depends_on, data.first_step, data.from_agent)
+    return res
+
+
+@router.get("/new-hires")
+async def list_new_hires(session: AsyncSession = Depends(get_session)):
+    """Открытые заявки на найм — что миру не хватает, ждёт стройки."""
+    rows = (await session.execute(
+        select(BuildCard).where(BuildCard.kind == "new_hire").order_by(desc(BuildCard.created_at))
+    )).scalars().all()
+    return {"наймы": [_fmt(c) for c in rows]}
+
+
 @router.get("/foreman")
 async def get_foreman_reports(limit: int = 10, session: AsyncSession = Depends(get_session)):
     reports = (await session.execute(
@@ -125,8 +154,8 @@ async def cleanup_legacy_cards(session: AsyncSession = Depends(get_session)):
              if (s.verdict_json or {}).get("build_decision", {}).get("build")}
     removed = 0
     for c in cards:
-        # самоапгрейд-карточки не трогаем — они без сессии и созданы вручную агентами
-        if c.kind == "self_upgrade":
+        # самоапгрейд и найм-карточки не трогаем — они без сессии, созданы агентами
+        if c.kind in ("self_upgrade", "new_hire"):
             continue
         if c.session_id not in gated:
             await session.delete(c)
