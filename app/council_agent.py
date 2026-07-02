@@ -1050,6 +1050,32 @@ async def _park_idea(idea_id: int, sid: int, reason: str) -> None:
     log.info("КОРОНА: идея #%d припаркована (не созрела): %s", idea_id, reason[:90])
 
 
+async def _dup_card_id(title: str) -> int:
+    """Смысловой дедуп: новое ТЗ — дубль уже ОТКРЫТОЙ карточки? id дубля или 0.
+    Лечит близнецов (остекление ×2, воронка Диспетчера ×2) — корона судила в вакууме."""
+    async with SessionLocal() as db:
+        rows = (await db.execute(
+            select(BuildCard.id, BuildCard.topic)
+            .where(BuildCard.status.in_(["waiting", "in_progress"]))
+            .order_by(BuildCard.created_at.desc()).limit(30)
+        )).all()
+    if not rows:
+        return 0
+    listing = "\n".join(f"#{r[0]}: {r[1]}" for r in rows)
+    prompt = (f"Новое ТЗ: «{title}»\n\nОткрытые карточки стройки:\n{listing}\n\n"
+              f"Есть среди них ДУБЛЬ — та же суть/ниша/продукт (пусть слова другие)? "
+              f"Ответь ТОЛЬКО числом: id дубля или 0.")
+    try:
+        out = await _llm("Ты дедупер карточек. Отвечай только числом.",
+                         [{"role": "user", "content": prompt}], max_tokens=10, caller="Дедупер")
+        import re as _re
+        m = _re.search(r"\d+", out or "")
+        did = int(m.group()) if m else 0
+        return did if any(r[0] == did for r in rows) else 0
+    except Exception:
+        return 0
+
+
 async def run_council_crown(idea_id: int, topic: str) -> None:
     """КОРОНА Совета (Этапы 2-6). Идея ЗАРАБАТЫВАЕТ ТЗ через 3 слоя обороны:
     Круг1 — 5 отделов дают вклад + ПЕЧАТЬ (моя инфа полная).
@@ -1165,6 +1191,12 @@ async def run_council_crown(idea_id: int, topic: str) -> None:
 
         # ── ВРАТАРЬ: все 5 печатей Круга1 ✅ + аудит ✅ + 4 подписи ✅ → ЗАСЛУЖЕННОЕ ТЗ ──
         title = topic.strip()[:100]
+        # ДЕДУП: не плодим близнеца уже открытой карточки
+        dup = await _dup_card_id(title)
+        if dup:
+            await _park_idea(idea_id, sid, f"дубль открытой карточки #{dup} — не плодим близнеца")
+            log.info("КОРОНА: идея #%d = дубль карточки #%d → не создаём", idea_id, dup)
+            return
         async with SessionLocal() as db:
             s = await db.get(CouncilSession, sid)
             s.status = "verdict"

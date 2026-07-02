@@ -91,7 +91,10 @@ async def books(days: int = 30, session: AsyncSession = Depends(get_session)):
         .group_by(LedgerEntry.direction, LedgerEntry.category)
     )).all()
     income = round(sum(r[2] for r in rows if r[0] == "in"), 2)
-    manual_out = round(sum(r[2] for r in rows if r[0] == "out"), 2)
+    # «прочее» = только РУЧНЫЕ разовые расходы. server/llm/tooling уже учтены константами выше
+    # (Казначей пишет их авто-записями за месяц вперёд → иначе двойной счёт, врал в 2 раза).
+    _AUTO_CATS = ("server", "llm", "tooling")
+    manual_out = round(sum(r[2] for r in rows if r[0] == "out" and r[1] not in _AUTO_CATS), 2)
     total_out = round(llm_total + server_cost + tooling_cost + manual_out, 2)
     return {
         "период_дней": days,
