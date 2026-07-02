@@ -1,11 +1,11 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from pydantic import BaseModel
 from ..database import get_session
-from ..models import BuildCard, CouncilSession, ForemanReport
+from ..models import BuildCard, CouncilSession, ForemanReport, Flag, Goal
 from .. import coin
 
 router = APIRouter(prefix="/build", tags=["build"])
@@ -13,6 +13,18 @@ router = APIRouter(prefix="/build", tags=["build"])
 VALID_STATUSES = {"waiting", "in_progress", "done"}
 # Награда за результат: ТЗ доведено до прода. Монета идёт автору (или Совету для council-карт).
 REWARD_PER_BUILD = float(os.environ.get("REWARD_PER_BUILD", "50"))
+# Ф6 Томас-петля: карточки стройки, живущие по дедлайну (не council-автопоток)
+_ALERT_KINDS = ("goal", "new_hire", "self_upgrade")
+PRUNE_GRACE_DAYS = int(os.environ.get("BUILD_PRUNE_GRACE_DAYS", "2"))
+
+
+def _now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _ping_text(c: BuildCard) -> str:
+    first = (c.tz_text or "").strip().splitlines()[0] if c.tz_text else (c.summary or c.topic)
+    return f"«{c.topic[:70]}» — {first[:100]}"
 
 
 class BuildCardUpdate(BaseModel):
@@ -162,6 +174,67 @@ async def cleanup_legacy_cards(session: AsyncSession = Depends(get_session)):
             removed += 1
     await session.commit()
     return {"removed": removed, "kept_gated_sessions": len(gated)}
+
+
+@router.get("/alerts")
+async def build_alerts(session: AsyncSession = Depends(get_session)):
+    """Ф6 ТОМАС-ПЕТЛЯ: два повода, ОДИН пинг на состояние.
+    1) новая карта стройки (kind goal/new_hire/self_upgrade, ждёт) → пинг «ТЗ лежит»;
+    2) дедлайн прошёл, всё ещё не построено → пинг «строим/удаляем?».
+    Каждый пинг ставит alert_state, чтобы не долбить повторно. Поднимает Flag для Томаса."""
+    now = _now()
+    cards = (await session.execute(
+        select(BuildCard).where(BuildCard.kind.in_(_ALERT_KINDS), BuildCard.status == "waiting")
+    )).scalars().all()
+    new_pings, overdue_pings = [], []
+    for c in cards:
+        if c.alert_state == "none":
+            c.alert_state = "announced"
+            txt = f"🏗 Стройка ждёт: {_ping_text(c)}. ТЗ лежит (карта #{c.id}, дедлайн " \
+                  f"{c.deadline.strftime('%d.%m') if c.deadline else '—'})."
+            new_pings.append({"card_id": c.id, "текст": txt})
+            session.add(Flag(title=f"Стройка #{c.id}: {c.topic[:80]}", body=txt,
+                             type="todo", component="thomas", anchor="hq.build.new",
+                             status="active", author="Иерархия"))
+        elif c.alert_state == "announced" and c.deadline and c.deadline < now:
+            c.alert_state = "overdue"
+            txt = f"⏰ Просрочка: {_ping_text(c)} (карта #{c.id}). Дедлайн прошёл, не построено — " \
+                  f"СТРОИМ или УДАЛЯЕМ? Если молчок — прунинг через {PRUNE_GRACE_DAYS}д."
+            overdue_pings.append({"card_id": c.id, "текст": txt})
+            session.add(Flag(title=f"Просрочка стройки #{c.id}: {c.topic[:70]}", body=txt,
+                             type="risk", component="thomas", anchor="hq.build.overdue",
+                             status="active", author="Иерархия"))
+    await session.commit()
+    return {"новые": new_pings, "просроченные": overdue_pings,
+            "итог": f"{len(new_pings)} новых пингов, {len(overdue_pings)} просрочек"}
+
+
+@router.post("/prune")
+async def prune_overdue(session: AsyncSession = Depends(get_session)):
+    """Ф6 ПРУНИНГ: карта просрочена + прошёл grace после 2-го пинга, а Шеф не построил →
+    очередь чистится сама. Карта удаляется, связанная цель закрывается (не построено).
+    Чистит ТОЛЬКО goal/new_hire/self_upgrade — council-автопоток не трогаем."""
+    now = _now()
+    cards = (await session.execute(
+        select(BuildCard).where(BuildCard.kind.in_(_ALERT_KINDS),
+                                BuildCard.status == "waiting",
+                                BuildCard.alert_state == "overdue")
+    )).scalars().all()
+    pruned = []
+    for c in cards:
+        if not c.deadline or c.deadline + timedelta(days=PRUNE_GRACE_DAYS) > now:
+            continue
+        # связанная цель → закрыть как «не построено» (вон из активной иерархии)
+        g = (await session.execute(
+            select(Goal).where(Goal.build_card_id == c.id))).scalar_one_or_none()
+        if g:
+            g.status = "closed"
+            g.closed_at = now
+            g.observer = "прунинг — не построено к дедлайну"
+        pruned.append({"card_id": c.id, "topic": c.topic[:80], "goal_id": g.id if g else None})
+        await session.delete(c)
+    await session.commit()
+    return {"вырезано": len(pruned), "карты": pruned}
 
 
 @router.patch("/queue/{card_id}")

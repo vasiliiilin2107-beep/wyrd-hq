@@ -73,6 +73,11 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE build_cards ADD COLUMN IF NOT EXISTS agent_name VARCHAR(100)"))
         await conn.execute(text(
             "ALTER TABLE build_cards ALTER COLUMN session_id DROP NOT NULL"))
+        # Ф6 Томас-петля: дедлайн стройки + состояние алерта на карте
+        await conn.execute(text(
+            "ALTER TABLE build_cards ADD COLUMN IF NOT EXISTS deadline TIMESTAMP"))
+        await conn.execute(text(
+            "ALTER TABLE build_cards ADD COLUMN IF NOT EXISTS alert_state VARCHAR(20) DEFAULT 'none'"))
     await init_redis()
     await init_qdrant()
     async with SessionLocal() as session:
@@ -131,6 +136,28 @@ async def lifespan(app: FastAPI):
                 await s3.commit()
     except Exception as e:
         logging.getLogger(__name__).warning("seed_frontier skip: %s", e)
+    # Ф2 арх.v2 — ПЕРВОЕ ЖИВОЕ ЗАКРЫТИЕ: ветка Rulate/Book Studio (агенты катают книги,
+    # доказанный шаблон) закрыта на потоке → под наблюдение. Эталон терминала agent_runs.
+    try:
+        from sqlalchemy import select as _sg
+        from .models import Goal as _Goal
+        async with SessionLocal() as s4:
+            exists = (await s4.execute(_sg(_Goal).where(_Goal.text.like("%Rulate%")))).first()
+            if not exists:
+                s4.add(_Goal(
+                    text="Ставить книги на Rulate потоком (доказанный шаблон Book Studio)",
+                    source="chief", status="closed", terminal="agent_runs",
+                    observer="Смотритель + Экономдозор",
+                    decomposition={"strateg": "первый живой рынок-рельс, агенты катают сами",
+                                   "kartograf": "3 жанра покрыты (Толстяк/Не флиртуй/Сломанный герб), 22 пустые",
+                                   "terminal": "agent_runs",
+                                   "verdict": "Book Studio пишет+выкладывает сама — ветка закрыта, наблюдаем"},
+                    notes="Первое закрытие арх.v2. Карта фронтира открывает соседние клетки "
+                          "(площадки/жанры) как следующие цели.",
+                    closed_at=datetime.utcnow()))
+                await s4.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning("seed_rulate_goal skip: %s", e)
     await load_all_dna()
     asyncio.create_task(council_autonomous_loop())
     asyncio.create_task(foreman_loop())
@@ -176,6 +203,8 @@ from .routers import treasury
 app.include_router(treasury.router)
 from .routers import frontier
 app.include_router(frontier.router)
+from .routers import goals
+app.include_router(goals.router)
 app.include_router(audit_router)
 app.include_router(analytics.router)
 app.include_router(ideas_dept.router)

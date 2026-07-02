@@ -243,6 +243,31 @@ class BuildCard(Base):
     status: Mapped[str] = mapped_column(String(30), default="waiting", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Ф6 Томас-петля: дедлайн стройки + состояние алерта (один пинг на состояние)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # none → announced (пинг «ТЗ лежит») → overdue (пинг «строим/удаляем?») → pruned
+    alert_state: Mapped[str] = mapped_column(String(20), default="none", index=True)
+
+
+class Goal(Base):
+    """Ф1/Ф2 арх.v2 (ТЗ_СОВЕТ_ПОТОК_ВНИЗ): ВХОД мира = ЦЕЛЬ, не идея. Течёт ВНИЗ по
+    иерархии (Стратег→Картограф→Архитектор→Бригадир→Профессор), упирается в исполнение
+    (агент катает ИЛИ спек реактора), закрывается → под наблюдение Смотрителя, вон из
+    активной иерархии. Эхо запечатано: мозг жуёт только открытые цели, не решённые."""
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text: Mapped[str] = mapped_column(Text)                       # сама цель (не идея)
+    source: Mapped[str] = mapped_column(String(30), default="chief")  # chief | strategist | frontier
+    # open → decomposing → awaiting_build → running → closed
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    terminal: Mapped[str] = mapped_column(String(20), default="")     # agent_runs | reactor_spec
+    decomposition: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # слои раскладки вниз
+    build_card_id: Mapped[int | None] = mapped_column(nullable=True)  # если упёрлось в стройку
+    observer: Mapped[str | None] = mapped_column(String(60), nullable=True)  # кто наблюдает после закрытия
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AnalyticsReport(Base):
